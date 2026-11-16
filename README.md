@@ -2,7 +2,7 @@
 
 # 🐻 MedveModem
 
-**Yet Another Modem Orchestrator**  
+**YAMMM - Yet Another MedveModem Manager**  
 **A profile-driven, multi-modem orchestration engine for OpenWrt.**  
 
 *Медвемодемный менеджер - управление USB-модемами, с резервированием каналов и восстановлением связи.*
