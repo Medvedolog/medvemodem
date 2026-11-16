@@ -68,3 +68,102 @@ jobs:
               sys.exit(1)
           print(f'OK: checked {len(paths)} Markdown files and documentation index links')
           PY
+
+  publish-existing-alpha1:
+    # One-time publication, triggered only by this dedicated commit. No SDK rebuild.
+    if: github.event_name == 'push' && github.event.head_commit.message == 'ci: publish verified Alpha 1 artifacts without rebuilding'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '43883870160'
+      SOURCE_SHA: 'ad72f90a98568115b6f93fa30164f71d5fa641bf'
+      RELEASE_TAG: 'v0.16.0-alpha1-r1'
+    steps:
+      - name: Verify the release source and immutable tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq '.head_sha')"
+          conclusion="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq '.conclusion')"
+          tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          [ "$source_sha" = "$SOURCE_SHA" ] && [ "$tag_sha" = "$SOURCE_SHA" ] && [ "$conclusion" = success ] || {
+            echo 'Release tag, verified source run, and commit must all match'; exit 1;
+          }
+          [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts" --jq '[.artifacts[] | select(.expired == false)] | length')" -eq 6 ] || {
+            echo 'Expected six nonexpired build artifacts'; exit 1;
+          }
+          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite"
+            exit 1
+          fi
+      - name: Download six verified build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$SOURCE_RUN" -R "$GITHUB_REPOSITORY" --dir downloaded
+      - name: Validate packages and assemble release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          for arch in aarch64_cortex-a53 aarch64_generic x86_64; do
+            for release in 24.10.8 25.12.6; do
+              dir="downloaded/medvemodem-$arch-$release"
+              [ -d "$dir" ] || { echo "Missing build target: $dir"; exit 1; }
+              if [[ "$release" == 24.10.8 ]]; then ext=ipk; else ext=apk; fi
+              for pkg in medvemodem luci-app-medvemodem; do
+                if [[ "$ext" == ipk ]]; then
+                  find "$dir" -maxdepth 1 -type f -name "${pkg}_*.ipk" | grep -q .
+                else
+                  find "$dir" -maxdepth 1 -type f -name "${pkg}-[0-9]*.apk" | grep -q .
+                fi || { echo "Missing required $pkg ($arch/$release)"; exit 1; }
+              done
+              [ "$(find "$dir" -maxdepth 1 -type f -name "*.$ext" | wc -l)" -gt 0 ] || exit 1
+              tar -C "$dir" -czf "release-assets/medvemodem-0.16.0-alpha1-r1-$arch-$release.tar.gz" .
+            done
+          done
+          [ "$(find release-assets -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 6 ] || exit 1
+          cat > release-assets/HIGHLIGHTS.txt <<'TXT'
+          MedveModem Alpha 1 - v0.16.0-alpha1-r1
+          Git commit: ad72f90a98568115b6f93fa30164f71d5fa641bf
+          Build: https://github.com/Medvedolog/medvemodem/actions/runs/43883870160
+
+          OpenWrt 24.10.8: IPK packages
+          OpenWrt 25.12.6: APK packages
+          Architectures: aarch64_cortex-a53, aarch64_generic, x86_64
+
+          Includes built MedveModem engine, LuCI, and available optional packages.
+          This test release DOES NOT include a QModem build. The QModem install
+          button in LuCI cannot download the project's own QModem packages yet.
+          Alpha release: keep a backup and an independent router access path.
+          TXT
+          (cd release-assets && sha256sum *.tar.gz HIGHLIGHTS.txt > SHA256SUMS)
+          cat > release-notes.md <<'MD'
+          ## MedveModem — Alpha 1 (0.16.0-alpha1-r1)
+
+          First public **test release**, published from the six SDK builds that passed GitHub Actions at commit `ad72f90a`. This release contains the existing verified artifacts, **without rebuilding**.
+
+          **What is included:** MedveModem C modem orchestration engine, its LuCI interface and optional MedveModem packages (Telegram bot and eSIM/lpac where present in the target archive). Features include modem discovery and profiles, ModemManager/native QMI/MBIM/AT coordination, connection monitoring and failover, diagnostics, recovery and ubus API.
+
+          **Platforms:** OpenWrt 24.10.8 (IPK) and OpenWrt 25.12.6 (APK), each for `aarch64_cortex-a53`, `aarch64_generic` and `x86_64`. Choose the archive matching both your OpenWrt release and the router's `DISTRIB_ARCH`.
+
+          **Important limitation:** **QModem is not included in this Alpha 1 release.** Although LuCI has a QModem installer, this release does not supply QModem packages. Do not expect that installation button to work from this release. The separate QModem build and its GitHub Releases download path belong to the next release.
+
+          **Integrity:** Verify the archive against the attached `SHA256SUMS` before unpacking. Install the engine and LuCI of the same version, and resolve dependencies from the feeds matching your OpenWrt build.
+
+          **Warning:** This is alpha software with CI compilation checks only, not a production stability certification. Keep a configuration backup and independent access to the router. In LuCI, the MedveModem self-update check may point to GitHub Releases, but do not assume this test release supports automated updating until that flow is validated.
+
+          **Build provenance:** [Successful six-target build](https://github.com/Medvedolog/medvemodem/actions/runs/43883870160) · [Documentation](https://github.com/Medvedolog/medvemodem/tree/main/docs).
+          MD
+      - name: Publish Alpha 1 pre-release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" release-assets/* \
+            -R "$GITHUB_REPOSITORY" --verify-tag --prerelease \
+            --title "MedveModem 0.16.0-alpha1-r1 — Alpha 1 (without QModem)" \
+            --notes-file release-notes.md
