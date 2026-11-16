@@ -1,3 +1,39 @@
+<div align="center">
+
+# 🐻 MedveModem
+
+**Yet Another Modem Orchestrator for OpenWrt**  
+*Bear-Metal. Oakwood-Solid.*
+
+**A profile-driven, multi-modem orchestration engine for OpenWrt.**  
+*Управление USB-модемами, резервированием каналов и восстановлением связи.*
+
+[![Build](https://github.com/Medvedolog/medvemodem/actions/workflows/build.yml/badge.svg)](https://github.com/Medvedolog/medvemodem/actions/workflows/build.yml)
+[![License: GPLv3](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
+![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)
+![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10%20%7C%2025.12-00B5E2.svg)
+
+**[🇷🇺 Русский](#русское-описание) · [🇬🇧 English](#english-overview)**
+
+**[Installation / Установка](docs/INSTALL.md) · [User guide / Руководство](docs/USER-GUIDE.md) · [Manual / Полное руководство](docs/MANUAL.md)**
+
+**[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
+
+[Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
+
+</div>
+
+> [!WARNING]
+> **Alpha software / Альфа-версия.** Не устанавливайте на роутер без резервного способа доступа. CI artifacts are test builds, not a guarantee of production readiness.
+
+## English overview
+
+MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C daemon, LuCI interface, CLI/TUI and optional Telegram bot. It coordinates modem ownership across ModemManager, QModem and native QMI/MBIM/AT paths; supervises connectivity, failover and staged recovery. The hardware knowledge base covers device profiles, modem-specific quirks and field reports.
+
+**Read:** [Installation](docs/INSTALL.en.md) · [Build instructions](docs/BUILDING.en.md) · [Full API reference](docs/UBUS-API.md) · [Architecture](docs/PLUGIN-ARCHITECTURE.md) · [LuCI theme rules](docs/LUCI-THEMES.md). Translations and language coverage are tracked in the [documentation index](docs/README.md).
+
+## Русское описание
+
 > **0.16.0-alpha1-r1:** публичная Alpha 1 из исходного среза 0.15.0-r197; пересборка и публикация артефактов требуют проверки CI.
 
 # MedveModem
