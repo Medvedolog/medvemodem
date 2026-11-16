@@ -2,7 +2,7 @@
 
 Source: the owner's HAR of the stick's web, 2026-10-30 (firmware UZ801-V2.3.12, Qualcomm MSM8916-class, web at
 192.168.100.1, DHCP .100–.200) and the router's diagnostic report of it (rndis_host on usb 1.2, same USB IDs as
-`profiles/generic/ufi-05c6-f00e.json` and the MF150-4). Field report, rank 1 in SOURCE-HIERARCHY.md. No identifier from
+`profiles/generic/ufi-05c6-f00e.json` and the MF150-4). Field report from a real device. No identifier from
 the capture is kept here.
 
 ## API
