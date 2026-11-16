@@ -4,7 +4,8 @@
 
 **Yet Another Modem Orchestrator**  
 **A profile-driven, multi-modem orchestration engine for OpenWrt.**  
-*Управление USB-модемами, с резервированием каналов и восстановлением связи.*
+
+*Медвемодемный менеджер - управление USB-модемами, с резервированием каналов и восстановлением связи.*
 
 [![Build](https://github.com/Medvedolog/medvemodem/actions/workflows/build.yml/badge.svg)](https://github.com/Medvedolog/medvemodem/actions/workflows/build.yml)
 [![License: GPLv3](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
