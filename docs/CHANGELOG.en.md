@@ -2,8 +2,8 @@
 
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
-> [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **0.15.0 r197–r1; 0.14.0 r24–r1**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> [!NOTE]
+> Complete English translation of the release-by-release entries from the [original Russian changelog](CHANGELOG.md). Release names, dates, commit IDs and technical identifiers are preserved. Historical entries describe capabilities **as of that version**; consult current documentation for supported features.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -2002,6 +2002,147 @@ No standalone bench release.
 - **Serialize recovery** with dial, configuration, eSIM and AT; capture state and release leases before destructive stages.
 - **Persistent bench pre-releases** `bench-v<version>-<commit>` with aarch64 archives, independent of 14-day CI artifacts; production releases remain manual.
 
----
+## 0.13.0-r3 — 2026-10-02
 
-**Older source revisions:** [Complete Russian history](CHANGELOG.md). Field-specific evidence and modem zoo material remain untranslated by design.
+No standalone bench release.
+
+- **Profile-governed L0–L7 recovery policy:** causes, eligible actions based on profile evidence (field-reported strong actions manual-only, bench-validated stages automatic), hard limits, exponential backoff and Manual intervention required state.
+- **Do not count self-inflicted instability:** events during recovery and for 30 s afterward are retained but marked `requested` and excluded from spontaneous-failure metrics.
+- **Recovery capabilities** added to profiles; T99W175 radio restart/reset marked field-reported.
+- **CI:** run lightweight host tests on push, full package builds on demand at this historical revision.
+
+## 0.13.0-r2 — 2026-10-02
+
+No standalone bench release.
+
+- **MM bearer IP session:** IP, DNS and uptime from the active ModemManager bearer in modem record.
+- **Port probing beside MM:** a modem explicitly released from MM to native backend can still be probed; previously presence of MM globally caused refusal.
+- **Bench `--only-uplink`:** permit testing when the test modem is the router's only Internet access but not carrying the SSH session; probe AT/ATI in native mode with redaction.
+- **Bench observations F4/F5:** SIM PIN2 despite connected session, and generic USB strings shared by T99W175 `05c6:9025`.
+
+## 0.13.0-r1 — 2026-10-01–02
+
+No standalone bench release.
+
+- **Native FM350 3GPP AT dial without MM or external manager:** profiles `fibocom-fm350` `0e8d:7127` and `fibocom-fm350-rndis` `0e8d:7126`, netifd `proto medvemodem` with IP/route/DNS, respecting `defaultroute=0`, route metric and `peerdns=0`; hangup on shutdown. CLI `dial`/`hangup`; reject APNs that would inject AT syntax.
+- **First LuCI read-only dashboard:** modem cards with session and faults, stale-data indication after RPC error, USB-port disambiguation, friendly no-SIM status; menu under Modem.
+- **PIN2 is not a full SIM lock**; modem with PIN2 can still connect.
+- **MM-assisted profile specificity:** QMI T99W175 identified by MM model rather than shared USB strings; normalize MM session state.
+- **Design:** network DNS checks, failover, telemetry documented as planned.
+
+## 0.12.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **eSIM through engine AT APDU bridge:** `esim-apdu` passes lpac APDU through `AT+CCHO/CGLA/CCHC` using one leased tty; fix long-response chain hang that killed FM350 eSIM downloads after exactly 240 s.
+- **Find eUICC port:** briefly probe CCHO on eligible tty ports, remember matched port for current USB generation, close leaked logical channels. Skip this path on Sierra, whose CCHO hangs SIM interface.
+- **Pinned `medvemodem-lpac` build:** upstream lpac 2.3.0 stdio APDU driver was broken; build fixed git commit and optional uqmi/mbim/qmi drivers under `/usr/lib/medvemodem/lpac` without colliding with system lpac.
+- **`medvemodem-bench` test harness:** sequential MM/native/external-owner session/IP/route/ping/DNS tests, redacted diagnostics and before/after config comparison. Refuse if SSH session crosses test modem/default route.
+- **Planned LuCI mockups:** eSIM, SMS, operator/SIM, contacts, risk-ranked AT presets, diagnostics/repair, dashboard and settings. Technical design discussed SIM cooling and whitelist handling; not yet functionality.
+
+## 0.11.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **eSIM phase 1 (read only):** CLI `medvemodem esim`, ubus `esim_status`/`esim_action` for chip probe/version/profiles through lpac.
+- **Transport respects owner:** unused AT port when free, MBIM via mbim-proxy under MM; refuse QMI owned by MM/native/external with `owner_busy`.
+- **One exclusive eSIM task at a time**, pause connect operations, reject replies from previous USB generation; timeout is not equivalent to no eUICC.
+- **Documentation:** migration from `/etc/config/lpac-esim` and more zoo pages for T99/T77/FM350/L850.
+
+## 0.10.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **One control backend per modem:** `option backend` auto/modemmanager/native/external; T99 via MM and FM350 via external manager can coexist.
+- **MM inhibition:** `mmcli --inhibit-device` for native/external-owned modems.
+- **External manager auto-probe temporarily disabled** while it owns at least one delegated modem; restore previous setting when no longer used; use its own scripts for handoff and preserve user-created sections in Auto mode.
+- **No native AT/metrics/probe** into externally managed ports.
+
+## 0.9.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Leased AT console, metrics and port probe:** `medvemodem at`, `metrics`, `probe`.
+- **Safe command policy:** forbid dangerous classes, dialing or online transitions; restore tty flags after access.
+- **Cancel stale AT replies** when a higher-priority operation preempts the worker.
+- **Respect MM-owned ports**, read its metrics instead, and use probes to refine port roles.
+
+## 0.8.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **`medvemodem bringup <id>`:** configure netifd, reload as needed, ifup and wait for IP/default route; roll back only the owned changes on failure.
+- **Native QMI/MBIM only without active MM** and with uqmi/umbim available; never run simultaneously with MM.
+- **Session states from netifd:** connecting/connected/disconnected, IPv4/IPv6, routes and error codes via events; flag MM takeover as an ownership conflict.
+
+## 0.7.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Transactional UCI/network edits:** persist an on-flash journal before commit, roll back interrupted actions at startup, expose manual rollback for last device transaction.
+- **Preserve user edits:** only treat a field as engine-owned while it still contains the engine's value; do not adopt or override pre-existing user-configured interfaces.
+- **Respect LuCI's uncommitted changes** using dedicated engine transaction directory.
+- **Choose netifd protocol:** modemmanager for MM, DHCP for router-mode modem; use UCI administrator preferences.
+- **`medvemodem config` and ubus plan/apply/release/rollback/state** APIs, followed by network/firewall reload.
+
+## 0.6.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Redacted diagnostic snapshots:** `medvemodem diag quick`, `diag profile <id>`, `diag diff`, stored under `/tmp/medvemodem/diag`.
+- **Device-scoped report:** USB composition, profile decision/reason, history and kernel lines; hash serial with per-router salt and remove IMEI/IMSI/ICCID, phone numbers and secrets.
+- **H1–H18/F1–F3 field reports** formalized as verifiable evidence and tests.
+
+## 0.5.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Port-role resolution** from MM and kernel drivers, not tty numbering. Unknown vendor ports remain unknown.
+- **Exclusive modem owner and port leases:** higher priority recovery > session > operator > SMS/USSD > diagnostics > metrics, max 120 s; reset leases after USB reconnect, never lease MM-owned or data ports.
+- **ubus lease APIs** `lease_acquire/release/renew/leases` and `medvemodem.lease` event.
+
+## 0.4.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Correlate MM modem objects to physical USB** through sysfs and port matching. In ambiguous conflict don't map either, preventing cross-modem data leakage.
+- **Async bounded mmcli:** child process with 15 s timeout, event/request driven without idle polling; failures never block daemon.
+- **SIM lock/radio off** reported; repeated MM object recreation on same USB becomes an instability/ownership-race event.
+- **Publish `medvemodem.device` and `medvemodem.stability` ubus events.**
+
+## 0.3.0-r1 — 2026-10-01
+
+No standalone bench release.
+
+- **Per-modem event history and stability assessment:** stable/degraded/flapping, disconnect and driver rebind counts, probable USB vs driver cause. CLI `events`, ubus `events`, RAM history survives daemon restart within same boot.
+- **Suppress hotplug noise:** don't log every tty/WDM/netdev appeared/disappeared; coalesce multi-interface rebind into one episode; hourly counters for 24 hours.
+- **Driver health:** `unbound`, `incomplete` and `suboptimal` statuses; exempt serial-only PPP modems.
+- **Design:** SIM/APN selection, dual slots, eSIM, SMS alerts.
+
+## 0.2.0-r1 — 2026-09-30–10-01
+
+No standalone bench release.
+
+- **First `medvemodemd` procd service and ubus object** with status/devices/device/lookup/rescan, event-driven idle.
+- **Kernel uevent settling:** debounce by `settle_ms`, bound repeated hotplug, ignore virtual noise; UCI logging/settle options.
+- **USB generations, first/last appearance and limited disconnected-device history.**
+- **Knowledge ingestion:** normalize modem-manager observations and port recipes, classify AT risk and forbid IMEI writing; create Modem Zoo pages for FM350/T99/T77/RM520N/Quectel/Fibocom and field cases.
+
+## 0.1.0-r1 — 2026-09-30
+
+No standalone bench release.
+
+- **Initial OpenWrt medvemodem package** for 24.10/25.12 including aarch64_cortex-a53; configurable default engine.
+- **USB modem registry and weighted profile matching** across ModemManager/QMI/MBIM/NCM/HiLink plus known USB/PCI IDs/compositions.
+- **Stable identity without serial:** bind to physical USB topology rather than changing bus number; reject obvious fake serials.
+- **Show storage-mode and service-mode devices**, detect usb_modeswitch configuration-0 anomalies; distinguish EDL/crash dump/fastboot and don't assign live modem profiles.
+- **Foundational safety design:** 18 unsafe first-connection actions (NV/EFS writes, USB composition switches, FCC locks), classification by risk, stepped recovery, low-resource ubus/uloop daemon and UI/TUI concepts.
+
+## Before 0.1.0 — 2026-09-30
+
+No standalone bench release.
+
+- **Project initiated:** studied other modem stacks for OpenWrt 24.10/25.12 to identify hardware behavior worth independently implementing.
+- **Initial architecture/design:** device profiles, MM-first ownership, stable data sessions, third-party projects as knowledge sources, diagnostics and community profile submission workflow.
+
+
