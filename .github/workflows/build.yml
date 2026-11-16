@@ -39,6 +39,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build in OpenWrt SDK
         run: tools/build.sh "${{ matrix.arch }}" "${{ matrix.release }}"
+        env:
+          MEDVEMODEM_DOWNLOAD_BASE: ${{ startsWith(github.ref, 'refs/tags/v') && format('https://github.com/Medvedolog/medvemodem/releases/download/{0}', github.ref_name) || '' }}
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -47,17 +49,38 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  qmodem:
+    name: QModem ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64_cortex-a53, aarch64_generic, x86_64]
+        release: ['25.12.6', '24.10.8']
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build pinned QModem in matching SDK
+        run: sh tools/build-qmodem.sh "${{ matrix.arch }}" "${{ matrix.release }}"
+      - name: Upload QModem archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: qmodem-${{ matrix.arch }}-${{ matrix.release }}
+          path: dist/qmodem-${{ matrix.arch }}-${{ matrix.release }}/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
   release:
     name: Publish tagged release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: packages
+    needs: [packages, qmodem]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: medvemodem-*
+          pattern: '*'
           path: package-artifacts
           merge-multiple: false
       - name: Pack all six targets and checksums
@@ -72,7 +95,12 @@ jobs:
             target="${dir##*/medvemodem-}"
             tar -C "$dir" -czf "release-assets/medvemodem-${tag}-${target}.tar.gz" .
           done
-          [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
+          [ "$(find release-assets -name 'medvemodem-*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six MedveModem targets" >&2; exit 1; }
+          for dir in package-artifacts/qmodem-*; do
+            [ -d "$dir" ] || { echo "missing QModem artifacts" >&2; exit 1; }
+            find "$dir" -maxdepth 1 -type f -name '*.tar.gz' -exec cp {} release-assets/ \;
+          done
+          [ "$(find release-assets -name 'qmodem-*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six QModem targets" >&2; exit 1; }
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
       - name: Publish GitHub Release
         env:
@@ -81,4 +109,4 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" release-assets/* \
             --verify-tag --prerelease \
             --title "MedveModem ${GITHUB_REF_NAME#v}" \
-            --notes "Pre-release packages for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), architectures aarch64_cortex-a53, aarch64_generic and x86_64. Each archive includes the MedveModem engine, LuCI, Telegram bot, and optional eSIM/lpac packages. Check SHA256SUMS before installing. Alpha software: maintain independent access to your router."
+            --notes "Pre-release packages for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), architectures aarch64_cortex-a53, aarch64_generic and x86_64. Each MedveModem archive includes the engine, LuCI, Telegram bot, and optional eSIM/lpac packages. Six SDK-matched QModem archives support one-click installation from LuCI. Check SHA256SUMS before installing. Alpha software: maintain independent access to your router."
