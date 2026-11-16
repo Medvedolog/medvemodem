@@ -9,7 +9,7 @@
 | Установка / Installation | [INSTALL.md](INSTALL.md) | [INSTALL.en.md](INSTALL.en.md) |
 | Сборка / Building | [BUILDING.md](BUILDING.md) | [BUILDING.en.md](BUILDING.en.md) |
 | Краткое руководство / User guide | [USER-GUIDE.md](USER-GUIDE.md) | [USER-GUIDE.en.md](USER-GUIDE.en.md) |
-| Полное руководство / Manual | [MANUAL.md](MANUAL.md) | [Original RU](MANUAL.md) |
+| Полное руководство / Manual | [MANUAL.md](MANUAL.md) | [MANUAL.en.md](MANUAL.en.md) |
 | ubus API | [Русский путеводитель](UBUS-API.ru.md) | [Full API reference](UBUS-API.md) |
 | Архитектура плагинов / Plugin architecture | [PLUGIN-ARCHITECTURE.ru.md](PLUGIN-ARCHITECTURE.ru.md) | [PLUGIN-ARCHITECTURE.md](PLUGIN-ARCHITECTURE.md) |
 | Темы LuCI / LuCI themes | [LUCI-THEMES.ru.md](LUCI-THEMES.ru.md) | [LUCI-THEMES.md](LUCI-THEMES.md) |
@@ -19,9 +19,9 @@
 
 ## Состояние перевода / Translation coverage
 
-- **Full translated counterparts:** installation, building, quick user guide, Telegram bot guide, plugin architecture, LuCI theme guidelines.
+- **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines.
 - **Russian overview, English canonical reference:** ubus API. The Russian API overview is **not a full translation** of every method's arguments and field contracts.
-- **Russian original only:** long-form manual and historical changelog. Their full English translations are not yet available.
+- **Russian original only:** historical changelog (247 KB); a full English translation is not yet available.
 - **Intentionally not translated:** field observations and modem zoo.
 - **Telegram bot:** English translation is now available alongside the original Russian/mixed document.
 
