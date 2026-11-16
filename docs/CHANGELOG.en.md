@@ -1081,9 +1081,17 @@ Bench build: `bench-v0.15.0-r81-0c4e5be`.
 
 ## 0.15.0-r80 — 2026-10-21
 
-Bench build: `bench-v0.15.0-r80-…` (see [Russian original](CHANGELOG.md) for its exact tag).
+Bench build: `bench-v0.15.0-r80-ac0cf48`.
 
-- **Bot package startup regression fixed:** restore the missing `why` diagnostic helper required by service preflight; r77-era bot installs failed with “why: not found … reinstall medvemodem-bot”. Add a package check to prevent recurrence.
+- **Background web polling of router-mode HiLink/ZTE modems:** read every five minutes even when LuCI is closed to avoid holes in signal history; do not read frozen modems.
+- **Preserve external manager ownership through FM350 reboot:** after USB reset FM350 can spend roughly a minute in MediaTek bootloader mode. Previously the engine considered the external-manager section orphaned, disabled it and removed interface `mm3`. Retain the delegated modem for ten minutes after disappearance and reactivate its external-manager section if that manager disabled it after USB removal.
+- **Find qmicli reliably** through absolute executable paths rather than relying on shell lookup.
+- **Temperature history chart:** aggregate into ten-minute blocks (maximum within each block), render filled area, preserve honest gaps while page was not measuring; hover shows time interval and temperature.
+- **Dangerous manager restart control** is now an outlined red button, not a link among ordinary blue actions.
+- **Bot setup step 1:** Saved-token masked display stays above input and no longer shifts button layout.
+- **Modem table signal units:** use RSRP dBm consistently where available, percentage only without RSRP.
+- **OpenWrt Status → Overview** gains operator, technology and signal bars for Huawei HiLink and externally managed modems.
+- **Bot startup regression fixed:** the `why` preflight helper was missing from bot packages, preventing bot startup since r77; include it and check packaging in tests.
 
 ## 0.15.0-r79 — 2026-10-21
 
