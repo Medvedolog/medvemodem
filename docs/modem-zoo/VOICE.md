@@ -26,7 +26,7 @@ it is the vendors' documentation, the neighbours' code (behaviour only) and the 
 
 ## The neighbours
 
-- another modem manager 3.9.34: no calls; shows a VoLTE on/off flag for one MeiG (2dee:4d57).
+- archived modem utility 3.9.34: no calls; shows a VoLTE on/off flag for one MeiG (2dee:4d57).
 - QModem: stable none; main has experimental VoIP/SIP for AW1000, RM520N, RG500Q (the modem's voice to SIP), not taken.
 - luci-app-sms-tool-js: logs incoming calls (RING, the caller's number); its service holds an AT port.
 - Asterisk `chan_dongle`: old Huawei 3G sticks with voice unlocked, sound over a serial port.
