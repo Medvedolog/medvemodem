@@ -28,7 +28,6 @@
 
 MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C daemon, LuCI interface, CLI/TUI and optional Telegram bot. It coordinates modem ownership across ModemManager, QModem and native QMI/MBIM/AT paths; supervises connectivity, failover and staged recovery. The hardware knowledge base covers device profiles, modem-specific quirks and field reports.
 
-**Read:** [Installation](docs/INSTALL.en.md) · [Quick guide](docs/USER-GUIDE.en.md) · [Full manual](docs/MANUAL.en.md) · [Telegram bot](packages/medvemodem-bot/README.en.md) · [Build instructions](docs/BUILDING.en.md) · [ubus API](docs/UBUS-API.md) · [Architecture](docs/PLUGIN-ARCHITECTURE.md) · [LuCI theme rules](docs/LUCI-THEMES.md) · [Recent changelog](docs/CHANGELOG.en.md). See the [bilingual documentation index](docs/README.md) for translation coverage.
 
 ## Русское описание
 
