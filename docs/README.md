@@ -13,15 +13,15 @@
 | ubus API | [Подробный русский справочник](UBUS-API.ru.md) | [Full API reference](UBUS-API.md) |
 | Архитектура плагинов / Plugin architecture | [PLUGIN-ARCHITECTURE.ru.md](PLUGIN-ARCHITECTURE.ru.md) | [PLUGIN-ARCHITECTURE.md](PLUGIN-ARCHITECTURE.md) |
 | Темы LuCI / LuCI themes | [LUCI-THEMES.ru.md](LUCI-THEMES.ru.md) | [LUCI-THEMES.md](LUCI-THEMES.md) |
-| История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (r197–r180; partial) |
+| История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (all 238 entries) |
 | Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) |
 | Modem Zoo / Зоопарк модемов | [modem-zoo/README.md](modem-zoo/README.md) | [Original field notes](modem-zoo/README.md) |
 
 ## Состояние перевода / Translation coverage
 
-- **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines.
+- **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines and complete release history (238 entries).
 - **ubus API:** подробный русский справочник методов и полей с сохранением идентификаторов; английский оригинал остаётся исходным контрактом для сверки.
-- **Changelog:** English translation of public Alpha 1 and r197–r180; the complete 247 KB history remains in Russian.
+- **Changelog:** полный английский перевод всех 238 исторических записей от начала разработки до публичной Alpha 1; русский оригинал сохранён без изменений.
 - **Intentionally not translated:** field observations and modem zoo.
 - **Telegram bot:** English translation is now available alongside the original Russian/mixed document.
 
