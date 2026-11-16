@@ -1,30 +1,82 @@
-# The public repository's build (tools/public_export.py puts it in .github/workflows/): the packages of every
-# architecture and OpenWrt release line in the official SDK, kept as the run's artifacts.
+# Public OpenWrt package builds.
+# Markdown-only commits are handled by docs.yml, not six SDK jobs.
 name: build
 
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 permissions:
   contents: read
 
 jobs:
   packages:
+    name: ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         arch: [aarch64_cortex-a53, aarch64_generic, x86_64]
-        release: ["25.12.6", "24.10.8"]
+        release: ['25.12.6', '24.10.8']
     steps:
       - uses: actions/checkout@v5
-      - name: Build in the OpenWrt SDK
+      - name: Build in OpenWrt SDK
         run: tools/build.sh "${{ matrix.arch }}" "${{ matrix.release }}"
-      - uses: actions/upload-artifact@v4
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: medvemodem-${{ matrix.arch }}-${{ matrix.release }}
           path: dist/${{ matrix.arch }}-${{ matrix.release }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish tagged release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: medvemodem-*
+          path: package-artifacts
+          merge-multiple: false
+      - name: Pack all six targets and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          tag="${GITHUB_REF_NAME#v}"
+          for dir in package-artifacts/medvemodem-*; do
+            [ -d "$dir" ] || { echo "missing artifact directory" >&2; exit 1; }
+            [ "$(find "$dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) | wc -l)" -gt 0 ] || { echo "No packages in $dir" >&2; exit 1; }
+            target="${dir##*/medvemodem-}"
+            tar -C "$dir" -czf "release-assets/medvemodem-${tag}-${target}.tar.gz" .
+          done
+          [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
+          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release-assets/* \
+            --verify-tag --prerelease \
+            --title "MedveModem ${GITHUB_REF_NAME#v}" \
+            --notes "Pre-release packages for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), architectures aarch64_cortex-a53, aarch64_generic and x86_64. Each archive includes the MedveModem engine, LuCI, Telegram bot, and optional eSIM/lpac packages. Check SHA256SUMS before installing. Alpha software: maintain independent access to your router."
