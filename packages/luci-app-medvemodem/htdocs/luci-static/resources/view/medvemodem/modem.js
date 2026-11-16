@@ -45,7 +45,7 @@ var bringup = rpc.declare({ object: 'medvemodem', method: 'bringup', params: ['i
 var check = rpc.declare({ object: 'medvemodem', method: 'check', params: ['id'], reject: true });
 var getStatus = rpc.declare({ object: 'medvemodem', method: 'status', reject: true });
 var signalHistory = rpc.declare({ object: 'medvemodem', method: 'signal_history', params: ['id', 'range'], reject: true });
-/* eSIM, read only for now (the engine's stage 1, docs/ESIM-INTEGRATION.md): seconds on the eUICC, asked on a press only */
+/* eSIM reads/probes eUICC on demand (seconds); enabling an already installed profile is supported. Download/delete wait until Alpha 2. */
 var esimStatus = rpc.declare({ object: 'medvemodem', method: 'esim_status', params: ['id'], reject: true });
 var esimAction = rpc.declare({ object: 'medvemodem', method: 'esim_action', params: ['id', 'action'], reject: true });
 /* a switch to a profile already on the chip (the owner, 2026-11-15); download and delete wait for Alpha 2 */
@@ -2623,10 +2623,10 @@ return view.extend({
 	},
 
 	/* «Настройки» (UX audit 2026-10-17): everything set for this one modem, in one place; the same savers as before */
-	/* «eSIM» (the owner, 2026-11-03: «пока только читаем»; 2026-11-15: a tab of its own at every level, like «AT» or «SMS», for a
-	 * modem with an eSIM only: a built-in eUICC that ModemManager reports, or a chip a reading found, a removable eSIM card
-	 * such as 9eSIM too, remembered in this browser per modem). Nothing is switched, deleted or downloaded here; the reading
-	 * holds the modem a few seconds */
+	/* «eSIM»: a tab for a built-in eUICC or a removable UICC/9eSIM discovered by the diagnostic probe.
+	 * It reads EID/profiles and can enable an already installed profile (connection may reset).
+	 * Until Alpha 2, downloading new profiles to the card is done on a compatible phone; the
+	 * modem is held for a few seconds during an on-demand read. */
 	/* per modem and SIM slot: a modem with a plastic SIM in slot 1 and its built-in eUICC in slot 2 reads each apart */
 	esimSlot: function() { return ((this.data || {}).modemmanager || {}).primary_sim_slot || 1; },
 	esimKey: function() { return 'mm:' + location.host + ':esim:' + this.id + (this.esimSlot() > 1 ? ':' + this.esimSlot() : ''); },
