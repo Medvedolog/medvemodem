@@ -71,7 +71,7 @@ jobs:
 
   publish-existing-alpha1:
     # One-time publication, triggered only by this dedicated commit. No SDK rebuild.
-    if: github.event_name == 'push' && github.event.head_commit.message == 'ci: publish verified Alpha 1 artifacts without rebuilding'
+    if: "github.event_name == 'push' && github.event.head_commit.message == 'ci: publish verified Alpha 1 artifacts without rebuilding'"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
