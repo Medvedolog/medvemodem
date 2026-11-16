@@ -305,20 +305,16 @@ Advanced metrics, band locking and vendor controls are secondary to those invari
 
 Recovery must also be profile-driven.
 
-Use the canonical L0–L7 ladder in TECHNICAL-SPEC.md section 22.1.
-Profiles declare validated capabilities; the core coordinates owners, leases,
-cooldowns, execution and post-action validation.
+Recovery follows a profile-governed escalation ladder, from non-disruptive observation and session recovery to explicitly authorized device resets.
+Profiles declare validated capabilities; the core coordinates owners, leases, cooldowns, execution and post-action validation.
 
 ## Data sources
 
 Hardware knowledge comes from the modem zoo ([modem-zoo](modem-zoo/README.md)), field reports from real routers and
-the vendors' AT manuals, in that order (SOURCE-HIERARCHY.md): expanded hardware profiles, port
-detection, recovery techniques, metrics parsing, radio controls, HiLink support and multi-modem behaviour. Other
-projects are studied for behaviour only; no code is taken (CATALOG-PROVENANCE.md).
+vendors' AT manuals. These inform hardware profiles, port detection, recovery techniques, metrics parsing,
+radio controls, HiLink support and multi-modem behaviour. Other projects are studied for behaviour only; no code is copied.
 
-Do not import eSIM/lpac code from other projects; eSIM is a core capability
-adapter (ESIM-INTEGRATION.md), not a plugin with its own
-discovery, locks or resets.
+Do not import eSIM/lpac code from other projects; eSIM belongs to the engine's capability adapter, not an independent plugin with its own discovery, locks or resets.
 
 ## Anti-combiner rules
 
@@ -335,7 +331,5 @@ The following should be rejected during review:
 
 ## Implementation order
 
-Follow the canonical milestones in TECHNICAL-SPEC.md section 33.
-
-Recovery levels follow section 22.1 of that specification; plugin operations use
-semantic action names and never independently choose escalation levels.
+Implementation is staged around stable modem identity, one control owner, safe port access,
+connectivity verification and recovery. Plugin operations use semantic action names and never independently choose escalation levels.
