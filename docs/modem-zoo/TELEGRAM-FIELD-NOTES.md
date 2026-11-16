@@ -77,15 +77,15 @@ Attached other scripts packages show an explicit evolution from board-gated reau
 - tg-lte-modemy-2026-10-01 msg 559916, 2025-07-08, attachment other scripts.2-r1_all.ipk, other scripts
 - tg-lte-modemy-2026-10-01 msg 671461, 2025-08-25, attachment other scripts.2-r2_all.ipk, other scripts
 
-### archived modem utility-102-attached-package-architecture
+### Archived 1.0.2 modem package architecture
 
 **Confidence:** `attached-package-artifact` · **Risk:** `reference`
 
-An archived modem utility 1.0.2 IPK attached by a router maker's firmware provides direct package-level evidence of the historical stack: USB hotplug dispatch, fixed model port tables, one global network.modem interface, mmcli -m any discovery, companion modeminfo/mmconfig/atinout/smstools3 configuration and board-specific broad USB reinit.
+An archived modem-management IPK (version 1.0.2) supplied with a router firmware provides direct package-level evidence of the historical stack: USB hotplug dispatch, fixed model port tables, one global network.modem interface, mmcli -m any discovery, companion modeminfo/mmconfig/atinout/smstools3 configuration and board-specific broad USB reinit.
 
 **Details:**
-- Package control metadata names archived modem utility 1.0.2, source path /home/other scriptsclaus/rr-modemfeed/packages/net/archived modem utility, and maintainer Aleksandr Danilov.
-- Its 99-archived modem utility hotplug suppresses starting a second /usr/bin/archived modem utility while one is already running.
+- Package control metadata identifies the historical 1.0.2 integration stack; private source-tree paths are omitted from this public overview.
+- Its hotplug guard avoids launching a second instance of the modem-management process while one is running.
 - The package removes ModemManager's tty hotplug hook, configures one global network.modem, and carries per-model historical tty port tables.
 - Its board-specific fix-usb-reinit toggles authorization on all root USB buses on a small router whitelist.
 
@@ -94,7 +94,7 @@ An archived modem utility 1.0.2 IPK attached by a router maker's firmware provid
 - MedveModem should keep event coalescing/rescan, explicit device_id and attachment-scoped recovery instead of importing the single-global-modem assumptions.
 
 **Evidence:**
-- tg-modemy-2026-10-01 msg 195423, 2025-06-23, attachment archived modem utility_1.0.2_all.ipk, a router maker's firmware
+- tg-modemy-2026-10-01 msg 195423, 2025-06-23, archived 1.0.2 IPK attachment, a router maker's firmware
 
 ## Foxconn T99W175 / SDX55
 
@@ -224,7 +224,7 @@ A captured 413c:81d7 boot trace shows the same T77W968 first bound as cdc_mbim a
 
 **Details:**
 - cdc_mbim first exposes cdc-wdm0/wwan0; a few seconds later it unregisters, qmi_wwan binds the same control/data role, and serial endpoints return.
-- archived modem utility recognizes t77w968 after the transition and ModemManager receives add/remove/add events.
+- historical integration stack recognizes t77w968 after the transition and ModemManager receives add/remove/add events.
 
 **MedveModem implications:**
 - Live driver/control plane outranks PID/customer lore.
@@ -378,7 +378,7 @@ A community modeminfo patch adds FM350 HSPA parsing from CESQ; a router maker's 
 
 **Confidence:** `developer-report-plus-live-logs` · **Risk:** `operational`
 
-Fibocom XMM initialization may cause several disconnect/reconnect cycles; archived modem utility treats each appearance as another setup opportunity rather than a new physical modem.
+Fibocom XMM initialization may cause several disconnect/reconnect cycles; historical integration stack treats each appearance as another setup opportunity rather than a new physical modem.
 
 **Details:**
 - Captured L850 logs show repeated setup, cdc_ncm unregister/register, ttyACM recreation and netifd retries before connectivity.
@@ -496,7 +496,7 @@ The Telegram claim that USSD works through ModemManager on an unspecified EP06 c
 
 **Evidence:**
 - tg-lte-modemy-2026-10-01 msg 1340412, 2026-05-06, ITDog Chat
-- a field report-archived modem utility: quirks.sh EP06-E/EG06-E negative USSD evidence
+- a field report-historical integration stack: quirks.sh EP06-E/EG06-E negative USSD evidence
 
 ## What this changes architecturally
 
