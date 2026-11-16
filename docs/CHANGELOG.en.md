@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r15**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r1**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -1673,6 +1673,121 @@ No standalone bench release.
 
 - **Signal history:** Radio → Signal history in Advanced mode, RSRP and SINR over 5 min/1 h/24 h, separate LTE/5G lines and technology/cell-change markers, hover tooltip and table, all RAM; MM devices only.
 - **Reduce active modem queries:** request MM cell/location details only while LuCI or TUI is open rather than every 40 s, and in background poll MM properties once a minute for signal history. Disable with `uci set medvemodem.core.signal_history=0`.
+
+## 0.15.0-r14 — 2026-10-13
+
+No standalone bench release.
+
+- **Per-SIM traffic quota:** Service → SIM card; monthly GB limit, billing-cycle start day, warning percentage and action (warn only or demote to backup on exhaustion). Counts a modem's traffic while the SIM is inserted and survives reboots; stores only hashed ICCID.
+- **Quota progress:** modem/homepage show usage such as “12 of 50 GB (24%)” and exhaustion. Journal warning/exhaustion only once per cycle.
+- **Demotion policy:** on exhausted quota and enabled failover, select another healthy channel; if none exists, preserve the current connection.
+
+## 0.15.0-r13 — 2026-10-13
+
+No standalone bench release.
+
+- **T99W175 AT console restored:** profile specifies interface 02 in USB composition 9025. Previously MM did not use this AT port but the engine refused to probe it beside MM.
+- **Manual AT port selection and probe** in the Advanced AT tab; never probe DIAG service ports.
+- **Control owner selector:** Auto, ModemManager, MedveModem or external manager, with confirmation.
+- **Fix LuCI tests broken in r12** and add AT-port/modeswitch rule UI tests.
+
+## 0.15.0-r12 — 2026-10-13
+
+No standalone bench release.
+
+- **Failed modem connection no longer reloads the whole network:** previously two `network reload` operations restarted hostapd/wpa_supplicant, disconnecting Wi-Fi clients and Wi-Fi uplinks. Now bring down only the unsuccessful modem interface, retaining configuration for next retry; Release explicitly removes it.
+- **Stop connection attempt immediately** when netifd reports a terminal failure such as `MM_CONNECT_FAILED`, rather than waiting 120 seconds.
+- **Dell DW5821e usb-modeswitch rule safety:** detect `/etc/usb-mode.json` rules clearing USB configuration (produced a kernel Oops on the bench); show a Disable rule control and save backup as `/etc/usb-mode.json.medvemodem-backup`, without changing the rule automatically.
+
+## 0.15.0-r11 — 2026-10-11
+
+Bench build: `bench-v0.15.0-r11-5109f08`.
+
+- **Edit RAT and bands:** Radio → Network mode and bands → Change in Advanced, selecting 3G/LTE/5G, preferred RAT where supported and device-supported bands; confirm in two steps.
+- **Automatic rollback:** if modem Internet existed before change but does not return within two minutes, restore previous settings; user can Keep/Undo any time. Reject unsupported writes and avoid irreversible changes.
+- **Backends:** ModemManager, external modem manager and native Quectel `AT+QNWPREFCFG`; Fibocom/Intel XMM/Huawei/older Quectel are read-only with explanations.
+
+## 0.15.0-r10 — 2026-10-11
+
+Bench build: `bench-v0.15.0-r10-602515b`.
+
+- **DNS follows traffic:** remove offline link's DNS resolvers from router until connectivity returns, without leaving the resolver list empty.
+- **IPv6 failover** follows IPv4 routing policy.
+- **Manual-only channels:** smartphone tethering and other optional paths never auto-take traffic.
+- **Keep recovered unreliable link last:** do not auto-restore its priority until user selects Restore priority.
+- **Firewall/proxy-aware checks:** do not reset a healthy modem merely because direct probes are blocked while local clash/mihomo proxy provides connectivity.
+- **Backoff on route-helper failures:** 60 s instead of repeating an ineffective action continuously.
+
+## 0.15.0-r9 — 2026-10-10–11
+
+Bench build: `bench-v0.15.0-r9-96a557e`.
+
+- **Failover avoids equal metric conflicts:** kernel cannot hold two default routes with equal metric. Assign a free penalty metric to failed channel and wait when another channel owns the intended metric rather than retrying every five seconds.
+- **Missing netifd protocol means no destructive resets:** when qmi/mbim/ncm package is absent, report missing protocol handler rather than rebooting the modem.
+- **CI optimization:** self-hosted runners by default, rebuild external manager only when version/build scripts change, parallel SDK builds with persisted SDK trees, fallback Chrome for LuCI tests.
+
+## 0.15.0-r8 — 2026-10-10
+
+No standalone bench release.
+
+- **Automatic failover to healthy channel**, disabled by default under Settings → Connection recovery. Check each default-route device (wired, Wi-Fi, modem) through its own interface, add 10000 route metric penalty when offline, restore when healthy. Do not change persistent network settings; restore metrics on daemon shutdown.
+- **mwan3 coexistence:** disable this engine's failover when mwan3 is installed and explain incompatibility.
+- **Ubus uplink.failover** reports reroutes; optional self-hosted WSL2 CI setup documented.
+
+## 0.15.0-r7 — 2026-10-10
+
+No standalone bench release.
+
+- **Read radio settings from external/native backends:** open Network mode and bands reads via external `modem_ctrl.sh`, native model AT (`AT+GTACT?`, Quectel `QNWPREFCFG/QCFG`, XMM `AT+XACT?`, Huawei `AT^SYSCFGEX?`); show source/read time, Refresh, all-supported when unrestricted.
+- **New `radio` ubus method.**
+
+## 0.15.0-r6 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r6-5b67c3b`.
+
+- **Read-only Network mode and bands card** in Advanced Radio with allowed/preferred technologies and bands; Expert lists capabilities/source. MM-owned modems only at this stage, others report why unavailable.
+- **Intel XMM family profiles** for Fibocom L850/L860 (`8087:095a`, `2cb7:0007/000b`) and Huawei modem-mode USB NCM/serial/QMI/MBIM; prefer MM. HiLink remains Ethernet/router-mode.
+
+## 0.15.0-r5 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r5-b2df8bc`.
+
+- **Disable external manager auto-probe before installation:** otherwise its hooks may grab any USB networking hardware (Ethernet/Wi-Fi) during package setup; persist `block_auto_probe` and remove temporary config on failed install.
+- **Compatibility:** verified the manager does not conflict with the firmware's MM/uqmi/umbim and QMI/MBIM/NCM driver packages when correctly configured.
+
+## 0.15.0-r4 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r4-78f70bc`.
+
+- **Install external modem manager core via LuCI:** only its 3.3.0 backend, without its LuCI UI, built by project CI for 24.10.8 and 25.12.5, published alongside MedveModem packages.
+- **Preflight and integrity:** verify checksum and dry-run dependencies; if unavailable in router feeds, install nothing and explain in log.
+- **Auto-probe disabled after install** so external manager cannot take T99 or every USB modem; delegate FM350/Quectel by profile.
+- **Missing external manager** results in direct installation link on modem page if selected owner requires it.
+
+## 0.15.0-r3 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r3-7dc593d`.
+
+- **Busy AT port visible everywhere:** prominent modem warning, journal when claimed/released, localized console denial.
+- **Localized modem journal:** received/sent/failed SMS, stuck multipart cleanup, MM restart outcome and port release; previously many entries appeared as internal names.
+- **Fix crash during initial port scan.**
+- **External manager packaging study:** vendor binaries built for OpenWrt master libraries could not install on stock 24.10/25.12.
+
+## 0.15.0-r2 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r2-cb37317`.
+
+- **USSD priority over background SMS/AT console** to avoid interrupting an interactive network menu; session and recovery remain higher priority.
+- **Profile AT port selection:** use declared interface number immediately, without `medvemodem probe`.
+- **Foreign port holder safety:** refuse to open tty held by smstools3/other managers/sms_tool and report program name/PID in command reply and `held_by` field.
+
+## 0.15.0-r1 — 2026-10-10
+
+Bench build: `bench-v0.15.0-r1-91d9b99`.
+
+- **Start of 0.15.0:** functional code same as `0.14.0-r24`, aggregating prior 0.14 changes.
+- **AT tab:** Advanced modem page has command entry and 72 model-specific safe presets (T99/T77, Quectel, FM350, etc.); dangerous commands shown as non-executable reference with reason. If MM owns AT port, explain why unavailable.
+- **USSD operator presets:** Balance, My number, Allowance for MTS, MegaFon, Beeline, T2, Yota, plus user shortcuts per SIM; sourced publicly, unverified on physical SIM at this point.
 
 ---
 
