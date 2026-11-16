@@ -119,8 +119,8 @@ See [Telegram field notes](../TELEGRAM-FIELD-NOTES.md).
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -141,15 +141,15 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 - **`xmm-l860-legacy-gtusbmode`** — `COMPOSITION_MUTATION`; Fibocom Intel XMM MBIM/other → XMM/NCM, often 8087:095a; explicit approval required; ~40 seconds disappearance can be expected; no fixed ttyACM numbering.
 - **`xmm-l860-nvm-fallback`** — `PERSISTENT_COMPOSITION_WRITE`; L860 fw 18600/18601 GTUSBMODE returns ERROR → XMM/NCM; explicit approval required; The `at@store_nvm` step writes persistent parameters. No automatic action.
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
 
 
-<!-- another modem manager-delta-v3.5.16:start -->
-## another modem manager–v3.5.16 — release delta (2026-10-21)
+<!-- field-delta-v3.5.16:start -->
+## Дополнительные полевые наблюдения (2026-10-21)
 
-**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Full review: another modem manager delta.
+**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Details: archived field observations.
 
-- **`…-v3512-xmm-xgauth`** (`2cb7:000b`) — `upstream-code-reference`, not-bench-validated: For XMM modules PAP/CHAP credentials are set with AT+XGAUTH=1,&lt;0 none|1 PAP|2 CHAP&gt;,"user","pass" (no login: AT+XGAUTH=1,0,"",""), falling back to AT+CGAUTH when XGAUTH returns ERROR. Their packaged xmm proto loses the login, so XMM interfaces with credentials are migrated to their fibocom proto. Source: a field report/another modem manager @ `a22590c` (root/lib/netifd/proto/fibocom.sh:121-145, root/etc/uci-defaults/52-another modem manager-xmm-auth-to-fibocom.sh).
+- **`…-v3512-xmm-xgauth`** (`2cb7:000b`) — `upstream-code-reference`, not-bench-validated: For XMM modules PAP/CHAP credentials are set with AT+XGAUTH=1,&lt;0 none|1 PAP|2 CHAP&gt;,"user","pass" (no login: AT+XGAUTH=1,0,"",""), falling back to AT+CGAUTH when XGAUTH returns ERROR. Their packaged xmm proto loses the login, so XMM interfaces with credentials are migrated to their fibocom proto. Source: архивные полевые сведения @ `a22590c` (root/lib/netifd/proto/fibocom.sh:121-145, root/etc/uci-defaults/52-archived modem utility-xmm-auth-to-fibocom.sh).
   - The migration is a one-time uci-defaults script; interfaces without credentials stay on the xmm proto.
 
-<!-- another modem manager-delta-v3.5.16:end -->
+<!-- field-delta-v3.5.16:end -->
