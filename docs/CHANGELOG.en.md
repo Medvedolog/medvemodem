@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r50**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r30**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -1348,6 +1348,200 @@ Bench build: `bench-v0.15.0-r50-dfacbd5`.
 - **Latest event in homepage modem card:** show `last_event` with timestamp as used in Diagnostics, avoiding an extra ubus call per device.
 - **Stop endless USB composition switching:** after two failures, suspend retries until the administrator changes the requested composition instead of repeating every ten minutes.
 - **Add Telegram bot sources** `medvemodem-bot` and `luci-app-medvemodem-bot` on ucode for OpenWrt 24.10/25.12, without including it in this bench artifact.
+
+## 0.15.0-r49 — 2026-10-17
+
+No standalone bench release.
+
+- **OpenWrt Status → Overview modem rows:** linked modem name, operator/RAT, address and status (Primary, Backup ready, No SIM, Disconnected from USB). Hide block when no modems or daemon unavailable.
+- **Clearer homepage:** Internet availability first, then active modem and ready backup by name.
+- **SIM missing is not zero signal:** red No SIM and not registered state instead of generic No Internet/0%.
+- **Card details:** display address and interface; hide LTE+NR NSA/NR SA engineering notation except in Expert mode.
+
+## 0.15.0-r48 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r48-eb9dbaa`.
+
+- **Inline modem renaming:** pencil beside title, Esc cancels; remove separate Name card.
+- **Modem Settings layout:** Connection and SIM adjacent, two columns when space permits.
+- **Advanced radio settings preview:** show current RAT/band and Change shortcut on Network and signal.
+- **Russian UI copyedit:** clearer pause, connection toggle, USB service mode and plurals.
+- **USB configuration:** default option renamed Automatic and actionable failure messages. Engine unchanged.
+
+## 0.15.0-r47 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r47-1104afd`.
+
+- **Native FM350 3GPP dial:** independently implemented behavior informed by real-world projects: check network registration and restore automatic operator search after another program leaves `+COPS: 2`; reuse existing PDP context when available, avoiding 30–60 s disruption on priority changes; use `AT+CGACT=0` before activation only as needed, since repeated activation could drop FM350; retry with IPV4V6 if IPv4-only fails (observed on Tele2); obtain gateway/DNS from `AT+CGCONTRDP` and `AT+GTDNS`, and use a dhcpv6 child interface for IPv6.
+- **LuCI terminology reviewed:** “USB composition” and “administrator” replace ambiguous wording.
+- **Alpha 1 README** drafted primarily in Russian with a short English overview.
+
+## 0.15.0-r46 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r46-1964998`.
+
+- **Strict frontend/engine version dependency:** `luci-app-medvemodem` requires the exact matching `medvemodem` version to prevent an API mismatch.
+- **Original release scheme:** bench `0.15.0-rN`, planned Alpha 1 `0.16.0-r1`, Alpha 2 `0.17.0-r1`; “alpha” originally intended for tag/title only. Later public alpha packaging uses `0.16.0_alpha1-r1`.
+- **Protect Foxconn T77 from `^SETMODE=`:** this AT command changes USB composition across HP/Dell/Telit/Foxconn IDs.
+- **T99/T77 AT presets:** neighboring cell RSRP/RSRQ, LTE category, band priority; FM350 reboot `AT+CFUN=15`.
+- **APN addition:** Rostelecom MCC/MNC 250-03, `internet.rtk.ru`; bench probe includes USB `bcdDevice`.
+
+## 0.15.0-r45 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r45-53b9cb6`.
+
+- **Manual USB composition selection:** Connection → USB configuration, for devices such as DW5821e with separate QMI and MBIM configurations. Changes only the kernel's selected configuration, not modem firmware; limit to two attempts per ten minutes and block during dial/recovery or incompatible `usb-mode.json` rule. Without a saved choice, kernel default applies after reconnect.
+- **T99W175 MBIM/1e2d profiles** and read-only `medvemodem-bench probe [--at]` enter test build.
+
+## 0.15.0-r44 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r44-e837029`.
+
+- **Modem identity follows IMEI hash:** clones may share USB serial or have none; using USB port alone loses settings when moving devices. Use salted IMEI hashes to migrate modem/device/eSIM sections without storing/logging IMEI; defer migration if old port is occupied, and refuse ambiguous moves for two devices sharing IMEI. Show name anchor (serial/IMEI/port) in LuCI.
+- **T99 profiles:** `05c6:90d5` MBIM and `1e2d:00b3` MBIM/`00b7` QMI; some interface indices remained unknown.
+- **Alpha bench checklist:** T99/T77 QMI/MBIM in MM/native modes, FM350 via external manager, E3372; bench USB composition/driver/modeswitch/AT probe.
+
+## 0.15.0-r43 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r43-4ef78ea`.
+
+- **Signal history and carrier aggregation expanded by default** again under Network and signal; r41–r42 collapse made them appear missing.
+- **Events instead of connection-only history:** recovery, USB and configuration actions included.
+- **Connection-result notices no longer overwrite newer actions** such as SMS refresh or SIM save after a delayed response.
+
+## 0.15.0-r42 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r42-5e0d245`.
+
+- **Dedicated Settings tab per modem:** name, Connection (APN, IP mode, owner, TTL, autoconnect), SIM label/number/quota/SMSC/PIN, modem web password, radio mode/bands and AT port moved into one place. Overview becomes read-only.
+- **Grouped Diagnostics:** Modem and device, Recovery, Tests/support information.
+- **Contextual alerts above tabs:** link directly to PIN or web password card.
+- **Three-phase connection UI:** Connecting modem → Registered, checking Internet → Internet available, or exact failure reason; starting a task is not reported as success.
+
+## 0.15.0-r41 — 2026-10-17
+
+No standalone bench release.
+
+- **Unified version across engine/LuCI:** frontend moves from `0.7.42` to `0.15.0-r41`; show one version and a mismatch warning.
+- **Persist collapsible panel state** for modem detail/history/rare tools; auto-open Connection while disconnected.
+- **Terminology:** Network and signal, Diagnostics, Signal clarity (SINR), IP version, Quota, Connection history, Site availability check, Disconnect/Connect.
+- **Homepage:** one primary card action, advanced actions in ⋯ menu, shorter banner for three+ modems, wired WAN precedence stated in Make primary confirmation.
+- **Settings grouped:** modem operation, Internet backup, checks/monitoring and components; cell queries that hung the test router are hidden under Detailed radio data.
+- **SMS browser privacy:** retain only a hash, not sender/text snippets, to remember send ordering.
+
+## 0.15.0-r40 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r40-38448eb`.
+
+- **HiLink/ZTE radio via web APIs:** router-mode Huawei E3372h/E8372 and ZTE MF79U/MF833/MF971 have no usable AT port. Read signal, RAT, band and serving cell through each modem's own web session/address, keep LTE/5G NSA metrics separate, and do not query IMEI/IMSI/ICCID/number.
+- **Modem web password handling:** try factory `admin`, then ask in a modem web card when required. Save only on router, never in logs/reports; rate-limit wrong-password retries to once per five minutes, accept new password immediately and respect active user session/lockout. Forget password removes it.
+
+## 0.15.0-r39 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r39-95f5172`.
+
+- **SIM PIN/PUK UI:** SIM card panel has PIN entry, attempts remaining, Unlock with last-attempt confirmation; PUK requires new PIN twice. Optional Remember PIN enables post-reboot unlock; Forget PIN removes it. Do not log or export secrets.
+- **Script environment isolation:** LuCI-called helpers do not inherit arbitrary caller environment. Serialize package installations.
+- **Safer autoconnect:** new modem interfaces use metric 100 rather than stealing wired WAN route, per-modem autoconnect toggle, no automatic action before network config has been loaded.
+- **APN suggestion for new interfaces only:** respect already established sessions and explicit APN.
+- **Legacy Huawei radio via `AT^SYSCFG`** and profile additions; Delete all SMS remains visible on empty list.
+
+## 0.15.0-r38 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r38-d175eea`.
+
+- **Delete all SMS really clears storage:** native AT erases complete modem/SIM store, including hidden multipart fragments; MM path deletes the complete visible list.
+- **T99 LTE USSD confirmation:** warn about temporary 3G switch and possible Internet interruption.
+- **eSIM over MBIM:** read currently active SIM slot without switching to the alternate one.
+- **Legacy Huawei radio:** fall back to `AT^SYSCFG` if `AT^SYSCFGEX?` is unsupported.
+- **Security:** isolate environment for root-run LuCI helpers (previous read-only callers could inject commands); serialize installers.
+- **Eleven hardware-family profiles** from vendor references, not bench-tested, including Foxconn T77W676, Sierra, Telit, SIMCom, Dell DW5820e, Quectel EP06, HP lt4132, E3372 debug and Brovi E3372-325; recommend qmi_wwan driver for unsupported Qualcomm/Quectel IDs.
+- **Actions CI updated to Node 24.**
+
+## 0.15.0-r37 — 2026-10-16–17
+
+Bench build: `bench-v0.15.0-r37-29484aa`.
+
+- **Autoconnect new devices:** after MM/native ownership becomes ready, create modem interface and apply SIM-selected APN once per USB attachment. Respect hand-managed and external-manager interfaces; optional global switch.
+- **Automatic APN by SIM** when APN field is empty, manual value always takes priority.
+- **SMS full-store clear button** removes all multipart components to restore receiving on small-memory devices such as E171.
+- **English CLI defaults:** `medvemodem top` uses English; use `--lang ru`, `MEDVEMODEM_LANG=ru` or `L` for Russian.
+- **T99 USSD and MBIM eSIM:** warn about 3G fallback, do not switch dual-SIM slot to read profiles; custom lpac libraries under `/usr/lib/lpac` are discoverable.
+
+## 0.15.0-r36 — 2026-10-16
+
+Bench build: `bench-v0.15.0-r36-7c3dc21`.
+
+- **Detect missing kernel modules:** name required package such as `kmod-usb-serial-option` on modem cards and in Diagnostics; banner warns above tabs.
+- **One-click component installer:** check feed availability before installing drivers, MM, usb-modeswitch; report missing packages instead of partial install. Load driver without router reboot, do not restart an active MM.
+- **Modem Connect action** appears when interface is absent/down; avoid marking port-power recovery failed merely because MM intentionally keeps modem disabled until dial.
+- **New-device auto-connect and full SMS-store clear** prepared for r37.
+- **English CLI events and dns-check outputs**, with localized LuCI explanations.
+
+## 0.15.0-r35 — 2026-10-16
+
+Bench build: `bench-v0.15.0-r35-249c977`.
+
+- **Recover netifd interface after MM gives up:** T99 USSD caused network change to 3G, MM dial failed and disabled the interface; retry on registration after 30 s, 1/2/5 minutes then every 10 minutes.
+- **User deactivation tracked distinctly** from automatic errors, persisted across daemon restarts.
+- **Homepage recovery indicator** includes latest automatic fix/time and hourly count.
+- **SMS reliability:** delete unsent drafts older than ten minutes, which can block inbound SMS; warn on incomplete/unreadable/full stores; messenger-style thread and export CSV; Refresh waits for running read and reports new count; T99 SMS storage switch action.
+- **Antenna polling:** restored via qmicli while page open, configurable with `medvemodem.core.antennas`; signal-card click opens radio tab.
+- **UI prevents repeated actions** while running and does not re-enable SMS Send prematurely.
+- **eSIM SM-DP+ TLS warning:** a historical project decision allowed downloads without certificate verification due to reported incompatibilities; the user is warned before download and codes remain out of logs. This is a historical state, not a recommendation to disable TLS verification.
+
+## 0.15.0-r34 — 2026-10-16
+
+Bench build: `bench-v0.15.0-r34-4ac3488`.
+
+- **Repeated priority changes work** (r33 previously applied only first change); Make primary button; user/automatic deactivation labels distinguished.
+- **Deactivate Internet interface, not radio:** disconnect data while allowing incoming SMS/USSD; may temporarily reconnect existing interfaces.
+- **External manager cleanup:** standardized `mm0`/`mm1` names, remove orphaned DHCP and firewall zones, preserve active manager-owned records.
+- **SIM APN selection:** only when field empty and enabled.
+- **SMS threads:** normalize phone formats, stable chronological display and IDs across MM restarts; multipart timeout five minutes, SMSC read/write.
+- **USSD session safety:** close old requests, one-minute interactive timeout, pause conflicting SMS/AT requests.
+- **T99/T77 serving cells through `AT^DEBUG?`** every 30 seconds with MM location polling disabled by default, plus gentle MM poll and load counters; recognize Huawei E171 storage mode.
+- **TUI improvements:** radio tab, activate/priority keys, safe control characters and redacted identifiers under `--once` unless explicitly shown. Avoid unnecessary post-DNS-check delays and inherited mmcli file descriptors.
+
+## 0.15.0-r33 — 2026-10-15–16
+
+Bench builds: `bench-v0.15.0-r33-79e705c`, `…-ba7d8ab`.
+
+- **Modem cards fit three-across layout** with signal/RSRP/SINR/throughput; themed buttons and readable warnings, custom names rendered exactly. Rename Stability to Connection status.
+- **Modem priorities:** arrows in Settings → Internet backup, Apply order, route metrics 10/20/30, cards sorted by priority.
+- **Deactivate/Activate per modem** until next action or router reboot.
+- **MM cell/location queries disabled by default** because Orange Pi Zero 3 with T99W175 froze; optional `medvemodem.core.cell_info=1`.
+- **AT port settings moved to Service**, where accessible even if no AT tab; manual temperature probe; suppress zero-phase antenna values.
+- **SMS:** strict time order, timestamps, multi-select delete with preserved checkboxes.
+- **Documentation:** initial bot specification and dangerous AT-command knowledge.
+
+## 0.15.0-r32 — 2026-10-14–15
+
+Bench build: `bench-v0.15.0-r32-eaf2c9f`.
+
+- **Second-generation operator DNS interception test:** per-modem probes to 1.1.1.1, 8.8.8.8, 9.9.9.9, comparing DNS RTT to TCP RTT to detect impossible local replies; compare blocked-domain answers against DoH to identify stub/private NXDOMAIN changes without flagging legitimate CDN diversity.
+- **Service checks UI:** DNS through this modem matrix with resolver, apparent responder, DNS/TCP RTT and verdict.
+- **Manually test any channel:** select WAN/Wi-Fi/modem for service/DNS checks; CLI `medvemodem channels` and `dns-check <device>`.
+- **Device-scoped DNS/TTL** follows the current netifd egress interface, not a temporary MM port.
+
+## 0.15.0-r31 — 2026-10-14
+
+No separate build; included in r32.
+
+- **Per-modem service availability tests:** Telegram, GitHub, YouTube, Google, Claude, ChatGPT, WhatsApp, Discord versus Yandex/VK/Wildberries directly over each modem, regardless of main route. Requires curl and CA bundle; summarize full/whitelist/no access.
+- **Operator DNS interception:** test every session and every six hours whether network devices spoof public resolvers or rewrite nonexistent names, flagging DNS chain while keeping the link usable.
+- **LTE cell location:** eNB/sector and timing-advance estimated distance (±80 m).
+- **Hide identifiers** browser-persistent control masks IMEI/ICCID/IMSI, phone, addresses and cell IDs.
+
+## 0.15.0-r30 — 2026-10-13–14
+
+Bench build: `bench-v0.15.0-r30-6b91dec`.
+
+- **Per-modem TTL 64 fix** for smartphone tariffs, disabled by default. Set IPv4 TTL=64 and IPv6 hop-limit=64 on egress, excluding ICMPv6, through dedicated nftables tables and a netdev egress hook. Show status/packet counts.
+- **Per-modem service checks and LTE cell/timing advance** introduced, expanded in r31.
+- **Hide identifiers** for safe screenshots.
+- **External manager installer status** no longer flashes Not running immediately after Start.
+- **GPL-3.0 license and code provenance** documented; bench artifacts carry external-manager license/source/commit metadata.
 
 ---
 
