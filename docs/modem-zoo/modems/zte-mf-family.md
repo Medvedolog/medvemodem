@@ -34,15 +34,15 @@ What the engine does through a ZTE goform web (r95 SMS, r96 the reqproc paths, 2
 our bench): the signal, SMS (list, send, delete), and since r151 the actions a HiLink's web had: «Modem data» (the
 operator's address, the session's and the month's traffic, the model and firmware, the network mode), USSD
 (USSD_PROCESS, ussd_write_flag 16, ussd_data_info in UCS-2 hex), the network mode (SET_BEARER_PREFERENCE NETWORK_auto
-/ Only_GSM / Only_WCDMA / Only_LTE, the stick's net_priority after a line break, as another modem manager's zte_setmode),
+/ Only_GSM / Only_WCDMA / Only_LTE, the stick's net_priority after a line break, as archived modem utility's zte_setmode),
 the mobile session again (DISCONNECT_NETWORK, CONNECT_NETWORK: the recovery ladder's radio step) and the restart
 (REBOOT_DEVICE: its reboot step). A write the web refuses goes once more with AD = md5(md5(wa_inner_version +
 cr_version) + RD), which newer MF79U/MF833-class firmwares ask; an older one never gets it. Login: sha256(sha256(pw)
-+ LD) where the web gives LD, the base64 password otherwise (another modem manager sends only the base64 one). Never: the
++ LD) where the web gives LD, the base64 password otherwise (archived modem utility sends only the base64 one). Never: the
 debug mode (SET_DEVICE_MODE), the factory reset, the IMEI/IMSI/phone number.
 
 ZTE AT set (AT+ZRSSI, ZCELLINFO?, ZCAINFO?) has no engine dialect yet: radio through ModemManager. Sources:
-another modem manager 3.5.8 (modem/usb/19d2*, hilink.sh goform, msw/hilink.sh, lib.sh, usbports.sh, collect.sh,
+archived modem utility 3.5.8 (modem/usb/19d2*, hilink.sh goform, msw/hilink.sh, lib.sh, usbports.sh, collect.sh,
 usb-mode-extra.json), the imported catalog, HANDOFF 126/162/164. Not on our bench.
 
 ## MTS 8810FT (19d2:1557, ZXIC), a tester's OPiZ3, 2026-11-11
@@ -56,7 +56,7 @@ Sanechips (ZTE's chip arm), likely an ODM build for MTS; the same USB ID as the 
 - Its HTTP headers end in a bare LF LF and carry no Content-Length (curl reads it; the engine read it from r181).
 - Standard fields: `network_type`, `network_provider`, `rssi`, `lte_rsrp`, `cell_id` (decimal: 1703969 = eNB 6656 cell
   33), `wa_inner_version`; `lte_rsrq`, `lte_snr`, `lte_pci`, band and channel empty, `lac_code` 0. The ZXIC firmwares keep
-  them in `nv_*` (another modem manager's Olax MT80 notes): asked apart from r181, to be confirmed on this stick.
+  them in `nv_*` (archived modem utility's Olax MT80 notes): asked apart from r181, to be confirmed on this stick.
 - Through the engine's web forward its page showed «modem_removed» while the stick was online: to look at.
 
 ## ZTE MF192 (19d2:1218), a tester's OPiZ3, 2026-11-09
@@ -77,7 +77,7 @@ Field report from a real device; no identifier kept. MTS-branded 3G stick, firmw
 ## Related reference
 
 - [USB composition and boot mode recipes](../COMPOSITION-AND-BOOT-MODES.md)
-- another modem manager source map
+- archive source map
 
 <!-- 4pda-field-2026-10-15:start -->
 ## 4PDA — дополнительные модельные полевые факты
@@ -89,8 +89,8 @@ Field report from a real device; no identifier kept. MTS-branded 3G stick, firmw
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -121,31 +121,31 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 - **`zte-mf6-web-debug`** — `COMPOSITION_MUTATION`; Tenda MF6 19d2:1557 web/API only → web-managed router with AT debug enabled; explicit approval required; Unlike Huawei E3372, MF6 debug persists.
 - **`zte-cdrom-start-eject`** — `COMPOSITION_MUTATION`; 19d2:0542 / 0548 / 0564 USB mass storage → working modem composition (possibly 19d2:0565); explicit approval required; Never eject a modem already in active data composition.
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
 
 
-<!-- another modem manager-delta-v3.5.5:start -->
-## another modem manager–v3.5.5 — release delta (2026-10-16)
+<!-- field-delta-v3.5.5:start -->
+## Дополнительные полевые наблюдения (2026-10-16)
 
-**Reference only; not bench-validated.** Read from the diff v3.5.2..v3.5.5; no upstream code, no runtime preset. All records: another modem manager delta.
+**Reference only; not bench-validated.** Read from the diff v3.5.2..v3.5.5; no upstream code, no runtime preset. Details: archived field observations.
 
-- **`…-v353-sms-ucs2-byte-wise-locale`** (`upstream-code-reference`, upstream-code-reference): The project's UTF-8 to UCS2 conversion for outgoing SMS (AT PDU and the ZTE web API) and its repair of received text walk the text byte by byte. Under gawk in a UTF-8 locale a multi-byte character is one character, so the byte walk broke: Cyrillic SMS were sent empty, and the repair pass re-encoded already valid UTF-8 a second time (doubled UTF-8 in the SMS header). v3.5.3 forces the C locale for every such conversion. Busybox awk is byte-based and was never affected. Source: a field report/another modem manager (another modem manager/root/usr/share/another modem manager/smspdu.sh, hilink.sh, lib.sh).
+- **`…-v353-sms-ucs2-byte-wise-locale`** (`upstream-code-reference`, upstream-code-reference): The project's UTF-8 to UCS2 conversion for outgoing SMS (AT PDU and the ZTE web API) and its repair of received text walk the text byte by byte. Under gawk in a UTF-8 locale a multi-byte character is one character, so the byte walk broke: Cyrillic SMS were sent empty, and the repair pass re-encoded already valid UTF-8 a second time (doubled UTF-8 in the SMS header). v3.5.3 forces the C locale for every such conversion. Busybox awk is byte-based and was never affected. Source: архивные полевые сведения (archived modem utility/root/usr/share/archived modem utility/smspdu.sh, hilink.sh, lib.sh).
 
-<!-- another modem manager-delta-v3.5.5:end -->
+<!-- field-delta-v3.5.5:end -->
 
 
-<!-- another modem manager-delta-v3.5.16:start -->
-## another modem manager–v3.5.16 — release delta (2026-10-21)
+<!-- field-delta-v3.5.16:start -->
+## Дополнительные полевые наблюдения (2026-10-21)
 
-**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Full review: another modem manager delta.
+**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Details: archived field observations.
 
-- **`…-v3514-mf286d-qmiraw-modes-bands`** (`19d2:1485`) — `upstream-code-reference`, not-bench-validated: v3.5.14 moves the MF286D to their own QMI proto because the stock qmi.sh power-cycles a SIM that is still initialising: before bring-up it waits up to 30 s for the SIM (PIN status / UIM SIM state no longer 'not_initialized'; both answering 'Not supported' ends the wait) and skips network registration when the serving system is already registered or searching. Network mode is AT+ZSNT (0 auto, 1 2G, 2 3G, 6 4G, written as AT+ZSNT=&lt;n&gt;,0,0). Writing LTE bands with at+znlockband=1,0,&lt;hex&gt;,0 forces the modem to LTE-only, so the previous mode is read before and restored after unless it was 6. 2G/3G bands go through AT$QCBANDPREF index lists. Source: a field report/another modem manager @ `a22590c` (root/usr/share/another modem manager/mkiface.sh:862, root/lib/netifd/proto/qmiraw.sh:136-155, root/lib/netifd/proto/qmiraw.sh:345-348, root/usr/share/another modem manager/modemband/19d21485:17-112, root/etc/another modem manager/modem/atcmmds/zte.user).
+- **`…-v3514-mf286d-qmiraw-modes-bands`** (`19d2:1485`) — `upstream-code-reference`, not-bench-validated: v3.5.14 moves the MF286D to their own QMI proto because the stock qmi.sh power-cycles a SIM that is still initialising: before bring-up it waits up to 30 s for the SIM (PIN status / UIM SIM state no longer 'not_initialized'; both answering 'Not supported' ends the wait) and skips network registration when the serving system is already registered or searching. Network mode is AT+ZSNT (0 auto, 1 2G, 2 3G, 6 4G, written as AT+ZSNT=&lt;n&gt;,0,0). Writing LTE bands with at+znlockband=1,0,&lt;hex&gt;,0 forces the modem to LTE-only, so the previous mode is read before and restored after unless it was 6. 2G/3G bands go through AT$QCBANDPREF index lists. Source: архивные полевые сведения @ `a22590c` (root/usr/share/archived modem utility/mkiface.sh:862, root/lib/netifd/proto/qmiraw.sh:136-155, root/lib/netifd/proto/qmiraw.sh:345-348, root/usr/share/archived modem utility/modemband/19d21485:17-112, root/etc/archived modem utility/modem/atcmmds/zte.user).
   - AT$QCBANDPREF indices used: GSM 1800 -&gt; 8, GSM 900 -&gt; 9 and 10, GSM 850 -&gt; 24, PCS 1900 -&gt; 26, UMTS B1 -&gt; 27, UMTS B8 -&gt; 34; a write keeps indices it does not manage.
   - Model and firmware strings were cut when the modem gives no echo; the parse now strips the reply prefix by command, not by a character count (same fix for 19d2:1432, 2c7c:0512, 05c6:6000).
   - Their AT template set for MF28x: AT+ZRSSI, AT+ZCELLINFO?, AT+ZCAINFO?, AT$QCRSRP?, AT+ZPAS?, AT+ZSNT?, AT+ZULCA?, AT+CFUN=1,1 (the last one resets the module).
   - SMS storage for 19d2:1485 is always MT (see the storage record).
-- **`…-v3515-mf286d-adb-temperature-chains`** (`19d2:1485`) — `upstream-code-reference`, not-bench-validated: MF286D temperature and per-antenna RSRP are available only from inside the module over adb: when adb is installed, they find the module by its USB serial (/sys/bus/usb/devices/&lt;path&gt;/serial) and run a shell with a 5 s timeout, reading cfg values lte_rsrp_1..4 (RSRP of each of the four receive chains) and, at most once a minute, the thermal zone whose type is mdm_case_therm (cached per USB path; accepted only when 0 &lt; t &lt; 150 C). Chains are shown only in LTE. Source: a field report/another modem manager @ `a22590c` (root/usr/share/another modem manager/modem/usb/19d21485:127-148).
+- **`…-v3515-mf286d-adb-temperature-chains`** (`19d2:1485`) — `upstream-code-reference`, not-bench-validated: MF286D temperature and per-antenna RSRP are available only from inside the module over adb: when adb is installed, they find the module by its USB serial (/sys/bus/usb/devices/&lt;path&gt;/serial) and run a shell with a 5 s timeout, reading cfg values lte_rsrp_1..4 (RSRP of each of the four receive chains) and, at most once a minute, the thermal zone whose type is mdm_case_therm (cached per USB path; accepted only when 0 &lt; t &lt; 150 C). Chains are shown only in LTE. Source: архивные полевые сведения @ `a22590c` (root/usr/share/archived modem utility/modem/usb/19d21485:127-148).
   - Their full package now depends on adb because of this one model.
   - No AT or QMI command on this module gives the same temperature or per-chain values in their code.
 
-<!-- another modem manager-delta-v3.5.16:end -->
+<!-- field-delta-v3.5.16:end -->
