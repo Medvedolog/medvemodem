@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r90**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r70**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -987,6 +987,201 @@ Bench build: `bench-v0.15.0-r91-190febe`. No bot artifacts due to OpenWrt server
 Bench build: `bench-v0.15.0-r90-f9197af`. No bot artifacts due to OpenWrt server HTTP 502.
 
 - **FM350 carrier aggregation:** both with/without an external modem manager, show CA groups such as `B3+B7, 30 MHz` and detailed carrier bands/bandwidth, including 5G carrier where applicable. Previously only the primary band was available.
+
+## 0.15.0-r89 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r89-2503d71`.
+
+- **Settings opens on the Service tab:** engine status, versions, memory, CPU load and start/stop controls apply immediately without a Save button.
+- **Custom USB port names:** name a physical port under Ports and devices; the label remains even when unplugged.
+- **Carrier aggregation beyond QMI:** include MM serving cells, NSA 5G and HiLink/ZTE web data in homepage modem cards.
+
+## 0.15.0-r88 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r88-bbc800b`.
+
+- **Bilingual Telegram bot:** use the administrator's Telegram language (Russian until their first message) or explicit LuCI bot-language setting. Old chat keyboards continue to work after switching.
+- **Localized AT/USSD presets, installer logs and refusal reasons:** use the LuCI user's selected language when starting operations; ntfy forwarded-SMS headings use the language of the configuring page.
+- **Bot traffic formatting:** retain one decimal place (4.8 MB, not 4.0).
+
+## 0.15.0-r87 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r87-d096bf4`.
+
+- **Bilingual LuCI:** all MedveModem and bot pages authored in English with a complete Russian translation catalog, selected by the LuCI system language. Add Russian to LuCI language selection even on routers lacking its package when possible.
+- **HiLink signal sampling:** update every 30 seconds instead of once a minute.
+- **Signal-history safety:** handle very long RAT lists without writing beyond allocated buffers.
+
+## 0.15.0-r86 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r86-29d7e7f`.
+
+- **Two UI detail levels:** Basic and Detailed replace Basic/Advanced/Expert. Detailed unifies signal values, raw log, AT console with presets/manual command, AT port choice, USSD, temperature, USB device tree and channel table. Existing Advanced/Expert preferences map to Detailed.
+
+## 0.15.0-r85 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r85-788652f`.
+
+- **Automatic new-SMS notifications:** optional Send new SMS (requires Show SMS) forwards each incoming message with sender, time, modem/SIM, text and Code/Copy button; leaves modem SMS unread and does not persist copies in the bot.
+- **Bot LuCI divided into Overview, Setup wizard and Settings:** process controls/tests, step-based wizard with Back/Next and auto-resume at the first incomplete stage, grouped configuration and collapsed Danger zone.
+- **Proxy setup avoids duplicates:** reuse an existing endpoint and show Saved — check proxy rather than falsely claiming untested.
+- **r83 queue regression fixed:** restart during a pending send no longer discards the rest of the outgoing queue.
+
+## 0.15.0-r84 — 2026-10-22
+
+Bench build: `bench-v0.15.0-r84-f2fff7e`.
+
+- **Ports and devices engineering panel:** collapsible USB tree (controller, hubs, ports, modems and other devices), empty/occupied port markers, modem owner/protocol/drivers/netdev/AT/USB speed; warn when USB3 modem runs at 480 Mbps.
+- **USB fault history:** detect hourly reconnection, resets, errors −71/−110, overcurrent and NETDEV WATCHDOG; display recently detached devices as dotted outlines in their old ports, and contextual messages for hub loss, new bus number and missing data driver. Read-only: these observations do not modify USB.
+- **Detailed channel table:** priority/route metrics from config vs kernel, last reachability probe and reason for being active or demoted.
+- **Optional diagnostics:** install `usbutils`/`ethtool`; do not poll install logs when the browser tab is hidden.
+
+## 0.15.0-r83 — 2026-10-22
+
+Bench build: `bench-v0.15.0-r83-bedadbf`. Regression fixes reported after r82:
+
+- **Prevent SIGSEGV on USB hotplug while external modem manager edits configuration:** previously the C daemon read freed manager data.
+- **Make primary actually moves the route:** setting priority alone did not replace competing kernel routes with equal metrics. Apply live route changes, wait for traffic handoff and explicitly show “first in priority, traffic still via …” while pending.
+- **Bot transport:** busy is shown as “retrying” rather than dead; retry messages that might have been lost by a proxy, shorten long polling through unstable proxies and send menu after startup.
+- **HiLink/native cached metrics:** show Loading instead of empty values; retain readings up to ten minutes with age label. Refresh HiLink web signal every 30 seconds rather than five minutes for continuous history.
+- **Distinct LuCI loading states:** loading, unknown modem and unavailable service are not red errors on startup.
+- **E3372-325 (`12d1:155e`) exact HiLink profile**, persistent model identification.
+- **Preserve Frozen state** across USB port moves and show it on disconnected cards.
+- **Recovery result accuracy:** connected session without working Internet is not “Internet recovered”.
+- **Avoid repeated interface repairs** and avoid offering older external-manager versions as upgrades.
+- **Bot proxy wizard:** enable a proxy only after successful verification.
+- **Mobile mode selector, status banner and warnings:** fix overflow, shorten headline and preserve appropriate warning colors.
+- **Privacy/security:** do not pass SMS forwarding tokens in process arguments; handle proxy passwords containing newlines safely; validate external manager helper arguments.
+
+## 0.15.0-r82 — 2026-10-22
+
+Bench build: `bench-v0.15.0-r82-86c7708`.
+
+- **External modem manager pinned stable 3.3.0 (2026-10-19), packaged as `3.3.0_p20261019`:** on startup it no longer restarts the entire network to handle a missing modem, never opens undefined AT ports, and can `reconfigure` one modem without disturbing others.
+- **Replace hardcoded AliDNS/DNSPod resolver defaults** `223.5.5.5` and `119.29.29.29` with Yandex `77.88.8.8` and Cloudflare `1.1.1.1`, including IPv6.
+- **FM350 gateway workaround:** an external manager guessed `x.x.x.1` as a gateway even though FM350 does not answer, hanging RNDIS with NETDEV WATCHDOG and USB resets. The project package uses an on-link default route directly to the FM350 interface, matching stable native mode.
+- **Upgrade external manager** through Settings while keeping its modem sections and preferences.
+- **Per-modem change isolation:** enable/disable dial and change interface name through a single-modem reconfigure, without touching others.
+- **Native FM350 remains the default,** external manager optional with the routing fix.
+
+## 0.15.0-r81 — 2026-10-22
+
+Bench build: `bench-v0.15.0-r81-0c4e5be`.
+
+- **FM350 native connection default:** avoids an external manager's invalid x.x.x.1 gateway and recurrent RNDIS hangs/USB resets; native on-link route remains stable with low CPU overhead.
+- **SMS forwarding injection hardening:** refuse URLs/tokens containing CR/LF or control characters before they reach root-run curl configuration; previously a crafted ubus value could inject curl directives such as `upload-file` and disclose router files.
+- **Interface repair reason** appears in journal; note that some repairs refresh networking and should be minimized.
+- **SMS storage mismatch warning** when new messages land in a different store than the selected inbox.
+- **Native FM350 retains SMS/AT ownership** even when an external manager independently creates a configuration section; report it as a conflict, not takeover.
+- **Router-forwarded modem web exposure:** open web access on demand for 15 minutes (`core.web_forward_minutes`; zero means always), retry nftables rules after failure and warn about two HiLink devices sharing `192.168.8.1`.
+- **Store SMS forwarding token separately** in a 0600 file and show only Saved in LuCI.
+- **Expire SMS-seen history** for devices absent 90 days; cap at 32 devices.
+- **AT console validates each semicolon-separated command** to prevent dangerous secondary commands; wait one second when a leased port preempts another operation, avoiding stale replies.
+- **HiLink web parser hardening** and cleanup of caches for missing devices.
+
+## 0.15.0-r80 — 2026-10-21
+
+Bench build: `bench-v0.15.0-r80-…` (see [Russian original](CHANGELOG.md) for its exact tag).
+
+- **Bot package startup regression fixed:** restore the missing `why` diagnostic helper required by service preflight; r77-era bot installs failed with “why: not found … reinstall medvemodem-bot”. Add a package check to prevent recurrence.
+
+## 0.15.0-r79 — 2026-10-21
+
+Bench build: `bench-v0.15.0-r79-9ffffc2`.
+
+- **Redesigned signal history:** filled area chart with Signal/Interference and quality/Network technology selector, qualitative y-axis labels, RAT transitions such as “4G → 5G” and a single hover card; gaps represent missing readings.
+- **Reject invalid signal sentinel** −32768 from history/scales, preventing T99 plots from collapsing into grey fill.
+- **HiLink signal chart restored**, previously hidden due to a never-fetched empty cache.
+- **Keep cached HiLink/FM350 metrics visible** when MM answers slowly; show RSRP dBm if percentage is absent.
+- **Long table warnings** wrap into two lines with ellipsis.
+- **AT port probe** shows progress and result inline.
+- **Repair for external-manager modems** enables their dial connection/configuration rather than only restarting the service.
+
+## 0.15.0-r78 — 2026-10-21
+
+Bench build: `bench-v0.15.0-r78-c9b282a`.
+
+- **Partially known modems visibly marked:** family/generic/multiple matches/no profile display an informational banner/card line plus Generate report and GitHub New modem issue actions; not an error warning.
+- **12-hour temperature chart** with time/temperature axes, labeled minimum/maximum and hover details; no samples while the page was closed.
+- **Freeze operations are placed last** in page, bulk actions, menus, bot and TUI to reflect severity.
+- **Developer profile report** includes model, firmware and USB mode answers only when MedveModem legitimately owns the AT port; never probe an MM/external-managed or frozen modem.
+- **CLI:** `medvemodem tui` aliases `top`; keys `z` for Freeze and `x` for failover exclusions.
+- **Profiles:** record match quality `fit` (vendor family vs generic).
+
+## 0.15.0-r77 — 2026-10-20–21
+
+Bench builds: `bench-v0.15.0-r77-ef4b549`, `…-e51543e`, `…-fc4aaba`.
+
+- **Freeze really isolates the modem:** prevent external-manager dial and new MM ownership after restarts/USB re-enumeration; revoke returning ports, skip MM-backed SMS and HiLink web reads.
+- **Reload external modem manager without disrupting all links:** Repair/Restart use reload; full restart is an explicit Emergency action with warning.
+- **Make primary changes routes live** instead of restarting all netifd interfaces.
+- **Recovery loop guard:** after one failed retry remember the failure for 15 minutes and request manual intervention instead of reconnecting UFI/FM350 every 2–3 minutes.
+- **NETDEV WATCHDOG escalation:** on stuck USB network driver, try USB reset after session reconnect, including externally managed modems; advise checking autosuspend, cable and hub power.
+- **Disable modem USB autosuspend by default**; `core.usb_autosuspend=1` restores kernel behavior.
+- **MM session vs data mismatch:** avoid repeated radio toggles after false connected state.
+- **FM350 owner/AT repair and history:** repair foreign AT-port claims, record readings through external manager and AT.
+- **Brovi E3372-325 recognized as HiLink**, with protection against sending credentials to unrelated web servers.
+- **Daemon last-shutdown reason** logged (signal/clean stop/unclean SIGKILL/OOM).
+- **LuCI:** full card/table view, multi-select/bulk modem actions, inline recovery notifications, background work for long operations, cached signal readings and reliable HiLink link.
+- **Telegram bot remote control** behind an off-by-default permission and confirmations; buttons expire after 30 minutes. HTML menus/modem paging, network restriction handling, short proxy retry, 25 s long poll, periodic preferred-route probes, SMS inbox, log export, failover exclusions, and improved startup errors.
+- **Package documentation:** generated mockups of UI/bot menus from source.
+
+## 0.15.0-r76 — 2026-10-20
+
+Bench build: `bench-v0.15.0-r76-6096c8f`.
+
+- **Router-mode interface follows its USB device** after a port swap, repairing `usb0`/`usb1` renumbering and releasing orphaned interfaces (`iface-repair`).
+- **Fix repeated +10000 metric growth** when a device has multiple default routes.
+- **FM350 external manager AT-port repair** automatically fixes a stale foreign port and restarts only that modem's dial service; Repair button triggers immediately.
+- **Manage external modem manager separately:** service settings have Start/Restart, and Repair starts its stopped dial subsystem.
+- **Homepage:** green outline for active primary channel, equal-height cards, expand further issues, and Cards/Table toggle ordered by priority.
+
+## 0.15.0-r75 — 2026-10-20
+
+Bench build: `bench-v0.15.0-r75-ae30f05`.
+
+- **LuCI package version mismatch refresh:** detect stale browser-cached JS after upgrade and reload once with new assets; avoids incorrect E3372 empty-field pages until incognito was used.
+- **Signal bar fix** for HiLink, external-manager and AT devices; remove superfluous dash.
+- **HiLink UI:** hide unsupported native Network mode/bands, keep signal history populated via modem web.
+- **Alpha 1 feature scope approved:** bot, SMS forwarding, router-forwarded modem web and functionality introduced in r63–r75.
+
+## 0.15.0-r74 — 2026-10-20
+
+No standalone bench release.
+
+- **HiLink/UFI settings follow a moved USB modem** by unique USB product/vendor/VID:PID when only one such device is present. Do not migrate ambiguous identical units.
+- **Diagnostics → Device:** show USB ID, manufacturer/product, USB serial or an explanation of port identity; Expert mode includes interface drivers.
+- **HiLink radio options** point users to the modem's own web UI rather than unsupported native controls.
+
+## 0.15.0-r73 — 2026-10-20
+
+No standalone bench release.
+
+- **Clear stale “install qmi-utils to see antennas” warning** after two minutes when the package/qmicli is already available but no new antenna reading arrived.
+
+## 0.15.0-r72 — 2026-10-20
+
+No standalone bench release.
+
+- **Router-side modem web access** for HiLink/UFI under a client VPN/TUN proxy: each device gets a LAN-only router port (8081–8099); browser accesses that endpoint instead of the modem's tunneled private IP. Own nftables table `medvemodem_web` does not alter fw4, removed on service shutdown. Enabled by default, configurable from Modem maintenance.
+
+## 0.15.0-r71 — 2026-10-20
+
+No standalone bench release.
+
+- **Homepage signal/operator** for HiLink, externally managed and native AT modems, reading at most once a minute (external manager every two minutes).
+- **Compact Internet strip** uses card names, and frozen/user-disabled modems are not counted as backup faults.
+- **HiLink router-mode is expected:** no warning or Fix button, with clear owner label.
+- **DNS interception checks distinguish local router/proxy responses** faster than possible modem RTT; do not incorrectly blame the carrier.
+- **Serialize package installation:** concurrent installers cannot both start.
+
+## 0.15.0-r70 — 2026-10-20
+
+No standalone bench release.
+
+- **Make primary works with metric-zero devices:** a modem interface lacking explicit metric defaults to 0 and may outrank configured priorities; explicitly assign a metric when promoting it.
+- **Signal card and qmicli lookup:** remove placeholder dashes; search executable across PATH.
+- **FM350 external-manager connection service:** warn and offer Repair when its dial daemon is stopped; service view distinguishes dial and discovery subsystems.
 
 ---
 
