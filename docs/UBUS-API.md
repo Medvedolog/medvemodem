@@ -92,7 +92,7 @@ address), reused (the session the modem held), plmn, steps}, HANDOFF 171), `reco
 `at_command` (`id`, `command`, `timeout_ms`; the engine refuses dangerous
 commands and AT beside ModemManager), `esim_action` (`id`, `action`: version / probe / chip / profiles, or enable with
 `iccid`: a switch to a profile already on the eUICC, answered {ok, restart_advised} — the ICCID is in no answer and no
-log; download and delete wait for Alpha 2), `config_plan` /
+log; download and delete wait for Alpha 2: until then, provision new profiles on a built-in eUICC or removable UICC/9eSIM using a compatible phone/app such as EasyEUICC or OpenEUICC on Android. LuCI offers Diagnostics → Check for an eSIM, then the eSIM tab to read and enable an installed profile), `config_plan` /
 `config_apply` / `config_rollback` / `config_release`, `lease_*`, `rescan`,
 `probe`, and `mm_restart` (`confirm` true, `reason`): the operator's emergency
 ModemManager restart, every modem on the router is affected, once in 5 min,
