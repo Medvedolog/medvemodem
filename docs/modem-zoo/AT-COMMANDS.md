@@ -38,7 +38,7 @@ For larger vendor/script dumps see [Extended QModem/other scripts AT reference](
 | `AT^WCDMA_LOCK?` | cell.lock | **READ** | Read WCDMA lock state. | a field report _qualcomm_sdx55_common |
 | `AT^WCDMA_LOCK` | cell.lock | **MUTATING** | Clear WCDMA lock. | a field report _qualcomm_sdx55_common |
 | `AT^NR5G_LOCK?` | cell.lock | **READ** | Read NR5G lock state. | a field report _qualcomm_sdx55_common |
-| `AT^NR5G_LOCK=<PCI>,<NR-ARFCN>` | cell.lock | **EXPERIMENTAL** | Proposed/set form used by another modem manager by symmetry with LTE; write form was explicitly noted there as lacking a live forum dump and must remain unverified. | a field report _qualcomm_sdx55_common |
+| `AT^NR5G_LOCK=<PCI>,<NR-ARFCN>` | cell.lock | **EXPERIMENTAL** | Proposed/set form described in archived field observations by symmetry with LTE; write form was explicitly noted there as lacking a live forum dump and must remain unverified. | a field report _qualcomm_sdx55_common |
 | `AT^NR5G_LOCK` | cell.lock | **MUTATING** | Clear NR5G lock. | a field report _qualcomm_sdx55_common |
 | `AT^CA_ENABLE?` | radio.ca | **READ** | Read CA enable flag. | a field report _qualcomm_sdx55_common |
 | `AT+CFUN=1,1` | reset | **MUTATING** | Restart modem; also required after some cell-lock changes. | a field report and other scripts |
@@ -73,7 +73,7 @@ For larger vendor/script dumps see [Extended QModem/other scripts AT reference](
 - 00b8/00b9 are additional MBIM/QMI-style compositions reported in community composition tables; availability varies by customer/firmware.
 - a field report profiles identify actual transport by bound driver (qmi_wwan/cdc_mbim/cdc_ether), not by PID alone.
 - QMI-over-MBIM is a distinct control technique: qmicli uses --device-open-mbim when the WDM node is bound to cdc_mbim. a field report uses this for QMI extras/eSIM paths and ModemManager's Foxconn FCC unlock does the same.
-- modeminfo exposes Direct QMI vs QMI over MBIM as separate qmi_trap modes. another modem manager configures modeminfo/QMI telemetry separately from the network owner's protocol; document both planes instead of collapsing them into one 'mode'.
+- modeminfo exposes Direct QMI vs QMI over MBIM as separate qmi_trap modes. historical tooling configures modeminfo/QMI telemetry separately from the network owner's protocol; document both planes instead of collapsing them into one 'mode'.
 - Telegram live diagnostic for 05c6:9025 / F0.6.0.0.6.GC.004 shows cdc-wdm0 + ttyUSB0..3, qmi_wwan and a connected ModemManager object.
 - other scripts roughly ten T99W175 units in 00B7 with working SMS, but other field reports show composition artifacts/firmware can still yield unresponsive AT ports. Composition label is a candidate, not proof of endpoint health.
 - Field discussion distinguishes duplicate network ownership (qmi-proto competing with ModemManager) from coordinated use of qmicli/MM/COM ports. Arbitration should be per resource and operation.
@@ -114,7 +114,7 @@ For larger vendor/script dumps see [Extended QModem/other scripts AT reference](
 
 - QModem records T77W968 as supporting both QMI and MBIM.
 - a field report's T77W968 profile detects qmi_wwan, cdc_mbim and cdc_ether from the live USB composition.
-- Dell IDs 413c:81d7 / 413c:81e0 and Foxconn IDs 0489:e0b4/e0b5 are treated as the same T77W968 command family in current another modem manager profiles.
+- Dell IDs 413c:81d7 / 413c:81e0 and Foxconn IDs 0489:e0b4/e0b5 are treated as the same T77W968 command family in archival hardware profiles.
 - FCC authentication is required on affected Dell/Foxconn variants; ModemManager hook or direct QMI path must be owner-aware.
 - T77W968 AT^SLMODE numeric values are not compatible with T99W175 SDX55 masks. Reusing SDX55 mode values can silently select the wrong RAT mode.
 - A captured 413c:81d7 boot log shows a real cdc_mbim -> qmi_wwan transition with cdc-wdm0/wwan0 and ttyUSB0..3 torn down/recreated. Live bound driver outranks assumed customer/setmode mapping.
@@ -174,7 +174,7 @@ For larger vendor/script dumps see [Extended QModem/other scripts AT reference](
 | `AT+QTEMP` | hardware.temperature | **READ** | Temperature sensors on supported Quectel firmware. | a field report/QModem |
 | `AT+QCFG="band"` | radio.band | **READ** | Read Quectel legacy band masks. | a field report EP06/EM12 |
 | `AT+QCFG="band",<gw-mask>,<lte-mask>,<td-mask>[,<effect>]` | radio.band | **MUTATING** | Write legacy Quectel band masks. Exact argument count/semantics are firmware-specific. | a field report common Quectel profiles |
-| `AT+QCFG="band",0,<lte-mask>,0,1` | radio.band | **MUTATING** | EM12-G form used by current another modem manager profile to replace LTE mask. | a field report EM12-G profile |
+| `AT+QCFG="band",0,<lte-mask>,0,1` | radio.band | **MUTATING** | EM12-G form used by archival hardware profile to replace LTE mask. | a field report EM12-G profile |
 | `AT+QCFG="nwscanmode"` | radio.mode | **READ** | Read legacy network scan mode. | a field report/QModem |
 | `AT+QCFG="nwscanmode",0` | radio.mode | **MUTATING** | Auto mode on EP06-E field profile. | a field report EP06-E |
 | `AT+QCFG="nwscanmode",2` | radio.mode | **MUTATING** | WCDMA-only on EP06-E field profile. | a field report EP06-E |
