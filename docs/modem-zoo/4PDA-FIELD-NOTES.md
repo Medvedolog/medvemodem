@@ -984,7 +984,7 @@ Corpus: **119 curated observations** (101 from large HTML archives; 18 from earl
 
 **Source:** [4PDA topic](https://4pda.to/forum/index.php?showtopic=1110636&st=480) · 20.08.2026 · offline `ZBT_Z8102AX_Dual_SIM___обсуждение__a router maker's firmware_OS_4_3_2_.html:printpost[493]` · source `ZBT_Z8102AX_Dual_SIM___обсуждение__a router maker's firmware_OS_4_3_2_.html` · whole-source-HTML SHA256 `b9343e21f75d2a850e6311b3582e9ce13baca8c42139396d0f10390ccfb29ce3`
 
-**Reported observation:** Z8102AX reported limits to automatic another modem manager startup/manager co-existence.
+**Reported observation:** Z8102AX reported limits to automatic modem-service startup and co-existence between managers.
 
 **Outcome limitation:** First 501 printposts only; see primary HTML and research extract for reported result.
 
