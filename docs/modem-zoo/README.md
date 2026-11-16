@@ -13,8 +13,7 @@
 - **Telegram field exports (2023–2026)** — live diagnostics, logs, recipes and contradictory field reports; curated without raw chat mirroring.
 - **4PDA offline HTML (2026-10-15)** — source-anchored firmware/host-specific failures, USB mode, aggregation and recovery observations; no auto-execution.
 - **another package 5G-Modem-Support + another package (2026-10-16)** — chipset-scoped GTUSBMODE read maps, FM350/FM150/RM5xx issues, an unmerged durable-SMS PR and a controller-crash report; checked against pinned files, not bench-validated.
-- **another modem manager–v3.5.5 delta (2026-10-16)** — phone-vs-modem USB classification (CDC-NCM/ECM tethering, known-modem vendor IDs) and a locale-dependent SMS encoding bug; no per-model changes.
-- **another modem manager–v3.5.16 delta (2026-10-21)** — FM350 SMS send port by USB interface, ZTE MF286D bring-up/modes/bands, UFI003 `AT$QCNSP`, SMS storage kept when capacity is not reported.
+- **another modem manager** — наблюдения по USB-классификации модемов, SMS, FM350, ZTE MF286D и UFI003; технические сведения учитываются без выделения версионных delta-релизов.
 - **Vendor documentation (Quectel, Fibocom)** — product-generation boundaries, radio capability and physical interfaces; never proof of an OpenWrt composition.
 - **MedveModem** — нормализация provenance, confidence, fixtures и будущая hardware verification.
 
@@ -30,12 +29,8 @@
 - Telegram package artifacts — exact IPK hashes and behavior
 - [4PDA primary-source field notes — 119 observations / 44 offline regression specifications](4PDA-FIELD-NOTES.md)
 - another package / another package field notes — external project issues and parser maps (2026-10-16)
-- another modem manager–v3.5.5 — release delta after v3.5.2
-- another modem manager–v3.5.16 — разбор изменений после v3.5.5
-- another modem manager–v3.8.0 — разбор изменений после v3.5.16
-- another modem manager–v3.9.9 — what is new for us
 - [Сводный каталог](CATALOG.md)
-- [USB-композиции, mode switching, fastboot и EDL (v3.5.2)](COMPOSITION-AND-BOOT-MODES.md)
+- [USB-композиции, mode switching, fastboot и EDL](COMPOSITION-AND-BOOT-MODES.md)
 
 ### Curated modem families
 
