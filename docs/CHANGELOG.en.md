@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!NOTE]
-> Complete English translation of the release-by-release entries from the [original Russian changelog](CHANGELOG.md). Release names, dates, commit IDs and technical identifiers are preserved. Historical entries describe capabilities **as of that version**; consult current documentation for supported features.
+> English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
