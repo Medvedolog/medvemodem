@@ -144,3 +144,73 @@ ACL — шаблон для интерфейса только на чтение,
 
 `modemmanager.unlock_retries` — остаток попыток. Сохранённый оператором PIN находится в секции устройства UCI как `option pin`, записывается в `option pincode` интерфейса netifd `modemmanager`/`qmi`/`mbim`; API выдаёт лишь `connection.pin_saved` и показывает `(hidden)` в планах, журналах и диагностике.
 
+### Failover, история сигнала и AT
+
+В блоке `uplink.failover` доступны `enabled`, `active`, `why?`, `failback` (`restore`/`demote`), `manual` (массив устройств), `routes` (элементы `device`, `ipv6?`, `metric`, `base`, `steered_away`, `manual?`, `demoted?`) и `events` (`dev`, `from`, `to`, `why` = `down`/`manual`/`demoted`/`back`/`off`, `ipv6?`, `at`). Включается UCI `medvemodem.core.failover '1'`; каждое переключение публикуется также как ubus-событие `medvemodem.failover`.
+
+Там же `proxy_guard` (`enabled`, `blocked_checks`, `age_s?`): если проверки отвечают через локальный прокси, они не должны провоцировать ненужное восстановление модема.
+
+- `failover_forgive` (`device` необязателен; запись) возвращает исходный приоритет одному или всем каналам, пониженным после сбоя при `failback='demote'`; возвращает актуальный блок `failover`.
+- `signal_history` (`id`, `range` = `5m`/`1h`/`24h`; чтение) → `device_id`, `range`, `step_s`, `points` (в каждой точке `t`, `lte_rsrp?`, `lte_rsrq?`, `lte_sinr?`, `nr_rsrp?`, `nr_rsrq?`, `nr_sinr?`, `quality?`, `tech?`, `carriers?` с уровнями `lte-3`, `5gnr-78` и т. п.), `events` (`t`, `kind` = `tech`/`cell`, `detail`). Для часа усреднение по минутам, для суток — по пять минут; несущие берутся из измерений сот (r27).
+- `at_history` (`id`, `clear` bool; чтение инженерной группой, r24) → `device_id`, `commands` (`t`, `cmd`, `ok?`, `final?`, `lines?`, `error?`, `refused?`, `port?`, `elapsed_ms?`). Команды AT-консоли за последний день, не более 100, новые в конце; учитываются и отклонённые, только RAM; `clear` очищает историю перед ответом.
+
+**`metrics`** включён в ACL на чтение с r24. Если устройство не принадлежит ModemManager, данные радиосети могут считываться через арендованный AT-порт движка. Для HiLink/ZTE (владелец `hilink`, с r40) данные приходят через веб модема: `source="web"`, `web` с `kind` = `huawei`/`zte`, `host`, `auth` = `none`/`ok`/`needed`/`wrong`/`locked`/`busy`/`waiting`, `wait_s`, `password_saved`; отказ содержит `refused` и `web`. Пароль хранится в UCI `web_password` и никогда не возвращается (только флаг `connection.web_password_saved`). `max_age_ms=0` заставляет получить свежие данные.
+
+После чтения SMS запись устройства содержит `sms.unread` и `sms.inbox`. Вызов `sms_list` без режима `peek` может пометить сообщения увиденными.
+
+Когда SIM опознана, запись устройства содержит `quota`: `iccid`, `used_bytes`, `limit_bytes?`, `percent?`, `warn_percent`, `state` = `none`/`ok`/`warn`/`exceeded`, `period_start`, `resets_on`, `action` = `warn`/`backup`. Маршрут в `failover.routes`, отодвинутый из-за исчерпания лимита, помечается `quota=true`.
+
+### Проба портов, USB modeswitch и веб модема
+
+- `probe` (`id`; запись с r13, кнопка LuCI «Найти AT-порт») → `results` с отображением `node` в `at`/`not-at`/`silent` или `refused`. Проба разрешена рядом с ModemManager только для модема с выделенным управляющим портом и политикой `mm_ports="control"`. В `connection` доступны настроенные `backend` (по умолчанию `auto`) и `at_interface`; `port_roles.at.source="operator"` означает ручной выбор AT.
+- `modeswitch_fix` (`id`; запись) → `device_id`, `rule`, `result` = `fixed`/`not-needed`/`refused`/`failed`, `disabled_as?`, `backup?`, `replug?`, `reason?`. Неверное правило `/etc/usb-mode.json`, задающее USB-конфигурацию 0, переименовывается в `<vid:pid>_medvemodem_disabled`, чтобы usbmode его больше не применял; копия до первого изменения — `/etc/usb-mode.json.medvemodem-backup`. При `replug=true` нужно повторное USB-переобнаружение. Событие `modeswitch-fix`.
+- `modeswitch_run` (`id`; запись) → `device_id`, `result` = `started`/`refused`/`failed`, `tool?`, `reason?`. Если устройство осталось в режиме накопителя (`detection_status="modeswitch-pending"`, блок `modeswitch` содержит `rule`, `mode?`, `target?`, `tool` = `usbmode`/`usb_modeswitch`/`null`), запускает одно переключение: `usbmode -s` по имеющемуся правилу, `usbmode -c <run>/usbmode-huawei.json -s` для HuaweiNew без штатного правила или `usb_modeswitch -v <vid> -p <pid> -J` для Huawei. Отправляется одна USB-команда; в накопитель ничего не записывается. Ограничение раз в 30 секунд, остановка через 20 секунд. Причины отказа: нет `usb-modeswitch`, устройство не ждёт переключения, отсутствует подходящее правило, операция уже идёт, прошло менее 30 секунд. События `modeswitch-run` и `modeswitch-done`.
+- `web_info` (`id`, чтение) / `web_reboot` (`id`, запись) для Huawei HiLink с r117. Ответ сведений: `device_id`, `kind`, `auth`, `wan_ip?`, `wan_ipv6?`, `traffic` (`session`, `month`, `total` с `rx`, `tx`, `s`, `month.cleared`), `device` (`name`, `firmware`, `hardware`, `webui`); перезагрузка → `{device_id, ok}` или `refused`. IMEI, IMSI, USB serial и номер не выдаются. `ussd_start` для HiLink также идёт через веб (`ussd_status.via="web"`); `capabilities.sms.ussd="web"`.
+
+### Настройки радио, диапазонов и привязки
+
+**`radio_set`** (`id`, `modes` с `allowed` = список `2g`/`3g`/`4g`/`5g` либо `any`, необязательный `preferred`; `bands` = `eutran-N`/`ngran-N`/`utran-N` либо `any`; `wait_s` от 30 до 600, запись) возвращает `device_id`, `change`, `radio_settings` либо `refused`. Настройки применяются через выбранного владельца; движок ждёт восстановления соединения и автоматически откатывает изменение при неудаче.
+
+**`radio_confirm`** (`id`, `action` = `keep`/`rollback`; запись) возвращает `device_id` и `change`. Поля `radio_settings`: `writable`, `why_read_only?`, `change`; каждое изменение состояния публикуется ubus-событием `medvemodem.radio`.
+
+При применённой привязке к соте `cell_lock` включается сторож: если не появится регистрация за `core.radio_lock_guard` минут (по умолчанию 10, `0` выключает), предыдущие настройки возвращаются. Итоговое состояние `rolled_back`, причина о срабатывании сторожа, журнал `radio-guard`.
+
+**`radio`** (`id`, `refresh` bool; чтение) → `device_id`, `radio_settings`, `error?` или `refused`. Для MM используется его штатный ответ; для QModem вызываются `modem_ctrl.sh get_network_prefer` и `get_lockband` соответствующей секции; для движка — команды по диалекту профиля: Quectel `QNWPREFCFG/QCFG`, Fibocom MTK `AT+GTACT?`, XMM `AT+XACT?`, Huawei `AT^SYSCFGEX?`, через диагностическую аренду `medvemodemd-radio`. Значения кэшируются 10 минут (возраст `age_s`); `refresh` обновляет их.
+
+При ограничении диапазонов включается аналогичный `band-guard` (r160): если сеть не регистрируется, возвращаются диапазоны, действовавшие до ограничения, с сохранением последнего режима сети (r163). Событие `band-guard`.
+
+### Дополнительные методы (r163 и позже)
+
+Каждый метод, относящийся к модему, принимает `id`. Методы изменения требуют ACL на запись и при отказе могут вернуть объект `refused` с причиной.
+
+| Метод | Параметры | Операция |
+|---|---|---|
+| `reregister` | `id` | Мягчайший шаг восстановления: ModemManager `--3gpp-register-home` либо `AT+COPS=2`, `AT+COPS=0` через порт движка; только по кнопке. |
+| `fplmn` | `id`, `clear` bool | Запрещённые сети SIM (EF_FPLMN): чтение `AT+CRSM=176,28539`; `clear` записывает `FF` во весь файл через `AT+CRSM=214`. **Изменяет SIM**, поэтому требует подтверждения в интерфейсе. |
+| `wlmode` | `action` = `status` (или нет), `on`, `off`, `check` | Режим белых списков: `wlmode` = `enabled`, `on`, `manual`, `server`, `label`, `delay_ms`, `lan`, `router`, `busy?`, `error?`. Включение/выключение возвращает `started`/`busy`/`refused` и запускает помощник; `/etc/medvemodem/wlmode.json` фиксирует изменения для точного отката. |
+| `freeze` | `id`, `on` bool, `who` | Заморозка: движок, ModemManager и QModem не трогают модем. |
+| `handover` | `id` | Передать модем MedveModem: сетевой интерфейс опускается, ModemManager получает уведомление о портах. |
+| `fcc_unlock` | `id`, `enable` bool | Добавить/удалить ссылку на FCC unlock hook движка в `fcc-unlock.d` ModemManager, если профиль поддерживает. |
+| `sim_slot` | `id`, `slot` | Изменить основной слот SIM через `--set-primary-sim-slot` ModemManager; после этого повторное обнаружение. |
+| `sms_clear` | `id` | Полностью очистить SMS в модеме через собственный AT-порт (не для порта под MM); интерфейс запрашивает подтверждение. |
+| `alerts` | `test` bool, `forward` | SMS-уведомления и пересылка: `enabled`, `recipients`, `senders`, `queued`, `recent`; `test` немедленно шлёт тестовое SMS. |
+| `failover_manual` | `devices` (массив ID), `expect` | Установить порядок каналов вручную, проверив ожидаемый прежний порядок. |
+| `traffic_history` | `id`, `range` | История трафика на устройстве за 5 минут, час или сутки (RAM). |
+| `neighbours` | `refresh` bool | Соседние программы, которые могут удерживать модем: пакеты, владельцы портов, скрипты. `refresh` запускает помощник. |
+| `usbtree`, `usbtree_detail` | — / `path` | USB-дерево модемов и детали отдельного узла. |
+| `usb_rescue` | `id` | Последний способ восстановления (r180): `controller` (`name`, `driver`), `devices` (`usb`, `vidpid`, `product`, `device_id?`, `name?`), `blocked?`, `gpios` (`name`, `value`), `gpio_blocked?`, `confirm`, `running`. `blocked` при смонтированном USB-диске на контроллере; `gpio_blocked` — при смонтированном диске на любом контроллере; GPIO — выходные линии платы с именем USB/modem power. Не-USB модему возвращает отказ. |
+| `usb_rescue_run` | `id`, `what` = `controller`/`gpio`, `gpio`, `confirm` | **Только вручную**: unbind драйвера USB-контроллера, 3 с, bind либо питание GPIO выключить, 5 с, включить; отдельный дочерний процесс с ограничением 30 с. `confirm` должен совпасть с отпечатком из `usb_rescue` (состав устройств и линий не поменялся). Все модемы затронутого контроллера получают запись `usb-rescue`; ответ `started`/ `refused`. |
+| `usb_class` | `vidpid`, `class` = `modem`/`not_modem`/`auto` | Явно считать USB VID:PID модемом, исключить из модемов или вернуть автоматическую классификацию. Хранится в UCI `medvemodem.core.usb_modem`/`usb_not_modem`, затем повторное обнаружение; ответ `vidpid`, `class`, `ok` или `error`. |
+| `web_open` | `id` | Открыть обратный прокси к вебу модема на `core.web_forward_minutes`; ответ содержит порт. |
+| `web_do` | `id`, `op` = `reconnect`/`clear-traffic`/`netmode`, `mode`, `lte_band` | Действия через собственный веб HiLink. |
+| `lease_acquire`, `lease_renew`, `lease_release` | `id`, `port`, `holder`, `purpose` | Выдача, продление и снятие аренды порта, с арбитражем конкурирующих операций. |
+
+### Безопасность вызовов из Android и других внешних клиентов
+
+1. Короткий список read-only методов и ACL приведён выше. Все остальные вызовы проверяйте по разграничению прав конкретной версии.
+2. Авторизуйтесь штатным `session.login` OpenWrt, используйте `ubus_rpc_session`. Токен истекает по `timeout` (типично 300 секунд без обращения), после ubus 6 требуется новый вход.
+3. Входной запрос: `{"jsonrpc":"2.0","id":1,"method":"call","params":["00000000000000000000000000000000","session","login",{"username":"medvewrt","password":"…"}]}`. Вызов устройства: `{"jsonrpc":"2.0","id":2,"method":"call","params":["<token>","medvemodem","device",{"id":"usb-serial:…"}]}`.
+4. Используйте Android Keystore / EncryptedSharedPreferences для токенов и паролей; при HTTPS закрепляйте проверенный сертификат роутера. HTTP передаёт пароль по локальной сети открытым текстом.
+5. Не публикуйте `/ubus` в WAN; извне подключайтесь к роутеру по VPN.
+6. В активном приложении `device` можно читать каждые 2–5 секунд; фоновые задачи Android WorkManager обычно не чаще 15 минут. Оповещения в фоне — через Telegram, не постоянный опрос.
+7. Режим наведения антенны лучше реализовать в мобильном клиенте (wake lock, звук, вибрация), но сеанс `aim` со стороны движка ещё **не реализован**; пока доступны показания, которые обновляются примерно раз в 30 секунд.
