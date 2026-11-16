@@ -54,7 +54,8 @@ Then reload the web page with Ctrl+F5. Upgrades and service restarts **may inter
 - **Network and signal:** radio technology, bands, carrier aggregation with frequencies/downlink/uplink, PCI and per-carrier levels; serving cell on a map; timing-advance distance estimates; signal history, antennas and neighboring cells (with a Lock action where supported). Network-mode and band changes roll back automatically if connectivity is not restored.
 - **SMS:** conversations, sending, address book (up to 20 contacts, `.vcf` import), USSD with operator presets and an AT console with predefined commands when the engine owns a suitable AT port. When modem SMS storage is roughly 75% full, older incoming messages may be archived to the router (up to 500 retained).
 - **Settings:** APN, IP type, DNS, TTL 64, automatic connection, AT port assignment and **Find AT port**.
-- **Diagnostics:** recovery stages (section 6), modem event log and support report.
+- **Diagnostics:** recovery stages (section 6), modem event log, support report and **Check for an eSIM** to detect a built-in eUICC or removable UICC/9eSIM card.
+- **eSIM:** after detection, **Read eSIM** displays EID and installed profiles; **Enable** switches between profiles already stored on the chip (the connection may briefly drop). **Until Alpha 2, load new profiles onto the eUICC/UICC/9eSIM using a compatible phone** and its card app or EasyEUICC/OpenEUICC on Android. Downloading and deleting profiles from MedveModem are not yet supported.
 
 ### General Settings
 
