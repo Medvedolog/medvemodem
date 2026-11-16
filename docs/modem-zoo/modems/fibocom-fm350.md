@@ -172,8 +172,8 @@ See [Telegram field notes](../TELEGRAM-FIELD-NOTES.md) for message IDs and confi
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -193,7 +193,7 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 
 - **`fm350-usb-gtusbmode-40-41`** — `COMPOSITION_MUTATION`; USB FM350/RW350, MediaTek control, observed 0e8d:7126/7127 → USB RNDIS (not PCIe MBIM); explicit approval required; Upstream 7127 profile states +GTUSBMODE: 41; not enough evidence for a universal numeric mode switch table.
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
 
 
 <!-- external-another package-modem5g-2026-10-16:start -->
@@ -209,19 +209,19 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 <!-- external-another package-modem5g-2026-10-16:end -->
 
 
-<!-- another modem manager-delta-v3.5.16:start -->
-## another modem manager–v3.5.16 — release delta (2026-10-21)
+<!-- field-delta-v3.5.16:start -->
+## Дополнительные полевые наблюдения (2026-10-21)
 
-**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Full review: another modem manager delta.
+**Reference only; not bench-validated.** Read from the diff v3.5.5..v3.5.16 at `a22590c108cc`; no upstream code, no runtime preset. Details: archived field observations.
 
-- **`…-v3515-fm350-sms-send-iface6`** (`0e8d:7127`) — `upstream-code-reference`, not-bench-validated: On their FM350 unit AT answers on USB interfaces 03 and 06 (their comment calls ttyUSB1 and ttyUSB3 the real modem ports, from a live bench on 2026-08-03); interface 02 answers a bare AT but is not a modem port. Metrics sit on the first port that returns the model to AT+CGMM (03 for them), but SMS sending works only on interface 06. v3.5.15 pins the SMS send port by interface number read from sysfs, not by ttyUSB index, and the send page re-reads the config before every send so a tty renumbered after a reconnect is not used. Source: a field report/another modem manager @ `a22590c` (root/usr/share/another modem manager/quirks.sh:337-358, root/usr/share/another modem manager/ensureports.sh:113-117, htdocs/luci-static/resources/view/modem5g/sendsms.js:248-254, root/usr/share/another modem manager/mkiface.sh:586-591, root/usr/share/another modem manager/detect.sh:209-215).
+- **`…-v3515-fm350-sms-send-iface6`** (`0e8d:7127`) — `upstream-code-reference`, not-bench-validated: On their FM350 unit AT answers on USB interfaces 03 and 06 (their comment calls ttyUSB1 and ttyUSB3 the real modem ports, from a live bench on 2026-08-03); interface 02 answers a bare AT but is not a modem port. Metrics sit on the first port that returns the model to AT+CGMM (03 for them), but SMS sending works only on interface 06. v3.5.15 pins the SMS send port by interface number read from sysfs, not by ttyUSB index, and the send page re-reads the config before every send so a tty renumbered after a reconnect is not used. Source: архивные полевые сведения @ `a22590c` (root/usr/share/archived modem utility/quirks.sh:337-358, root/usr/share/archived modem utility/ensureports.sh:113-117, htdocs/luci-static/resources/view/modem5g/sendsms.js:248-254, root/usr/share/archived modem utility/mkiface.sh:586-591, root/usr/share/archived modem utility/detect.sh:209-215).
   - The send-port lookup knows exactly one pair, 0e8d:7127 -&gt; bInterfaceNumber 06; it walks /sys/class/tty/ttyUSB*, resolves each tty's device link to '&lt;usb path&gt; &lt;interface number&gt;' and returns the node only if it is a character device.
   - Port detection is two-pass: first a port that answers AT+CGMM with a model, then any port that answers AT; picking the first port that merely answered AT (interface 02) made their AT-dial proto fail with 'AT port not answer!' in a loop.
   - Only the SMS send key is written; the read, USSD and AT-console ports are left as they were.
   - MedveModem's own bench (2026-10-19, firmware 81600.0000.00.29.24.02) saw AT only on interface 06, not on 03; the difference is unexplained (firmware is the likely cause), so interface 03 is not added without our own measurement.
-- **`…-v3516-fm350-ussd-silent-cpms-short-form`** (`0e8d:7127`, `0e8d:7126`) — `upstream-code-reference`, not-bench-validated: Two FM350 quirks recorded in their code: USSD never answers - AT+CUSD=? lists (0-2), but AT+CUSD=1,... returns neither OK, ERROR nor a +CUSD URC on either AT port, so they report USSD as unsupported for 0e8d:7127/7126; and the short AT+CPMS form (one storage) resets mem2/mem3 to SM, so after asking storage capacity they always apply the full three-storage form. Source: a field report/another modem manager @ `a22590c` (root/usr/share/another modem manager/quirks.sh:38-43, root/usr/share/another modem manager/quirks.sh:98-107, root/usr/share/another modem manager/lib.sh:2020-2025).
+- **`…-v3516-fm350-ussd-silent-cpms-short-form`** (`0e8d:7127`, `0e8d:7126`) — `upstream-code-reference`, not-bench-validated: Two FM350 quirks recorded in their code: USSD never answers - AT+CUSD=? lists (0-2), but AT+CUSD=1,... returns neither OK, ERROR nor a +CUSD URC on either AT port, so they report USSD as unsupported for 0e8d:7127/7126; and the short AT+CPMS form (one storage) resets mem2/mem3 to SM, so after asking storage capacity they always apply the full three-storage form. Source: архивные полевые сведения @ `a22590c` (root/usr/share/archived modem utility/quirks.sh:38-43, root/usr/share/archived modem utility/quirks.sh:98-107, root/usr/share/archived modem utility/lib.sh:2020-2025).
   - Their USSD matrix: DCS 15, 0 and none; plain text, packed GSM7 and UCS2 hex; TE character sets IRA/GSM/UCS2; LTE and 3G with live CS; a listener on all seven ports - always OK-or-silence, while the same SIMs read USSD on a Compal module.
   - Their reading: the module is data-only and its firmware has no supplementary services; it offers only two USB compositions, both RNDIS (AT+GTUSBMODE=? -&gt; (40,41)), so there is no MBIM path under ModemManager either.
   - Periodic polling must never use the short CPMS form on FM350; a capacity query with it has to be followed at once by the full AT+CPMS="X","X","X".
 
-<!-- another modem manager-delta-v3.5.16:end -->
+<!-- field-delta-v3.5.16:end -->
