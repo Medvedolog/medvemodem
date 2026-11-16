@@ -3,7 +3,7 @@
 Source: the owner's HAR of the stick's web, 2026-10-30 (the stick in a Windows PC, firmware
 `Mobile.Router.L8D.B06`, UI `Mobile.Router.L8D.W06`, hardware `Mobile.Router.L8D.D01`). The same USB IDs as the UFI
 of `profiles/generic/ufi-05c6-f00e.json`: an RNDIS router inside the stick, no AT port. Field report, rank 1 in
-SOURCE-HIERARCHY.md. No identifier from the capture is kept here (IMSI, IMEI, numbers and SMS text left out).
+the modem's observed behaviour. No identifier from the capture is kept here (IMSI, IMEI, numbers and SMS text left out).
 
 ## Address and name
 
