@@ -7,13 +7,13 @@
 
 | VID:PID | What it is | Source |
 |---|---|---|
-| `0489:e0f0` | Foxconn T99W373, USB | another modem manager field notes, our hardware inventory (imported) |
+| `0489:e0f0` | Foxconn T99W373, USB | archived modem utility field notes, our hardware inventory (imported) |
 | `1e2d:00f1` | Thales MV32-W-A, MBIM | QModem modem_support.json |
 | `1e2d:00f2` | Thales MV32-W-B, MBIM or RMNET | QModem modem_support.json |
-| `1e2d:00f3`, `1e2d:00f4` | MV32-W, composition not documented to us | another modem manager field notes |
-| PCIe `105b:e118`/`e11d`/`e11e` | PCIe variants in another modem manager 3.2.x (shared with the T99W640's IDs) | not supported |
+| `1e2d:00f3`, `1e2d:00f4` | MV32-W, composition not documented to us | archived modem utility field notes |
+| PCIe `105b:e118`/`e11d`/`e11e` | PCIe variants in archived modem utility 3.2.x (shared with the T99W640's IDs) | not supported |
 
-another modem manager's notes also put T99W373 under `05c6:90d5` with ModemManager (a label only): there the T99W175's
+archived modem utility's notes also put T99W373 under `05c6:90d5` with ModemManager (a label only): there the T99W175's
 MBIM profile takes it.
 
 ## What MedveModem does
