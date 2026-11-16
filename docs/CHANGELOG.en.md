@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r150**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r130**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -426,6 +426,171 @@ Bench build: `bench-v0.15.0-r151-8350e04`. Labeled as the final 0.15 bench relea
 Bench build: `bench-v0.15.0-r150-d61ec3b`.
 
 - **SSClash and nikki Telegram proxies:** auto-detect configured mixed ports and authentication, and use them for the bot's Telegram connection without modifying either application. If disabled, advise how to enable: SSClash `mixed-port: 7890` in `/opt/clash/config.yaml`; nikki **Mixin → Mixed Port**.
+
+## 0.15.0-r149 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r149-38afc92`.
+
+- **Whitelist mode** (Settings → Internet and backup): when the carrier restricts Internet to approved websites, pin a working tunnel server using podkop 0.8 or forkop 2 (specified server or first healthy one from selected names/patterns), optionally route all LAN/router traffic through that tunnel, and restore the original automatic selection and routing after restrictions end, including after crash/reboot. Manual On/Off via LuCI or bot Network page when control is enabled; bot announces state/server changes. Community whitelist hints can preselect tunnel servers whose endpoints remain reachable. Older podkop and forkop 1.x cannot change server live.
+- **forkop 2.0 proxy discovery:** its mixed proxy is a server; preserve section-based detection for forkop 1.x/podkop 0.7.
+- **TTL vs hardware NAT offload:** warn that an enabled MediaTek-like hardware acceleration path bypasses TTL fixing and may reveal tethering to the operator, with instructions to disable offload.
+- **netifd protocol label:** modem interfaces no longer display “Unsupported protocol type” in Network → Interfaces.
+- **Modem speed test and throttle diagnosis:** on-demand download/upload test with data-usage warning and a throughput-shape analysis: flat speed cap, cutoff after initial megabytes, or signal-dependent variability, followed by TTL, hardware offload, tariff and IMEI guidance.
+- **Bot command menu:** remove permanent keyboard below the text box, retaining Telegram's ☰ command menu and proactively removing old reply keyboards in existing chats.
+
+## 0.15.0-r148 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r148-adf2e53`.
+
+- **Zero balance is no longer “Internet available”:** some operators accept connections solely to serve a top-up/captive portal. Require the real TLS response from the expected server; report “No Internet: operator responds instead of Internet” and switch to a backup rather than oscillating between false-positive links.
+- **Disabled failover visibility:** if the primary has no Internet while a backup is healthy, prominently show this with an Enable failover button. The bot's No Internet notice offers the same advice.
+- **Localization:** translate the “Modem answered itself” homepage diagnostic.
+
+## 0.15.0-r147 — 2026-11-03
+
+No published bench artifact: build/tests passed but package upload failed; included in r148.
+
+- **MegaFon M150-4 web authentication:** an empty random login challenge and missing Referer caused a 403 even with the correct password. Reproduce the browser's actual authentication flow so operator, signal and SMS become readable again.
+- **Huawei HiLink disconnected from cellular network:** stale last-cell values must not appear as excellent green signal and valid operator while the device itself reports no mobile network.
+
+## 0.15.0-r146 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r146-1926513`.
+
+- **Huawei HiLink persistent HTTP responses:** newer E3372-325 WEBUI 3.0.2.61 does not close the TCP connection after replying. Read the declared response length instead of waiting six seconds for EOF and reporting modem web timeout.
+- **MegaFon M150-4 / Mobile.Router password fallback:** after a saved password fails, try `admin`, empty and the modem's own password.
+- **Modem report:** include web backend type, login state and refusal reason without exposing secrets.
+- **Bench test correction:** an uplink's own route may be steered via another fully connected channel under whitelist-only restrictions by design; changing unrelated channels' routes remains an error.
+
+## 0.15.0-r145 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r145-1944fc3`.
+
+- **Fast response to a hung network driver:** when Linux reports `NETDEV WATCHDOG` transmit queue timeout, reset the affected modem over USB immediately rather than waste minutes retrying a session that cannot recover (DW5821e on MBIM).
+- **Successful USB rebind is recognized:** count the recovery as successful when the device remains enumerated but its drivers detach and reattach.
+- **FCC unlock on OpenWrt without `/etc/ModemManager`:** create the missing directories before linking a hook.
+- **DNS interception explanation:** localize the modem-card text.
+- **Telegram path diagnostics:** label modem paths by name, interface in parentheses, show latency after OK and reason on failure; allow another path check to queue while one runs and display progress with controls disabled until safe.
+
+## 0.15.0-r144 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r144-79769e6`.
+
+- **Restored LAN access through a modem:** deleting the modem interface in LuCI also removed it from firewall zone `wan`. A recreated interface then gave the router Internet while LAN computers/phones remained offline. Re-add a modem interface to `wan` if it belongs to no zone; preserve an intentional assignment to a different zone.
+- **Live-router bench tools:** `medvemodem-stand` performs read-only observation and whitelist simulation on the router; `tools/bench/stand-pages.cjs` checks LuCI pages from Chrome on a LAN computer, with notes under the bench test documentation.
+
+## 0.15.0-r143 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r143-acdb30f`.
+
+- **Forward SMS by SMS:** configure up to five forwarding recipients from contacts or manually entered numbers; choose a specific modem or any healthy modem (prefer one other than the receiver), and select all or specific source modems. Prefix forwarded messages with modem and sender; choose 1–3 SMS parts and hourly rate limit. Avoid forwarding relayed messages again. ntfy/webhook forwarding remains independently configurable. Do not log numbers/text.
+- **DNS interception check disabled by default:** under TSPU, interception warnings from most carriers were noisy and alarming. It can still be enabled under modem maintenance or run manually on a modem page.
+- **AT-console timeout messages:** translate the no-answer timeout and guide users to AT port selection.
+
+## 0.15.0-r142 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r142-57f1234`.
+
+- **Traffic chart layout:** one plot with Received/Sent selector, clearer captioning; place antenna metrics above carrier aggregation.
+- **Homepage channel table:** simplify peak and check columns, move last check time into a single line below the table, and improve the daily-statistics label.
+- **Bot proxy credentials:** one shared Username and password card for manually specified proxies (proxies added in Telegram keep individual credentials); action results use plain text rather than traffic lights.
+- **Foxconn T77 in Telit composition (`1bc7:1910`):** select the AT interface according to profile priority, not enumeration order. Interface 03 works; 04 may remain silent.
+
+## 0.15.0-r141 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r141-4b7b867`.
+
+- **Duplicate IMEIs:** modems whose manufacturer or owner set the same IMEI must retain their own settings by USB port when USB serials are missing. Previously unplugging one could move its name/settings onto the other; log a duplicate IMEI warning.
+- **Cell-lock progress visibility:** an open page older than ten minutes could fail with “read settings first” shown only at page top. Refresh current radio settings immediately before a write; show begin/refusal/keep/rollback toasts and an in-progress cell-lock description, then journal the band/channel/PCI and annotate the signal-history timeline.
+
+## 0.15.0-r140 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r140-a792aac`.
+
+- **eSIM read-only in LuCI:** in Detailed modem Settings, show EID, available eUICC storage and installed profiles (name, operator, active state and masked ICCID). Switching, removal and download are deferred. If reading fails due to MM/another owner's control port or missing lpac, explain the reason.
+- **Missing SIM diagnostics:** show clear Russian ModemManager missing SIM/PIN/error messages instead of raw netifd/MM errors. Do not spam “reading SMS via AT” every minute for a SIM-less modem; journal a reading-path change once. A collapsed temperature card reads “not measured yet”.
+
+## 0.15.0-r139 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r139-09fc8df`.
+
+- **FM350 without RNDIS driver:** detect its network interface class `02/02/ff` as RNDIS and offer Install `kmod-usb-net-rndis` instead of leaving an MM-managed modem without a session.
+- **Recreate manually deleted modem interfaces:** replace a confusing netifd rejection with a clear “no interface” diagnosis; Connect recreates the interface using its former name.
+
+## 0.15.0-r138 — 2026-11-03
+
+Bench build: `bench-v0.15.0-r138-c94331a`.
+
+- **Per-modem traffic/throughput history:** Rx/Tx plots for 5 minutes, hour and day on Network and signal; fill represents average throughput, dashed line the five-second maximum, with peak/time in header and total bytes/table in Detailed mode. Read router interface counters rather than polling the modem.
+- **Peak speed on channel table:** maximum upload/download throughput since boot, narrower columns with full tooltips.
+- **Modem Settings tab:** last tab, visually separated and themed.
+- **Native backend troubleshooting:** show actionable reasons for failed connection (missing RNDIS/other network driver, missing AT port) instead of raw English `backend native: …`.
+
+## 0.15.0-r137 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r137-7cfebc5`.
+
+- **Install dependencies via button or SSH:** for native non-MM paths, offer `umbim` for MBIM, `uqmi` for QMI and `comgt-ncm` for NCM, alongside commands for the actual router package manager (`apk add`/`opkg install`). Restart the router once after adding a protocol package.
+- **Audit follow-ups:** do not USB-rebind while ModemManager still holds/queries the modem; restore already-unbound interfaces after a failed rebind; do not reject a correctly version-matched `medvemodem-bench` as obsolete; verify QMI network-mode changes against the precise expected technology set.
+
+## 0.15.0-r136 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r136-370fb52`. OpenWrt 24.10 install test failed (“Cannot install package luci-app-medvemodem”), but 25.12 passed; 24.10 passed in r137.
+
+- **Compact Telegram bot LuCI page (“UI v2”):** collapsible route-test summary, one line per path with separate command-receive/notification-send states, short OK/Error/Unchecked labels and expandable details. Show conflict 409 only when present; prevent duplicate path-test submissions.
+
+## 0.15.0-r135 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r135-1dfc402`.
+
+- **Model-specific USSD warnings:** Quectel EP06 accepts requests but may never deliver network replies; label as unconfirmed. Telit LM960 only supports USSD on 3G; tell the user to change mode.
+- **Remove “ghost 5G” on T99:** `AT^DEBUG?` 5G cells without a band are firmware placeholders, not real carriers.
+- **Antenna measurements:** treat RSRP ≤ −140 dBm as “not measured” on Quectel/QMI instead of a weak antenna.
+- **Safer recovery:** never USB-rebind while MM is still probing the modem; reports showed this could leave it unconfigured until a power cycle.
+
+## 0.15.0-r134 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r134-796582e`.
+
+- **Restore Auto radio mode without reconnecting to a PC:** if a modem previously stored LTE-only, MM may advertise only LTE and refuse expansion. MedveModem explicitly writes 3G/LTE/5G/Auto over QMI and checks that the modem retained the selected mode.
+- **Temperature in Network and signal → Antennas:** show T99 modem and amplifier temperatures, or a 0–3 thermal power-backoff level for devices such as Compal without temperature readings.
+
+## 0.15.0-r133 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r133-7b3f1aa`.
+
+- **T77 USSD in LTE through native AT:** MegaFon could reject MM-mediated USSD only after ~40 seconds; directly use the leased modem AT port for a quicker result. Use MM in 2G/3G or if there is no AT port.
+- **USSD Send button:** prevent SMS polling from re-enabling it while a USSD request is pending.
+- **Tethered phones and HiLink/UFI diagnostics:** classify their behavior as expected rather than suboptimal.
+- **USSD terminated by network:** explicitly suggest checking incoming SMS because some operators send the result there.
+- **Proxy failure explanations in bot:** distinguish refused socket, eight-second timeout, proxy rejection and Telegram rejecting the token. When the configured proxy is `127.0.0.1` but podkop binds to the router's LAN address, suggest the correct host.
+- **podkop 0.8 mixed proxy:** discover its port from the active router setup even if sing-box configuration is outside `/etc/sing-box`.
+
+## 0.15.0-r132 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r132-374a764`.
+
+- **No SIM is not an operator whitelist:** a SIM-less E3372/HiLink can answer local TCP probes as if it were the Internet, falsely matching whitelist sites. If any check is answered by the modem itself, mark the whole Internet check failed.
+- **MegaFon M150-4 / Mobile.Router web:** for modems with passwordless access, read the web without login. If needed, try configured password, then `admin/admin`, then `admin` with no password; distinguish an incorrect saved password from a required login.
+
+## 0.15.0-r131 — 2026-11-02
+
+Bench build: `bench-v0.15.0-r131-0f1ade0`.
+
+- **Audit administrator actions in syslog:** log only action names such as `admin_cmd_status`, `admin_view_journal`, `admin_action_rc` and `admin_settings_answer`, never SMS/USSD content, PINs or proxy links.
+- **Full router log export:** bot button and `/logall` return up to 20,000 lines, redacting most phone numbers, long identifiers, proxy URLs (`vless://`, `ss://`, `trojan://` etc.) and bot tokens.
+- **Per-modem blocking test:** Telegram Network → Blocking test warns first, then probes services directly over each modem without switching the main router route; classifies unrestricted, partial blocks, whitelist-only or offline from weighted service responses. Service list is not exposed in the result.
+- **Stop periodic bot restarts:** an OpenWrt 24.10/25.12 ucode file descriptor leak left one handle open per Telegram request; after ~7.5 hours the bot exhausted descriptors and restarted. Close them correctly.
+- **Mobile signal-history axis:** size captions by the longest translated word under footstrap.
+- **Mobile modem table:** in expanded rows show each label above its value, with values occupying the full width rather than a narrow right column.
+
+## 0.15.0-r130 — 2026-11-01
+
+Bench build: `bench-v0.15.0-r130-7dc855e`.
+
+- **iPhone/iPad USB identity:** bind tethered Apple devices by USB port rather than serial, because that serial is their personal UDID and must not be stored. Previously identity changes could orphan a modem interface such as `mm2`. After this upgrade, an iPhone appears as a new device once.
+- **Phone tethering cards:** replace absent cellular metrics with clear “Phone shares Internet over USB” or “Not sharing Internet” and guidance to enable Personal Hotspot/Trust This Computer on iOS or USB tethering on Android.
+- **Broader USB tethering vendor recognition:** add Honor, ASUS, Lenovo, LG and HTC alongside Google, Samsung, Xiaomi, OPPO/Realme/OnePlus, vivo, Motorola and Sony. ASUS/Lenovo require RNDIS evidence because the same vendor IDs occur in laptop modems.
 
 ---
 
