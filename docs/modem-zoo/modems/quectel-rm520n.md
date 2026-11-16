@@ -135,8 +135,8 @@ See [Telegram field notes](../TELEGRAM-FIELD-NOTES.md).
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -146,7 +146,7 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 
 - **`quectel-usbnet`** — `COMPOSITION_MUTATION`; Quectel USB composition driver-dependent → QMI/MBIM/ECM/RNDIS variant; explicit approval required; Mode number mappings differ by Quectel model; no universal value table.
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
 
 
 <!-- external-another package-modem5g-2026-10-16:start -->
