@@ -17,6 +17,12 @@
 | Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) |
 | Modem Zoo / Зоопарк модемов | [modem-zoo/README.md](modem-zoo/README.md) | [Original field notes](modem-zoo/README.md) |
 
+## eSIM — возможности Alpha 1 / Alpha 1 capabilities
+
+**Русский:** MedveModem уже **обнаруживает eSIM** («Диагностика» → «Проверить eSIM»), **читает EID и установленные профили** и **переключает существующие профили** во вкладке «eSIM». **До Alpha 2** новые профили на встроенную eUICC или UICC/9eSIM загружайте через совместимый телефон с приложением карты либо EasyEUICC/OpenEUICC на Android. Загрузка и удаление из MedveModem пока недоступны. Подробнее — в [полном руководстве](MANUAL.md#531-esim).
+
+**English:** Alpha 1 can **detect eSIM** (Diagnostics → Check for an eSIM), **read EID and installed profiles**, and **switch between already stored profiles** in the eSIM tab. **Until Alpha 2**, provision new profiles on an embedded eUICC or removable UICC/9eSIM through a compatible phone and card app or EasyEUICC/OpenEUICC on Android. In-app profile downloads and deletion are not yet available. See the [manual](MANUAL.en.md#531-esim).
+
 ## Состояние перевода / Translation coverage
 
 - **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines and complete release history (238 entries).
