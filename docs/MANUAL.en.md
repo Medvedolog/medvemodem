@@ -1,9 +1,9 @@
-# MedveModem Manual — English Translation (Part 1 of 2)
+# MedveModem Manual — English Translation
 
 [Русский оригинал, разделы 1–11](MANUAL.md) · [Quick user guide](USER-GUIDE.en.md) · [Documentation](README.md)
 
-> [!IMPORTANT]
-> **Translation in progress.** This document currently covers chapters **1–6** of the Russian manual. Chapters 7–11 remain available in the [Russian original](MANUAL.md); the short [English user guide](USER-GUIDE.en.md) covers many of their operational topics. Do not mistake this partial translation for the full reference.
+> [!NOTE]
+> English translation of all eleven chapters of the Russian manual. Code identifiers, paths, CLI commands and API fields are left untranslated.
 >
 > The underlying manual was written mainly against r151; its headings and navigation were compared to `0.15.0-r197` on 2026-11-16, **but not every LuCI page was retested**. Check current behavior and limitations against the code, [CHANGELOG](CHANGELOG.md), and the [ubus API](UBUS-API.md). Historical requirements in the technical specification are not proof that every feature ships.
 
@@ -17,6 +17,11 @@ Quoted interface labels reflect the Russian LuCI translation; equivalent English
 4. [Modems home page](#4-modems-home-page)
 5. [Individual modem page](#5-individual-modem-page)
 6. [Global settings](#6-global-settings)
+7. [Other LuCI integration points](#7-other-luci-integration-points)
+8. [Telegram bot pages in LuCI](#8-telegram-bot-pages-in-luci)
+9. [Telegram bot in Telegram](#9-telegram-bot-in-telegram)
+10. [Files, logs and security](#10-files-logs-and-security)
+11. [Configuration and hardware profiles](#11-configuration-and-hardware-profiles)
 
 ## 1. Introduction and packages
 
@@ -213,3 +218,216 @@ Since r174, all modem-related global settings share this tab.
 - **QModem:** installation from the build archive with log.
 - **Drivers and ModemManager:** installed/missing components, assisted installation.
 - **Emergency: ModemManager:** restart with warning that connections managed by MM may drop for approximately one minute.
+
+## 7. Other LuCI integration points
+
+- **Status → Overview** contains a Modems panel showing whether Internet access works and which modem carries traffic, with one line per modem.
+- **Network → Interfaces** displays modem interfaces using the `medvemodem` protocol as **MedveModem** (since r149) rather than “Unsupported protocol type”. Prefer editing these interfaces from the modem page so changes receive transaction/rollback protection.
+
+### 7a. Whitelist restrictions
+
+Under **Modem → MedveModem → Whitelist restrictions** (r185), the UI collects tools for operators that allow access only to approved destinations:
+
+- **Current state:** per-channel unrestricted, whitelist-only, Internet via tunnel despite whitelist restrictions, or no response.
+- **Service checks:** through a selected channel or each channel in turn; a matrix of service × channel is shown. This is the same test available on the modem page, taking roughly 10 seconds and under 1 MB per channel.
+- **Local proxies** (r189): proxies for package downloads when direct GitHub/OpenWrt downloads are blocked. Detects mixed proxy from podkop, podkop-plus, forkop, NetShift, SSClash, nikki and other clash/mihomo implementations. **Test** probes GitHub and downloads.openwrt.org through a proxy. **Fix** creates a local override of host/port/login/password without altering the external application's configuration; an empty password retains the previous password. **Add proxy** creates a user-defined entry tested before autodetected ones. Custom entries are UCI `proxy` sections in `/etc/config/medvemodem`.
+- **Whitelist mode** (podkop 0.8, forkop 2) moved here from Settings.
+- **Whitelist detection:** whitelist-test addresses moved here; primary connectivity-check addresses remain in Settings.
+- **Services on Internet restoration:** restart tunnel-related services on channel recovery, as in Settings.
+- **Notifications:** whitelist-only SMS notifications and delay moved here from Settings → Notifications (master SMS enable/recipients remain there); links to bot notifications in LuCI and `/settings` in Telegram.
+- **Advice:** DNS `77.88.8.8`, DPI bypass tools, tunnel endpoints hosted at an allowed address.
+
+Earlier cards in Settings show a pointer to the new Whitelist restrictions page.
+
+## 8. Telegram bot pages in LuCI
+
+Go to **Modem → MedveModem → Telegram bot**.
+
+- **Overview:** whether the bot is running, token/admin setup, receiving commands and sending notifications, certificate/clock health and queue status. **Paths to Telegram** lists direct, router-tunnel, proxy, modem and emergency-IP routes with separate receive/send status. **Test** queues a probe and shows its progress. If SSClash/nikki lacks a mixed port, the page advises enabling one. Controls: Refresh, Restart bot, Send test message; warns on Telegram conflict 409 when another process uses the same token.
+- **Setup wizard:** BotFather token → bind administrator by Telegram ID after a message to the bot → test. **Test without proxy** really disables proxy for that check; if the direct Telegram endpoint is inaccessible, configure a proxy first.
+- **Settings:** enabled/language, allowed operations (show SMS, forward SMS, control modems, edit settings from Telegram), polling/send path policies (automatic/proxy-only/direct-only), fallback through other modems, chosen direct interface, manually configured SOCKS5 (`socks5h://`) and HTTP(S) CONNECT proxies and their order relative to autodetected routes, shared proxy username/password and emergency Telegram IPs with certificate verification.
+
+## 9. Telegram bot in Telegram
+
+### 9.1 General use
+
+Only the bound administrator receives replies. Since r149, the **☰ Menu** command selector is used instead of a permanent reply keyboard beneath the text input. The bot edits one message in place as inline buttons are pressed (Refresh and Back) rather than creating a stream of separate status messages.
+
+| Command | Purpose |
+|---|---|
+| `/menu` | Dashboard with section buttons |
+| `/status` | Router/modem Internet status, downtime and number of failures over 24 h, service CPU/memory and MM/QModem restarts |
+| `/modems` | Modem list and per-device cards; active Internet modem is listed first |
+| `/channels` / `/uplinks` | Ordered uplinks, connection state and whitelist-only restriction |
+| `/sms` | Incoming SMS when permitted |
+| `/send` | Compose and confirm SMS using selected modem, number/contact and text; only when SMS/USSD sending is allowed |
+| `/ussd` | USSD requests, operator presets and interactive responses; same permission |
+| `/network` | Main route and per-modem addresses, external IPs, podkop/forkop tunnel status, service tests and whitelist restriction page |
+| `/quota` | Traffic quotas |
+| `/events` | Recent events with explanations |
+| `/log` | Modem logs as a file |
+| `/logall` | Redacted complete router log as a file |
+| `/settings` | Alerts, proxy routes and bot settings |
+| `/help` | Command help |
+
+### 9.2 Modem card
+
+Shows operator, qualitative/numeric signal, role, today's downtime and outage count and traffic. With `allow_control` enabled in LuCI, buttons provide Reconnect, Disconnect/Connect, Make first among modems (wired WAN can still outrank it), Suspend/Resume management and failover exceptions on the channels page. Connection-disruptive operations ask for **Yes / Cancel** confirmation. The result is one of: completed, in progress, completed with warning, failed.
+
+### 9.3 Network
+
+Lists the main route and each modem's interface addresses; buttons obtain each channel's external IP. Shows whether podkop/forkop is installed, version, whether sing-box is running, router DNS tunnel route and tunnel egress. A service-check action probes a selected channel.
+
+### 9.3a Whitelist restrictions
+
+Separate menu button since r185. Lists unrestricted, whitelist-only, tunnel-reachable or unavailable channels; whitelist mode status and optional On/Off control; blocking test checks each modem after warning and categorizes the outcome as unrestricted (green), partially blocked (yellow), whitelist-only (white) or offline (red).
+
+### 9.4 Notifications
+
+One situation is represented by one message, edited as the condition evolves. Topics: Internet lost/recovered, an uplink becoming whitelist-only, backup modems, MM/QModem restarts or stoppages, data quotas, router faults, new SMS (if permitted), whitelist mode activation/deactivation and server changes. After a MedveModem restart the bot remains quiet for two minutes and sends one silent summary.
+
+In **Settings**, select smart, important-only, all or disabled notifications; choose categories; set quiet hours (silent delivery without losing messages). Internet outage or exhausted quota alerts may remain audible unless disabled.
+
+### 9.5 Telegram proxies
+
+Route order: user proxies configured *before detected*, detected router proxies, user proxies configured *after detected*, direct, other modems, and emergency IPs. Detected proxies include:
+
+- podkop 0.7/0.8, podkop-plus, forkop 1.x/2.x and NetShift, including login authentication when configured.
+- **SSClash** (`/opt/clash/config.yaml`) and **nikki** (`/etc/nikki/run/config.yaml` or UCI), reading `mixed-port` and `authentication`. Without a mixed port, Settings/Proxy advises enabling one: for SSClash add `mixed-port: 7890` and restart Clash; for nikki use **Mixin → Mixed Port**. The bot only reads these configurations.
+
+The Proxy view shows the active route and individual failure reasons: refused connection, eight-second timeout, proxy rejection, or Telegram token rejection. Adding a proxy by sending `socks5h://…` or a `t.me/socks?…` link causes the bot to remove that message immediately and test the proxy.
+
+### 9.6 What the bot does not do
+
+It does not mark or delete SMS, log SMS text, USSD replies, PINs or proxy URLs (syslog contains action labels such as `admin_cmd_status`), or control modem hardware when control permission is off.
+
+## 10. Files, logs and security
+
+| Path | Purpose |
+|---|---|
+| `/etc/config/medvemodem`, `/etc/config/medvemodem-bot` | UCI configuration; LuCI can modify it; for manual edits use package-scoped `uci commit medvemodem` |
+| `/etc/medvemodem/` | Persistent modem state, SMS archive, contacts, whitelist-mode rollback journal |
+| `/etc/medvemodem-bot/` | Bot salts and persistent state; credentials are stored in restricted configuration files |
+| `/var/run/medvemodem/` | Volatile runtime state |
+| `logread -e medvemodem`, `logread -e medvemodem-bot` | System logs |
+
+- **Networking:** the engine avoids restarting the entire network or Wi-Fi, operating only its own interfaces with `ifup`/`ifdown`. If one of its modem interfaces loses a firewall zone, it may restore `wan`; interfaces intentionally moved to another zone are left alone.
+- **Permissions:** OpenWrt services run as root; `ubusd` is not restarted.
+- **Privacy:** IMSI/ICCID and SMS bodies are not logged. Persisted SMS archive requires the owner's choice; diagnostic reports redact identifiers.
+- **Other managers:** podkop, forkop, SSClash, nikki and QModem are not installed/reconfigured automatically. The user-enabled whitelist mode is a documented exception: it may change the selected tunnel server and `fully_routed_ips` for a podkop/forkop section, with original values recorded for rollback.
+
+## 11. Configuration and hardware profiles
+
+This section is for administrators editing UCI manually or developing profiles. Prefer LuCI; for manual changes use targeted `uci set …` followed by `uci commit medvemodem` (never a bare global `uci commit`).
+
+### 11.1 `/etc/config/medvemodem`
+
+A single UCI file with sections by type. `modem` and `esim` sections identify a device with `device_id`; `device` sections use `id`, referring to the same identifier.
+
+| Identifier | Meaning |
+|---|---|
+| `usb-serial:<serial>` | Unique modem USB serial (not one shared by clones) |
+| `usb-port:<path>@<port>` | Missing/shared USB serial, or a tethered phone; binds identity to USB topology |
+
+| Section | Data |
+|---|---|
+| `core 'core'` | Service enablement; auto-connect/recovery, interface repair, `reach_target`, `reach_restricted`, SMS polling/archive, cell information, USB autosuspend |
+| `modem` | Device `device_id`, user-defined `name` |
+| `device` | Owner, USB composition `usb_config`, `quota_*`, `web_password`, radio and recovery settings |
+| `sim` | User-assigned SIM label, number, notes and SMS center |
+| `contact` | SMS address book |
+| `sms_forward 'sms_forward'` | ntfy/webhook: `web`, `kind`, `url`; forwarding by SMS: `sms`, `sms_number`, `sms_contact`, `sms_parts` (default 3 concatenated parts), `sms_max_per_hour`; eligible devices: `modems_all`, `modem` |
+| `alerts` | SMS connectivity alerts and thresholds |
+| `ussd` | Stored modem USSD shortcuts |
+| `usb_port` | USB port labels |
+| `esim` | eSIM profile metadata |
+| `wlmode` | Whitelist-mode manager, section, servers, LAN/router rules |
+
+The ntfy/webhook token lives in protected `/etc/config/medvemodem-secret`, not in the ordinary UCI file; the configuration form does not reveal it.
+
+**Identifying a modem after a port change:** `modem`, `device` and `esim` settings associated with `usb-port:` devices can follow the modem through salted hashes rather than storing raw identifiers:
+
+- `imei_key`: salted hash of IMEI.
+- `sim_key`: salted hash of `IMEI | IMSI` (or `USB identification | IMSI`), helping distinguish devices with the same IMEI.
+
+Salt: `/etc/medvemodem/id-salt`. If the same IMEI appears simultaneously on multiple modems, IMEI-based tracking is disabled for them via `imei-shared.json`; SIM-based identity remains.
+
+### 11.2 `/etc/config/medvemodem-bot`
+
+| Section | Contents |
+|---|---|
+| `bot 'main'` | Enabled state, language, summary mode and permissions |
+| `administrator 'primary'` | Bound recipient/chat ID |
+| `transport 'poll'`, `transport 'send'` | Direct/proxy policy for receiving and sending |
+| `notifications 'events'` | Enabled event categories |
+| `proxy 'backup1'` etc. | Alternate Telegram routes |
+
+Bot token and proxy passwords are stored in `/etc/config/medvemodem-bot-secret` (section `secret 'main'`, `token` option), root-only with mode 0600 set/verified by `init-secrets`; the regular form never displays these values. `/etc/medvemodem-bot/` stores a salt and persistent snapshot.
+
+### 11.3 State and storage
+
+Persisted under `/etc/medvemodem/` (relatively infrequent writes, survives reboot):
+
+| File | Purpose |
+|---|---|
+| `id-salt`, `diag-salt` | Salt for modem identification and diagnostic hashes |
+| `identity.json` | Most recently recognized model/profile for early matching before MM appears |
+| `imei-shared.json` | Hashed IMEIs observed simultaneously on more than one modem |
+| `web-models.json` | Router-mode modem models learned from web APIs |
+| `frozen.json`, `deactivated.json` | Suspended and disconnected devices |
+| `radio-txn.json`, `radio-guard.json` | In-progress radio changes and cell/band lock guard |
+| `traffic.json`, `traffic-peaks.json`, `sim-usage.json` | Traffic totals/peaks and SIM quota state |
+| `downtime.json` | Channel downtime |
+| `sms-seen.json`, `sms-archive.json`, `sms-alert.json` | Seen SMS identifiers, optional router-side archive and alert queue |
+| `dns-check.json` | Most recent DNS interception check |
+| `wlmode.json` | Whitelist-mode rollback ledger; deleted only after original settings are restored |
+| `managed.json`, `journal.json` | Network/firewall fields owned by MedveModem and any incomplete configuration transaction, allowing user edits to remain untouched and interrupted operations to complete/roll back |
+| `neighbours.json`, `tunnel.json` | Neighboring-cell and tunnel state |
+| `usbmode-huawei.json` | Huawei USB composition changes |
+
+Volatile state: `/var/run/medvemodem/` for daemon/jobs; `/tmp/medvemodem/history.json` for this boot's event history; `/tmp/medvemodem-bot/` for the bot.
+
+### 11.4 Hardware profiles
+
+A profile is JSON under `/usr/share/medvemodem/profiles/generic/`. Source schema is `profiles/schema.json`, validated by `tools/validate_profiles.py`. Package upgrades overwrite the installed directory, so author custom profiles in the source tree and submit them upstream; a separate user-profile directory is not yet available. The daemon loads updated profiles without restart within about one minute.
+
+**Matching:** each profile receives a score based on its `match` fields. A failed match condition disqualifies that profile; among remaining candidates, the highest score wins.
+
+| `match` condition | Points |
+|---|---:|
+| `pid` | 100 |
+| `vid` | 80 |
+| `mm_model_contains` | 80 |
+| `mm_manufacturer_contains` | 60 |
+| `drivers_any` | 50 |
+| `manufacturer_contains`, `product_contains` | 30 each |
+| `bus` | 20 for `usb`; 1 for `any` |
+
+This allows multiple profiles for one VID:PID when distinguished by driver or ModemManager model.
+
+**Profile fields:**
+
+- `id`, `description`: identifiers and explanation.
+- `extends`: family inheritance; `abstract`: base profile never selected directly.
+- `fit` (`family` or `generic`): incomplete identification, prompts LuCI for a report.
+- `policy`: `owner_priority`, AT access with MM, `mm_ports`, `fcc_unlock`.
+- `hints`: protocols, AT interface numbers, `usb_configurations`, router mode, USSD and a display `title` up to 60 characters.
+- `dial`: AT dialing command template using `{cid}`, `{pdp}`, `{apn}`.
+- `bind`: host-side driver binding for the AT port.
+- `radio`: AT dialect for network/radio configuration.
+- `recovery`: approved stages, `settle_ms` and evidence source.
+
+Recovery evidence flags: `bench-validated` means exercised on the project's test bench, permitting automatic recovery; `field-reported` comes from field routers or vendor documentation, allowing automatic execution only for policy-authorized gentle stages, with stronger stages behind an explicit user action.
+
+Other profile directories: `presets/` (AT/USSD presets), `apn/` (operator APN data using IMSI codes), `catalog/` (hardware and USB-composition knowledge for family-profile fallback).
+
+### 11.5 Packages and builds
+
+| Package | Installs |
+|---|---|
+| `medvemodem` | C daemon, CLI/TUI, helpers, modem profiles, init script and netifd `medvemodem` protocol |
+| `luci-app-medvemodem` | LuCI pages, rpcd ACLs, translations |
+| `medvemodem-bot`, `luci-app-medvemodem-bot` | ucode Telegram bot and LuCI panels |
+| `medvemodem-lpac` | eSIM/lpac integration |
+
+Coordinated packages share the version fields `PKG_VERSION` and `PKG_RELEASE` in their Makefiles. Bench builds are published as `bench-v<version>-<commit>` pre-releases for `aarch64_cortex-a53`, `aarch64_generic`, and `x86_64`; IPK on OpenWrt 24.10, APK on 25.12. See [BUILDING.en.md](BUILDING.en.md) and [INSTALL.en.md](INSTALL.en.md).
