@@ -15,7 +15,6 @@
 **[🇷🇺 Русский](#русское-описание) · [🇬🇧 English](#english-overview)**
 
 **[Installation / Установка](docs/INSTALL.md) · [Quick-Start](docs/USER-GUIDE.md) · [Manual / Полное руководство](docs/MANUAL.md)**
-
 **[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
 [Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
