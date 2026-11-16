@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r110**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r90**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -799,6 +799,194 @@ No standalone bench build; changes included in r111.
 - **Bot Status:** display load averages and bot version; a privacy scrubber previously hid three load numbers as if they were a phone number.
 - **Telegram route diagnosis:** if proxies are configured but the bot connects directly, say “proxies not responding”.
 - **Whitelist awareness:** separately list restricted links even if another modem supplies unrestricted Internet.
+
+## 0.15.0-r109 — 2026-10-27
+
+Bench build: `bench-v0.15.0-r109-bf339a8`.
+
+- **Modem downtime today:** modem page shows total time without Internet, count of outages at least 30 seconds, duration of current outage, and time in whitelist-only mode. Startup link activation does not count as an outage. Measurements come from reachability checks, previous day is retained, and daemon restart does not reset the current day's counters.
+- **ModemManager port diagnostics:** show interpretable warnings such as control-port ownership loss, cannot open port, MBIM session failed or port disconnected, which may indicate competing umbim/another modem manager. Display as diagnostic hints only, without automatic restarts or retaining raw MM log lines.
+- **Dual-SIM slot selection:** show current physical/eSIM slot and a confirmation-required Switch slot action via ModemManager; connectivity typically drops for about one minute.
+
+## 0.15.0-r108 — 2026-10-27
+
+Bench build: `bench-v0.15.0-r108-f93d0e0`.
+
+- **Static libraries for broader firmware ABI compatibility:** build libubox, libubus, libblobmsg-json and libuci into the engine, avoiding failures such as `libubox20260213 (no such package)` across 25.12.x/snapshots/24.10.x. Only json-c remains dynamic among these. Install the appropriate SDK archive, for example `aarch64_cortex-a53-25.12.6` on a matching snapshot.
+- **Install prerequisites from router feeds:** refresh `apk`/`opkg` package indexes first so MM, qmi-utils and jsonfilter can be resolved without compiling them in the project SDK.
+- **Recognize operator whitelists:** blocked destinations may reply with an operator rejection mistaken for a real server. Treat it as restricted access (WL/БС) in UI, bot and notifications, not full Internet.
+- **Failover from restricted modem:** prefer another modem with full Internet. If all channels are restricted, avoid unnecessary switching so VLESS through podkop on a permitted endpoint continues to work.
+- **Tunnel reachability detection:** beyond podkop, detect forkop/forkop X, podkop-plus, NetShift mixed proxies (default port 2080), sing-box HomeProxy and clash/mihomo/nikki; support custom `medvemodem.core.tunnel_proxy`, e.g. `socks5h://127.0.0.1:2080`.
+- **T77/DW5821e MBIM AT availability:** reserved ports 02/03 (Telit composition `1bc7:1910/1911`: 04/03) are no longer mistaken for non-AT/service interfaces after MM restart. Probe and manual selection include all eligible ports, enabling console, temperature, neighboring cells and cell lock.
+- **Lock-cell responsive layout:** Lock button no longer breaks into vertical letters in narrow carrier cards.
+- **Native connection choices restricted to tested/provisioned drivers:** show MedveModem direct mode only for FM350/Intel XMM families where the native code supports dialing, with “not yet verified” where applicable; do not offer an unproven path for T77, T99 and other modems. Previously selected unsupported paths appear disabled until changed.
+- **Respect pre-existing hand-configured QMI/MBIM/NCM interfaces:** do not let MM and native netifd own one device simultaneously. Show “Controlled by interface lte” and offer explicit Take over: shut down that interface, wait for MM, and adapt the same named UCI interface transactionally, with Restore original option. No automatic takeover.
+- **Diagnostic redaction:** mask ICCID with trailing F digits found in umbim logs.
+- **SDK:** upgrade OpenWrt 25.12.5 builds to 25.12.6; stop compiling MM, qmi-utils, jsonfilter and uqmi as project dependencies, shortening build time.
+
+## 0.15.0-r107 — 2026-10-27
+
+Bench build: `bench-v0.15.0-r107-fb261ab`.
+
+- **Automatic recovery for field-reported modems:** after reconnection fails to restore registration/Internet, progress through radio restart, soft modem reset and USB reconnect based on profile authorization. Previously these stages required manual action.
+- **Strong safeguards remain:** driver rebind and port power cycle are manual; at most three hard attempts per five minutes, six per hour, growing backoff and manual-required after three consecutive failures. Let a modem searching for the network wait up to twelve minutes; do not reset every modem when all channels fail at once.
+
+## 0.15.0-r106 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r106-ec39d7c`.
+
+- **NR signal in MBIM under ModemManager:** MM may report 5G RSRP as −32768. Read NR RSRP, RSRQ and SNR through QMI inside MBIM using the same safe read-only path as antenna metrics.
+- **Discard invalid signal sentinels** such as −32768 from cards and history.
+
+## 0.15.0-r105 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r105-80e35cd`.
+
+- **T77 in Telit QMI composition (`1bc7:1910`) auto-binds:** add dynamic driver IDs missing from Linux tables, binding the data interface to `qmi_wwan` and vendor interfaces 2–4 to a serial driver for AT/SMS.
+- **T77 `1bc7:1911` and Dell `413c:81d8`:** dynamically bind serial drivers to vendor-specific ports except ADB/data, using `new_id … ff`.
+- **Rescue accidentally claimed data interface:** undo serial-driver binding when it captured the network interface.
+- **Field-reported driver recipes:** permit automatic dynamic binding based on the hardware catalog, rather than only test-bench-validated recipes.
+
+## 0.15.0-r104 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r104-b5781f5`.
+
+- **T77/DW5821e AT tab restored:** devices without USB serial had not received generated MM port rules, allowing MM to claim AT ports. Generate the rule by VID:PID, regain reserved AT port once an MM session is down; takes effect after restarting MM/router.
+- **Router-forwarded modem web UI:** rewrite modem redirects from `192.168.8.1` to a router-side webproxy endpoint so clients with aggressive proxy routing can open HiLink/ZTE pages.
+- **T77 USSD LTE warning:** test showed a request caused 3G fallback, failed USSD and ~90 s Internet outage; warn before sending.
+- **SMS layout:** name above number in conversation list; stable timestamp and address-book columns.
+- **Channel metric heading:** shorten to “Metric”; show configured/kernel metric explanation in tooltip.
+
+## 0.15.0-r103 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r103-5341aa0`.
+
+- **T99W175 MM-owned cell lock:** add Lock actions to serving/neighboring LTE cells, using native `AT^LTE_LOCK` through a reserved modem AT port. Requires roughly a minute-long modem restart; restore previous lock if Internet does not return. Network mode and bands remain managed by MM.
+- **Neighbor PCI encoding:** convert hex PCI such as `1CF` to decimal `463`.
+- **Per-carrier channel frequency:** show `EARFCN 2850 (DL 2630.0 / UL 2510.0 MHz)` in Detailed mode.
+- **Cell on map:** open 4cells.ru by LTE eNB or 3G cell/area; mask the link with private identifiers.
+
+## 0.15.0-r102 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r102-9623f2a`. r101 audit corrections:
+
+- **Bot restart quiet-period accounting:** an outage beginning during the two-minute suppression is still announced afterward. Repeated failures before restart do not falsely become a flapping alarm. Preserve the start timestamp for prolonged downtime.
+- **Critical-only alerts:** restrict to total router Internet loss and exhausted traffic quota, not an individual backup modem failure.
+- **Consistent bot localization:** Connected/Restored terminology, quota names and recovery reason; only suggest cables/USB hub power when the device actually disappeared from USB. Move failover exclusions to Channels instead of the main menu.
+- **Stale reachability presentation:** compact “Internet · 57 ms”; results older than 3 minutes (11 for backup) appear grey and “Data stale”, not green.
+- **USB diagnostics:** complain about missing drivers only when a modem really expects one, name the required `kmod-*` package; an unused ADB interface is not a fault.
+- **VCF address book:** support Windows-1251 contacts and name-component order; enforce 20 entries and duplicates across concurrent tabs, block writes when the book cannot be read instead of wiping it.
+- **SMS archive durability:** synchronize directory changes before deleting an archived modem SMS, preventing loss on power failure.
+- **LuCI wording:** ~40 audit glossary corrections, avoid asserting unproven causes. Make admin binding guidance point to Setup wizard → Administrator; clarify that wired priority is preserved by Make primary.
+- **USB port numbering:** explain controller-order numbering may differ from the case; bound service-card and journal lengths.
+
+## 0.15.0-r101 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r101-4298809`.
+
+- **One bot alert per situation instead of repeating engine events:** omit spammy Session up/down/Recovery started lines; include whether another route supplies Internet and whether repair is underway. On recovery, send a silent summary with outage duration and successful recovery step.
+- **Backup modem policy:** do not disturb the owner while another channel works, except summarize frequent physical outages or downtime over ten minutes.
+- **Restart summary:** after first installation or daemon restart, issue one silent summary of engine version, modem count and active route rather than multiple connection notifications.
+- **Friendly names:** use exact model labels, disambiguate identical modems by USB port and avoid internal “Enabled / QMI Composition” descriptions.
+- **Critical-only mode:** no Internet and exhausted quota only.
+- **Per-carrier display:** labeled carrier bands and frequencies, with RSSI in Detailed mode; other radio and device detail refinements.
+- **Address-book and USSD improvements:** contact names in conversations, compose from contacts, exclude nonfunctional FM350 USSD while using a meaningful immediate error in CLI, and add router summary to bot Status.
+- **UI corrections:** preserve Rx/Tx arrows beside values, localize USB event details, ensure a radio-change Undo result does not remain indefinitely after reboot.
+
+## 0.15.0-r100 — 2026-10-26
+
+Bench build: `bench-v0.15.0-r100-35c7edb`.
+
+- **Basic mode without engineering clutter:** hide IPv6/gateway/DNS details; present human-readable reachability latency; show USB/health debug only on problems; use descriptive signal wording rather than raw dBm while keeping scales; offer only Reconnect Internet and Reboot modem recovery buttons plus short help for SMS/report/freeze.
+- **Advanced-only IP/DNS choices:** connection owner and dial backend remain available in Basic.
+- **Signal history in Basic mode:** single signal-strength plot without advanced view/table selectors.
+- **Basic Ports and devices:** explain router, USB port order, hubs and modem paths in plain language with actionable cable/power warnings; compact mobile tree.
+- **Mobile status banner:** compact header with folding arrow; render channel table as name/value blocks rather than eight overflowing columns.
+- **Localization:** remove English fallback “no answer” from connectivity errors.
+
+## 0.15.0-r99 — 2026-10-25
+
+Bench build: `bench-v0.15.0-r99-1b793dd`.
+
+- **ModemManager/qmi-utils dependency installation:** clean R3S routers previously lacked packages to discover QMI/MBIM devices.
+- **Post-install/restart:** restart engine/rpcd and clear LuCI caches so new packages work immediately; the user may need to log into LuCI again.
+- **`medvemodem version`:** show CLI and running daemon versions.
+- **Human-readable channel names:** wired WAN, PPPoE, tunnel `tun0`; clearer traffic and censorship-bypass terminology.
+- **Preserve wired WAN priority on manually connecting a modem:** avoid giving the new modem metric 0 and stealing the default route; initial modem metric 100 until configured otherwise.
+- **Connection-card labels and modem ownership explanations** updated to avoid jargon.
+- **Ports and devices tree:** diagram-style lines, badges for owner/protocol/driver/path/network/AT/speed; dotted empty USB ports.
+- **Status banner collapses in Detailed mode** as well.
+- **Settings regrouped:** rename Recovery tab to Modems and Automatic recovery panel to Modem maintenance.
+
+## 0.15.0-r98 — 2026-10-24
+
+Bench build: `bench-v0.15.0-r98-bdb930d`.
+
+- **Experimental native dial for Fibocom L850/L860 (Intel XMM)** (`8087:095a`, `2cb7:000b`) where MM falls back to PPP without an IP address. Must be selected manually under Connection → MedveModem direct; not yet tested on the project's physical modems. MM remains the default owner.
+- **Router SMS archive switch** added under Settings → Notifications.
+
+## 0.15.0-r97 — 2026-10-24
+
+Bench build: `bench-v0.15.0-r97-e6edad8`.
+
+- **Avoid full modem SMS storage:** when SIM/modem memory reaches ~75%, copy oldest read incoming SMS to router storage (retain last 500 per modem), then remove them from modem storage to keep incoming messages flowing. Show archived entries in the SMS tab and allow deletion there. Applies to AT/MM-backed SMS; switch follows in the next release. On r97 use `uci set medvemodem.core.sms_archive=0` to disable it.
+
+## 0.15.0-r96 — 2026-10-24
+
+Bench build: `bench-v0.15.0-r96-8ba5214`.
+
+- **Bot recognizes Internet through tunnel under whitelists:** show a green active Internet state and latency when podkop/other tunnel works on a restricted uplink rather than generic restricted access.
+- **DW5821e/T77W968 CNMI repair:** restore disabled incoming-SMS storage if modem spontaneously sets `CNMI=0,0`.
+- **ZTE web variant `reqproc`:** read signal and SMS on more firmware families.
+- **FM350 neighboring cells under external manager:** read via that manager.
+- **Mobile registration parser:** accept whitespace within `+CEREG: 2, 1, …` replies.
+
+## 0.15.0-r95 — 2026-10-24
+
+Bench build: `bench-v0.15.0-r95-4f326d5`, including r94.
+
+- **ZTE router-mode SMS:** MF79/MF833 and similar can read/send/delete SMS through modem web API, like HiLink.
+- **SMS under an external modem manager:** e.g. FM350 supports reading/sending via that manager, combining multipart messages and deleting a complete long SMS rather than individual segments.
+
+## 0.15.0-r94 — 2026-10-24
+
+No standalone build: x86_64 infrastructure failure, included in r95.
+
+- **Cell locking:** Lock/Unlock on serving and neighboring LTE/5G cells from Network and signal. FM350 LTE lock uses an airplane-mode interval of ~10–60 s; T99W175 LTE/5G lock may reboot the modem for roughly one minute. Auto-rollback if Internet does not return.
+- **FM350 native radio control without external manager:** apply RAT/band selection through native AT and reconnect the session; “all bands” restores the modem's default set and carrier aggregation. Previously IP persisted after band changes while real connectivity failed.
+- **FM350 neighboring cells:** show serving/neighboring cells with signal and support locking to them.
+- **HiLink E3372 SMS:** read/send/delete through modem web, forward new messages through bot/ntfy/webhook; explain if web password is needed.
+
+## 0.15.0-r93 — 2026-10-24
+
+Bench build: `bench-v0.15.0-r93-e9fdfba`, first bot-archive release since r89.
+
+- **Internet works through tunnel while operator whitelists direct traffic:** show green “Internet through tunnel” and latency instead of yellow restricted access when podkop VLESS (reachable endpoint) or another tunnel carries unrestricted traffic. Probe tunnel through its Clash API, sing-box/xray local proxy or a more expensive `sing-box tools fetch` fallback (at most every five minutes).
+- **Firewall-interference check includes podkop** even without a mixed proxy; do not reset a modem just because direct checks fail while the tunnel works.
+
+## 0.15.0-r92 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r92-3b9ab68`. No bot artifacts due to OpenWrt package server HTTP 502.
+
+- **Custom DNS supplements operator DNS by default**, rather than replacing it. External DNS (8.8.8.8/1.1.1.1) may be blocked under carrier whitelists, breaking resolution if carrier DNS is removed. Optional Replace operator DNS remains available. If podkop or another tunnel owns router DNS, explain that modem DNS will not be used for names.
+- **Services on Internet restoration:** select podkop, zapret, passwall and others to restart on modem connectivity following boot or outages of a minute or more. Whitelist-only channels count as suitable for tunnels. Avoid waiting ten minutes for tunnel Internet after reboot.
+- **Subnet routes follow default-route metric changes** on failover/priority edits, instead of retaining old metrics until interface restart.
+- **Priority metrics changed to 100/110/120…** from 10/20/30 so tunnels such as WireGuard/AmneziaWG with metrics below 100 retain precedence. Apply after the next priority operation.
+
+## 0.15.0-r91 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r91-190febe`. No bot artifacts due to OpenWrt server HTTP 502.
+
+- **Wired WAN in channel priorities:** assign positions to ethernet/PPPoE and modems; Make primary on a modem no longer shifts the wired channel.
+- **Conntrack cleanup on failover:** when traffic moves, drop stale flows on the previous uplink so they immediately reconnect on the new one. With `conntrack` installed, flush only moved channel flows; otherwise the whole conntrack table (as in mwan3). Configurable off.
+- **User event hooks** under `/etc/hotplug.d/medvemodem/` are invoked on failover, route changes, session up/down, recovery and USB presence changes, with `ACTION`, `DEVICE`, `DEVICE_ID`, `STATE`, etc.
+- **Manual modem DNS:** up to four DNS addresses configured per modem under Connection; in this revision they replaced operator DNS.
+
+## 0.15.0-r90 — 2026-10-23
+
+Bench build: `bench-v0.15.0-r90-f9197af`. No bot artifacts due to OpenWrt server HTTP 502.
+
+- **FM350 carrier aggregation:** both with/without an external modem manager, show CA groups such as `B3+B7, 30 MHz` and detailed carrier bands/bandwidth, including 5G carrier where applicable. Previously only the primary band was available.
 
 ---
 
