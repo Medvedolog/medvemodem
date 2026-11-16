@@ -29,7 +29,7 @@
 
 MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C daemon, LuCI interface, CLI/TUI and optional Telegram bot. It coordinates modem ownership across ModemManager, QModem and native QMI/MBIM/AT paths; supervises connectivity, failover and staged recovery. The hardware knowledge base covers device profiles, modem-specific quirks and field reports.
 
-**Read:** [Installation](docs/INSTALL.en.md) · [Build instructions](docs/BUILDING.en.md) · [Full API reference](docs/UBUS-API.md) · [Architecture](docs/PLUGIN-ARCHITECTURE.md) · [LuCI theme rules](docs/LUCI-THEMES.md). Translations and language coverage are tracked in the [documentation index](docs/README.md).
+**Read:** [Installation](docs/INSTALL.en.md) · [Quick guide](docs/USER-GUIDE.en.md) · [Full manual](docs/MANUAL.en.md) · [Telegram bot](packages/medvemodem-bot/README.en.md) · [Build instructions](docs/BUILDING.en.md) · [ubus API](docs/UBUS-API.md) · [Architecture](docs/PLUGIN-ARCHITECTURE.md) · [LuCI theme rules](docs/LUCI-THEMES.md) · [Recent changelog](docs/CHANGELOG.en.md). See the [bilingual documentation index](docs/README.md) for translation coverage.
 
 ## Русское описание
 
@@ -352,8 +352,7 @@ watches the connection and recovers what breaks without touching a working chann
 console (CLI and TUI) and an optional Telegram bot. Bench builds are published as `bench-v*` pre-releases; the
 changelog is [docs/CHANGELOG.md](docs/CHANGELOG.md) (in Russian). The LuCI app is in English and Russian (LuCI's
 language picks one), the bot in Russian or English (its own setting), the console and the system log in English;
-the documentation is in Russian. The Telegram bot has its own description:
-[packages/medvemodem-bot/README.md](packages/medvemodem-bot/README.md).
+the main manuals and guides are available in English and Russian via the [documentation index](docs/README.md). The complete historical changelog is currently in Russian; recent entries are [translated](docs/CHANGELOG.en.md). The Telegram bot has a full [English guide](packages/medvemodem-bot/README.en.md).
 GPL-3.0-only; an independent implementation, no code copied from the projects studied.
 
 ![MedveModem diagram: the front ends (LuCI, console, Telegram bot) talk to the medvemodemd engine over ubus; each modem has exactly one executor — ModemManager, QModem, MedveModem itself or the modem's web](docs/img/architecture-en.svg)
