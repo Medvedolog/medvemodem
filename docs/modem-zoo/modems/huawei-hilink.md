@@ -25,7 +25,7 @@ Web API/router ownership remains even when debug tty appears; debug may be volat
 | 3566:2001 | Brovi E3372-325 | web | `brovi-e3372-325-hilink` |
 
 One HiLink USB ID covers several models: the card's model comes from the stick's web (`DeviceName`, kept by the
-engine), not from the profile. Sources: another modem manager 3.5.8 (msw/hilink.sh: 12d1:14db = E8372 / MTS 8211F;
+engine), not from the profile. Sources: archived modem utility 3.5.8 (msw/hilink.sh: 12d1:14db = E8372 / MTS 8211F;
 modemswitch.sh HILINK_IDS; hilink.sh; msw/identity.sh 14dc ↔ 1566 ↔ 1442; modem/usb/12d1*), the imported catalog,
 HANDOFF 126/164. Not on our bench.
 
@@ -53,7 +53,7 @@ engine did not read or do yet (the signal block `device/signal` was already read
 ## Related reference
 
 - [USB composition and boot mode recipes](../COMPOSITION-AND-BOOT-MODES.md)
-- another modem manager source map
+- archive source map
 
 <!-- 4pda-field-2026-10-15:start -->
 ## 4PDA — дополнительные модельные полевые факты
@@ -65,8 +65,8 @@ engine did not read or do yet (the signal block `device/signal` was already read
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -87,4 +87,4 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 - **`huawei-hilink-debug`** — `COMPOSITION_MUTATION`; E3372 HiLink DHCP/router and web API → HiLink with temporary AT debug interfaces; explicit approval required; Debug disappears on reboot for observed Huawei E3372.
 - **`huawei-at-composition-hazards`** — `PERSISTENT_COMPOSITION_WRITE`; E3372 web-debug or modem-mode with tty interfaces → no automatic composition change; explicit approval required; No universal SETPORT/U2DIAG map across Huawei submodels; changing it can lose data/AT ports.
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
