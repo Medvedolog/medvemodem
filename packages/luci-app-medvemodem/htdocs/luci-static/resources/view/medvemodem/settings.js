@@ -1545,7 +1545,12 @@ return view.extend({
 		return fs.exec(QMODEM, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			var running = j.state === 'running';
 			text(q.info, qmWords(j));
-			text(q.target, j.ok && j.supported && j.source ? j.archive : '—');
+						text(q.target, j.ok && j.supported && j.source ? j.archive : '—');
+			if (j.ok && j.supported && j.download &&
+				/^https:\/\/github\.com\/Medvedolog\/medvemodem\/releases\/download\/[A-Za-z0-9._\/-]+$/.test(j.download)) {
+				q.target.textContent = '';
+				q.target.appendChild(E('a', { href: j.download, target: '_blank', rel: 'noopener noreferrer' }, j.archive));
+			}
 			if (self.qmGist) text(self.qmGist, qmWords(j));
 			/* an earlier build installed: the same button updates it (QModem's stable line with our resolvers, 2026-10-22) */
 			q.btn.hidden = !j.ok || (j.installed && !j.update) || !j.supported || !j.source;
