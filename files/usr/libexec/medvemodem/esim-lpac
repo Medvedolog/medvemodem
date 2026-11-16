@@ -1,0 +1,212 @@
+#!/bin/sh
+# MedveModem eSIM backend, managed mode (docs/ESIM-INTEGRATION.md).
+#
+# Runs exactly one read-only lpac action for medvemodemd and exits. The engine
+# chose the modem, its attachment generation and the APDU transport; this
+# script never looks for devices, never takes a lock, never resets anything
+# and never forks into the background. It does not log commands or arguments.
+#
+#   esim-lpac probe | version | chip | profiles | enable | euicc-port
+#
+# Environment, set by medvemodemd:
+#   MM_ESIM_APDU    qmi | uqmi | mbim | at        (chip, profiles)
+#   MM_ESIM_DEVICE  control node, or the AT tty for "at"
+#   MM_ESIM_PORTS   euicc-port: the modem's AT ports the engine leased, in order
+#   MM_ESIM_SLOT    UIM slot used for APDU over QMI (default 1)
+#   MM_ESIM_PROXY   1: open MBIM through mbim-proxy (ModemManager holds the port)
+#   MM_ESIM_LPAC    lpac binary (tests); default: medvemodem-lpac
+#                   (/usr/lib/medvemodem/lpac/lpac, a pinned git build), else the
+#                   feed's binary, never the OpenWrt /usr/bin/lpac UCI wrapper,
+#                   which ignores LPAC_* env
+#   MM_ESIM_BRIDGE  the AT bridge (tests); default /usr/libexec/medvemodem/esim-apdu
+#   MM_ESIM_PROBE_FAST_MS, MM_ESIM_PROBE_SLOW_MS  euicc-port probe waits (tests)
+#   LPAC_DRIVER_HOME  lpac 2.3's home: the plugins are in its driver/ (default /usr/lib/lpac). A
+#                   build in /usr/lib/lpac that finds its plugins only through this variable (a
+#                   loader patch: the RUNPATH upstream reads is stripped by OpenWrt) gets it set
+#
+# MBIM: lpac maps the UIM slot it was given (default 1) as the modem's active one and
+# leaves it so, which on a dual-slot modem switches the SIM in use. The managed actions
+# only read the eUICC, so the mapping is skipped and the modem's current slot is read.
+#
+# AT is not lpac's own AT driver, which stalls on long CGLA chains of some
+# firmware: lpac runs with its stdio APDU driver and the engine's bridge
+# (esim-apdu) talks to the tty, which it keeps open for the operation.
+#
+# Output: lpac's JSON lines (the last one is the answer); probe prints one
+# JSON object. Exit 127: no usable lpac.
+
+lpac_bin() {
+	if [ -n "$MM_ESIM_LPAC" ]; then
+		[ -x "$MM_ESIM_LPAC" ] && echo "$MM_ESIM_LPAC"
+		return
+	fi
+	[ -f /usr/lib/medvemodem/lpac/lpac ] && [ -x /usr/lib/medvemodem/lpac/lpac ] &&
+		{ echo /usr/lib/medvemodem/lpac/lpac; return; }                                       # medvemodem-lpac
+	[ -f /usr/lib/lpac/lpac ] && [ -x /usr/lib/lpac/lpac ] && { echo /usr/lib/lpac/lpac; return; }   # 2.3.x
+	[ -f /usr/lib/lpac ] && [ -x /usr/lib/lpac ] && echo /usr/lib/lpac                           # 2.1.x
+}
+
+BRIDGE="${MM_ESIM_BRIDGE:-/usr/libexec/medvemodem/esim-apdu}"
+
+# the 2.3.x layout in /usr/lib/lpac (a binary beside its driver/): its home said, as its
+# own wrapper says it; upstream's loader ignores the variable, so it costs nothing there
+lpac_home() {
+	case "$1" in
+	/usr/lib/lpac/lpac) [ -n "$LPAC_DRIVER_HOME" ] || export LPAC_DRIVER_HOME=/usr/lib/lpac ;;
+	esac
+}
+
+# the HTTP driver lpac has: curl when it reports one (or cannot say), else the
+# first it reports; lpac refuses to start without one, even for chip info
+http_driver() {
+	list=$("$1" driver list 2>/dev/null | sed -n 's/.*"LPAC_HTTP":\[\([^]]*\)\].*/\1/p' | tail -n 1 | tr -d '" ')
+	case ",$list," in
+	,,|*,curl,*) echo curl ;;
+	*) echo "${list%%,*}" ;;
+	esac
+}
+
+# APDU driver names: what lpac itself reports (`lpac driver list`, builds after
+# 2.3.0), else the plugin directory: qmi uqmi mbim at stdio (others ignored)
+drivers() {
+	list=$("$1" driver list 2>/dev/null | sed -n 's/.*"LPAC_APDU":\[\([^]]*\)\].*/\1/p' | tail -n 1)
+	if [ -n "$list" ]; then
+		echo "$list" | tr ',' '\n' | tr -d '" ' | while read -r d; do
+			case "$d" in qmi|uqmi|mbim|at|stdio) echo "$d" ;; esac
+		done | sort -u
+		return
+	fi
+	dir="${LPAC_DRIVER_HOME:-/usr/lib/lpac}/driver"
+	[ -d "$dir" ] || return 0
+	for f in "$dir"/*.so; do
+		[ -e "$f" ] || continue
+		n=$(basename "$f" .so)
+		case "$n" in
+		*apdu_stdio*) echo stdio ;;
+		*http*) ;;
+		*uqmi*) echo uqmi ;;
+		*mbim*) echo mbim ;;
+		*qmi*) echo qmi ;;
+		*_at|*-at|at|*apdu_at*) echo at ;;
+		esac
+	done | sort -u
+}
+
+probe() {
+	bin=$(lpac_bin)
+	lpac_home "$bin"
+	if [ -z "$bin" ]; then
+		wrapper=false
+		[ -x /usr/bin/lpac ] && wrapper=true
+		printf '{"installed":false,"wrapper_only":%s}\n' "$wrapper"
+		exit 127
+	fi
+	ver=$("$bin" version 2>/dev/null | tail -n 1 | sed -n 's/.*"data":"\([A-Za-z0-9._+-]*\)".*/\1/p')
+	list=$(drivers "$bin")
+	if [ -n "$list" ]; then
+		build=official-dynamic
+	elif command -v ldd >/dev/null 2>&1 && ldd "$bin" 2>/dev/null | grep -q libqmi; then
+		build=native-qmi
+	else
+		build=unknown
+	fi
+	printf '{"installed":true,"version":"%s","build":"%s"' "$ver" "$build"
+	if [ -n "$list" ]; then
+		printf ',"drivers":['
+		sep=
+		for d in $list; do
+			printf '%s"%s"' "$sep" "$d"
+			sep=,
+		done
+		printf ']'
+	fi
+	printf '}\n'
+}
+
+run() {
+	bin=$(lpac_bin)
+	[ -n "$bin" ] || exit 127
+	lpac_home "$bin"
+	case "$MM_ESIM_APDU" in
+	qmi|uqmi)
+		export LPAC_APDU_QMI_DEVICE="$MM_ESIM_DEVICE" LPAC_APDU_QMI_UIM_SLOT="${MM_ESIM_SLOT:-1}" ;;
+	mbim)
+		export LPAC_APDU_MBIM_DEVICE="$MM_ESIM_DEVICE" LPAC_APDU_MBIM_SKIP_SLOT_MAPPING=true
+		[ "$MM_ESIM_PROXY" = 1 ] && export LPAC_APDU_MBIM_USE_PROXY=true ;;
+	at) ;;
+	*)
+		echo '{"type":"lpa","payload":{"code":-1,"message":"no APDU transport given","data":null}}'
+		exit 2 ;;
+	esac
+	# the engine's own node path (its device directory), never a client's
+	case "$MM_ESIM_DEVICE" in
+	/*) ;;
+	*)
+		echo '{"type":"lpa","payload":{"code":-1,"message":"no device given","data":null}}'
+		exit 2 ;;
+	esac
+	LPAC_HTTP=$(http_driver "$bin")
+	export LPAC_HTTP
+	if [ "$MM_ESIM_APDU" = at ]; then
+		export LPAC_APDU=stdio
+		exec "$BRIDGE" run "$MM_ESIM_DEVICE" -- "$bin" "$@"
+	fi
+	export LPAC_APDU="$MM_ESIM_APDU"
+	exec "$bin" "$@"
+}
+
+# which of the leased AT ports reaches the eUICC (one JSON object)
+euicc_port() {
+	[ -n "$MM_ESIM_PORTS" ] || { echo '{"port":null,"ports":[]}'; exit 2; }
+	for p in $MM_ESIM_PORTS; do
+		case "$p" in /*) ;; *) echo '{"port":null,"ports":[]}'; exit 2 ;; esac
+	done
+	# shellcheck disable=SC2086
+	exec "$BRIDGE" probe ${MM_ESIM_PROBE_FAST_MS:+-f "$MM_ESIM_PROBE_FAST_MS"} \
+		${MM_ESIM_PROBE_SLOW_MS:+-s "$MM_ESIM_PROBE_SLOW_MS"} $MM_ESIM_PORTS
+}
+
+# the last lpa answer's code in an lpac output
+lpa_code() { printf '%s\n' "$1" | grep '"type": *"lpa"' | tail -n 1 | sed -n 's/.*"code": *\(-\{0,1\}[0-9]*\).*/\1/p'; }
+# the ICCIDs of the profiles in that state, from a profile list
+in_state() { printf '%s\n' "$1" | grep '"type": *"lpa"' | tail -n 1 | tr '{' '\n' | grep "\"profileState\": *\"$2\"" |
+	sed -n 's/.*"iccid": *"\([0-9Ff]*\)".*/\1/p'; }
+
+# a switch as the field taught (a reference LuCI app for removable eSIM cards): lpac's own enable first; an error
+# is checked against the chip, which often has switched all the same; still not, the profile in use is disabled and
+# the enable tried once more. One answer, the last lpa line, for the engine
+enable_profile() {
+	local out list cur
+	out=$(MM_ESIM_STEP="$MM_ESIM_ICCID" "$0" step-enable)
+	[ "$(lpa_code "$out")" = 0 ] && { printf '%s\n' "$out"; return 0; }
+	list=$("$0" step-list)
+	if in_state "$list" enabled | grep -qx "$MM_ESIM_ICCID"; then
+		echo '{"type":"lpa","payload":{"code":0,"message":"success","data":null}}'
+		return 0
+	fi
+	cur=$(in_state "$list" enabled | head -n 1)
+	if [ -n "$cur" ] && [ "$cur" != "$MM_ESIM_ICCID" ] && in_state "$list" disabled | grep -qx "$MM_ESIM_ICCID"; then
+		MM_ESIM_STEP="$cur" "$0" step-disable >/dev/null
+		out=$(MM_ESIM_STEP="$MM_ESIM_ICCID" "$0" step-enable)
+	fi
+	printf '%s\n' "$out"
+	[ "$(lpa_code "$out")" = 0 ]
+}
+
+case "$1" in
+probe) probe ;;
+version) bin=$(lpac_bin); [ -n "$bin" ] || exit 127; exec "$bin" version ;;
+chip) run chip info ;;
+profiles) run profile list ;;
+# a profile already on the chip, by its ICCID from the engine (never on the command line of this script, never logged)
+enable)
+	case "$MM_ESIM_ICCID" in
+	''|*[!0-9Ff]*) echo '{"type":"lpa","payload":{"code":-1,"message":"no ICCID given","data":null}}'; exit 2 ;;
+	esac
+	enable_profile ;;
+# one lpac step of enable_profile, in a child: run() replaces its process
+step-enable|step-disable) [ -n "$MM_ESIM_STEP" ] || exit 2; run profile "${1#step-}" "$MM_ESIM_STEP" ;;
+step-list) run profile list ;;
+euicc-port) euicc_port ;;
+*) echo "usage: $0 probe|version|chip|profiles|enable|euicc-port" >&2; exit 2 ;;
+esac

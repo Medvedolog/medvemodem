@@ -1,0 +1,11 @@
+# What «does the operator touch DNS» asks through each modem (spec 25.9.20).
+# resolver|kind|address — public resolvers; kind cloudflare is checked by its id.server answer,
+#   every kind by its answer time against a TCP handshake to the same address on 443
+# name|<host> — names a regulator blocks, compared with DoH (a stub page's address, NXDOMAIN)
+# doh|<url> — the DoH endpoint (JSON API), asked through the same modem with TLS verified
+resolver|cloudflare|1.1.1.1
+resolver|google|8.8.8.8
+resolver|quad9|9.9.9.9
+name|linkedin.com
+name|rutracker.org
+doh|https://cloudflare-dns.com/dns-query

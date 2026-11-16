@@ -1,0 +1,951 @@
+{
+  "schema": 1,
+  "status": "imported-unvalidated",
+  "records": [
+    {
+      "id": "composition-12d1-14db-1",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "14db",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-14dc-2",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "14dc",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-1566-3",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "1566",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-1506-4",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "1506",
+        "revision": "0"
+      },
+      "model": "e392",
+      "observed": {
+        "mode": "modemmanager",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-1506-5",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "1506",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "ncm",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-155e-6",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "155e",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use. The imported mode hilink contradicts its own AT/SMS tty hints and the Modem Zoo (huawei-hilink: 12d1:155e is a stick with AT, owned by ModemManager); the huawei family profile decides, not this label (profiles audit 2026-10-19)."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-12d1-108a-7",
+      "match": {
+        "bus": "usb",
+        "vid": "12d1",
+        "pid": "108a",
+        "revision": "*"
+      },
+      "model": "3372h",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use. The imported mode hilink contradicts its own AT/SMS tty hints and the Modem Zoo (huawei-hilink: 12d1:108a is a stick with AT, owned by ModemManager); the huawei family profile decides, not this label (profiles audit 2026-10-19)."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-1402-8",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "1402",
+        "revision": "*"
+      },
+      "model": "mf823",
+      "observed": {
+        "mode": "ncm",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-1403-9",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "1403",
+        "revision": "*"
+      },
+      "model": "mf823",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-1404-10",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "1404",
+        "revision": "*"
+      },
+      "model": "mf823",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-1405-11",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "1405",
+        "revision": "*"
+      },
+      "model": "mf823",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-1244-12",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "1244",
+        "revision": "*"
+      },
+      "model": "mf823",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-9994-13",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "9994",
+        "revision": "*"
+      },
+      "model": "mf831",
+      "observed": {
+        "mode": "mbim",
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2c7c-0306-14",
+      "match": {
+        "bus": "usb",
+        "vid": "2c7c",
+        "pid": "0306",
+        "revision": "*"
+      },
+      "model": "ep06",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2c7c-0620-15",
+      "match": {
+        "bus": "usb",
+        "vid": "2c7c",
+        "pid": "0620",
+        "revision": "*"
+      },
+      "model": "em160",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-03f0-0857-16",
+      "match": {
+        "bus": "usb",
+        "vid": "03f0",
+        "pid": "0857",
+        "revision": "*"
+      },
+      "model": "t77w676",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-03f0-0a57-17",
+      "match": {
+        "bus": "usb",
+        "vid": "03f0",
+        "pid": "0a57",
+        "revision": "*"
+      },
+      "model": "t77w676",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1bc7-1900-18",
+      "match": {
+        "bus": "usb",
+        "vid": "1bc7",
+        "pid": "1900",
+        "revision": "*"
+      },
+      "model": "t77w676",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1bc7-1901-19",
+      "match": {
+        "bus": "usb",
+        "vid": "1bc7",
+        "pid": "1901",
+        "revision": "*"
+      },
+      "model": "t77w676",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init0"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1bc7-1910-20",
+      "match": {
+        "bus": "usb",
+        "vid": "1bc7",
+        "pid": "1910",
+        "revision": "*"
+      },
+      "model": "t77w968",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1bc7-1911-21",
+      "match": {
+        "bus": "usb",
+        "vid": "1bc7",
+        "pid": "1911",
+        "revision": "*"
+      },
+      "model": "t77w968",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-413c-81d7-22",
+      "match": {
+        "bus": "usb",
+        "vid": "413c",
+        "pid": "81d7",
+        "revision": "*"
+      },
+      "model": "t77w968",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-413c-81e0-23",
+      "match": {
+        "bus": "usb",
+        "vid": "413c",
+        "pid": "81e0",
+        "revision": "*"
+      },
+      "model": "t77w968",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": "init0"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1e2d-00b3-24",
+      "match": {
+        "bus": "usb",
+        "vid": "1e2d",
+        "pid": "00b3",
+        "revision": "*"
+      },
+      "model": "t99w175",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1e2d-00b7-25",
+      "match": {
+        "bus": "usb",
+        "vid": "1e2d",
+        "pid": "00b7",
+        "revision": "*"
+      },
+      "model": "t99w175",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-05c6-9025-26",
+      "match": {
+        "bus": "usb",
+        "vid": "05c6",
+        "pid": "9025",
+        "revision": "*"
+      },
+      "model": "t99w175",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB2",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-05c6-90d5-27",
+      "match": {
+        "bus": "usb",
+        "vid": "05c6",
+        "pid": "90d5",
+        "revision": "*"
+      },
+      "model": "t99w175",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB3",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": "init"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1bc7-1070-28",
+      "match": {
+        "bus": "usb",
+        "vid": "1bc7",
+        "pid": "1070",
+        "revision": "*"
+      },
+      "model": "fn990a28",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-8087-095a-29",
+      "match": {
+        "bus": "usb",
+        "vid": "8087",
+        "pid": "095a",
+        "revision": "*"
+      },
+      "model": "l850",
+      "observed": {
+        "mode": "xmm",
+        "at_node_hint": "/dev/ttyACM0",
+        "sms_node_hint": "/dev/ttyACM2",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2cb7-000b-30",
+      "match": {
+        "bus": "usb",
+        "vid": "2cb7",
+        "pid": "000b",
+        "revision": "*"
+      },
+      "model": "l850",
+      "observed": {
+        "mode": "xmm",
+        "at_node_hint": "/dev/ttyACM0",
+        "sms_node_hint": "/dev/ttyACM2",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2cb7-0210-31",
+      "match": {
+        "bus": "usb",
+        "vid": "2cb7",
+        "pid": "0210",
+        "revision": "*"
+      },
+      "model": "l830",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyACM0",
+        "sms_node_hint": "/dev/ttyACM0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2cb7-0007-32",
+      "match": {
+        "bus": "usb",
+        "vid": "2cb7",
+        "pid": "0007",
+        "revision": "*"
+      },
+      "model": "l850",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyACM0",
+        "sms_node_hint": "/dev/ttyACM2",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-0e8d-7126-33",
+      "match": {
+        "bus": "usb",
+        "vid": "0e8d",
+        "pid": "7126",
+        "revision": "*"
+      },
+      "model": "fm350",
+      "observed": {
+        "mode": "xmm",
+        "at_node_hint": "/dev/ttyUSB1",
+        "sms_node_hint": "/dev/ttyUSB1",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-0e8d-7127-34",
+      "match": {
+        "bus": "usb",
+        "vid": "0e8d",
+        "pid": "7127",
+        "revision": "*"
+      },
+      "model": "fm350",
+      "observed": {
+        "mode": "xmm",
+        "at_node_hint": "/dev/ttyUSB3",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1e0e-9001-35",
+      "match": {
+        "bus": "usb",
+        "vid": "1e0e",
+        "pid": "9001",
+        "revision": "*"
+      },
+      "model": "simcom",
+      "observed": {
+        "mode": null,
+        "at_node_hint": "/dev/ttyUSB2",
+        "sms_node_hint": "/dev/ttyUSB3",
+        "init_hint": "init0"
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2ecc-3012-36",
+      "match": {
+        "bus": "usb",
+        "vid": "2ecc",
+        "pid": "3012",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2717-ff80-37",
+      "match": {
+        "bus": "usb",
+        "vid": "2717",
+        "pid": "ff80",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-0557-38",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "0557",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-19d2-0558-39",
+      "match": {
+        "bus": "usb",
+        "vid": "19d2",
+        "pid": "0558",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-0e8d-2004-40",
+      "match": {
+        "bus": "usb",
+        "vid": "0e8d",
+        "pid": "2004",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-22d9-276a-41",
+      "match": {
+        "bus": "usb",
+        "vid": "22d9",
+        "pid": "276a",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-05c6-90b4-42",
+      "match": {
+        "bus": "usb",
+        "vid": "05c6",
+        "pid": "90b4",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-05c6-f00e-43",
+      "match": {
+        "bus": "usb",
+        "vid": "05c6",
+        "pid": "f00e",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-1286-4e31-44",
+      "match": {
+        "bus": "usb",
+        "vid": "1286",
+        "pid": "4e31",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "composition-2d95-600a-45",
+      "match": {
+        "bus": "usb",
+        "vid": "2d95",
+        "pid": "600a",
+        "revision": "*"
+      },
+      "model": "generic-hilink",
+      "observed": {
+        "mode": "hilink",
+        "at_node_hint": "/dev/ttyUSB0",
+        "sms_node_hint": "/dev/ttyUSB0",
+        "init_hint": null
+      },
+      "safety": {
+        "operational": false,
+        "reason": "Imported observation; resolve ports by topology and ownership before use."
+      },
+      "status": "imported-unvalidated"
+    }
+  ]
+}

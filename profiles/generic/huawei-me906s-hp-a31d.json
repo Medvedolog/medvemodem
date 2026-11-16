@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "huawei-me906s-hp-a31d",
+  "extends": "huawei",
+  "description": "HP lt4132: a Huawei ME906s-158 (LTE Cat.6 M.2) under HP's VID 03f0:a31d, so the generic huawei profile (VID 12d1) does not see it. The kernel's option driver takes its vendor-class ttys by Huawei interface protocol (class ff, subclass 06, protocols 10/12/13/14/1b), not by number, so no AT interface is hinted. ModemManager's Huawei plugin only takes VID 12d1: this identity gets the generic plugin, which cannot dial with AT^NDISDUP; prefer its MBIM function. Radio over AT is still the Huawei dialect (AT^SYSCFGEX, AT^HCSQ)",
+  "match": {
+    "bus": "usb",
+    "vid": "03f0",
+    "pid": "a31d"
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim",
+      "ncm"
+    ]
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim",
+      "ncm"
+    ]
+  },
+  "radio": {
+    "dialect": "huawei",
+    "status": "reference",
+    "source": "Linux 6.12 drivers/usb/serial/option.c (HP lt4132 = Huawei ME906s-158, 03f0:a31d); ModemManager 1.25.95 src/plugins/huawei/mm-plugin-huawei.c (vendor IDs 12d1 only); another modem manager 3.5.5 reads 03f0:a31d with its Huawei 12d1:1506 profile (AT^HCSQ, AT^SYSCFGEX)"
+  }
+}

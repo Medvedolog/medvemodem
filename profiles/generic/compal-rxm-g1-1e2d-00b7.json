@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "compal-rxm-g1-1e2d-00b7",
+  "extends": "generic-qmi",
+  "description": "Compal RXM-G1 (module SG500M2-X, also sold as VOS 5G) in its debug/QMI composition (AT+USBCOMP=debug on the prototype). It reports the same USB ID 1e2d:00b7 as the Foxconn T99W175 / Thales MV31, whose AT recipes it does not share: no AT signal commands (AT+CSQ, AT^TEMP?, AT^DEBUG? come back empty), so no Foxconn radio dialect. Told apart by ModemManager's model, which wins over the Foxconn profile's ID-only match. ModemManager only: plain QMI in netifd did not open its services in the field. No reset levels declared until a bench: an underpowered hub gave ttys without a data function, and resets do not cure that. Reference only, no bench of ours: docs/modem-zoo/modems/compal-rxm-g1.md, another modem manager 3.5.8 (its Compal identity check, the 1e2d:00b7 header); profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "1e2d",
+    "pid": "00b7",
+    "drivers_any": [
+      "qmi_wwan"
+    ],
+    "mm_model_contains": [
+      "SG500M2",
+      "RXM-G1",
+      "RXMG1",
+      "VOS"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi"
+    ]
+  },
+  "recovery": {
+    "status": "field-reported",
+    "radio_cycle": true,
+    "soft_reset": false,
+    "driver_rebind": false,
+    "usb_reauthorize": false,
+    "source": "radio through ModemManager only; a power-starved hub (ttys, no data function) is not cured by resets (Modem Zoo compal-rxm-g1)"
+  }
+}

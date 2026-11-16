@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "telit-lm960",
+  "abstract": true,
+  "description": "Telit LM940 / LM960 (and LE922A, which shares the IDs): family base, never matched itself. Qualcomm, QMI (1bc7:1040) or MBIM (1bc7:1041). ModemManager's Telit plugin owns it; its AT ports come up late (ModemManager retries the AT probe 14 times for these IDs), so a silent port right after boot is not a dead modem. Radio over AT is the Telit dialect (AT#BND bands, AT+WS46 mode, AT#CAINFOEXT? aggregation). SIM slots: two by datasheet, no AT slot command answers; QMI UIM reports them. USSD: see ussd_cs_fallback No netifd-qmi fallback: OpenWrt's stock qmi protocol brings these modules up with the radio off (UIM reported illegal) and cycles them, and in raw-ip they took an address that carried no traffic (another modem manager 3.5.8 routes them to its own raw QMI protocol; profiles audit 2026-10-19).",
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ],
+    "ussd": "3g-only",
+    "ussd_source": "LM960A18: USSD only after a switch to 3G (AT+WS46=22); in LTE +CME ERROR: 30 or a timeout; another modem manager field notes via the owner's digest 2026-11-02"
+  },
+  "radio": {
+    "dialect": "telit",
+    "status": "reference",
+    "source": "another modem manager 3.5.5 1bc71040 band profile (AT#BND, AT+WS46) and quirks.sh (LM960A18: #SIMSELECT/#DUALSIM/#SIMSWITCH answer ERROR, QMI UIM shows 2 slots); Telit LM9x0 AT command reference",
+    "ussd_cs_fallback": {
+      "source": "another modem manager 3.5.5 quirks.sh, LM960A18 on MegaFon: on LTE a USSD request answers +CME ERROR: 30 or falls back to 3G and returns +CUSD: 4 after ~30 s, losing registration; after AT+WS46=22 (UTRAN only) the same raw-text code answered in seconds"
+    }
+  }
+}

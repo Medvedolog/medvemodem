@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "huawei-e3372-hilink-debug-1566",
+  "description": "Huawei E3372 HiLink in debug mode (12d1:1566): still a router inside the stick, data through its Ethernet function and web API at 192.168.8.1, but with extra serial ports. Without this profile the option ports would make it look like a modem-mode stick to the generic huawei profile and hand it to ModemManager. Debug mode is volatile (gone after the stick reboots), so its AT ports are never relied on; AT^SYSCFGEX= on these ports can switch debug off and change the composition, so bands and mode go through the HiLink HTTP API. Some units randomise the IMEI on re-enumeration: identify by the network interface MAC. Reference only, no field report of ours. Sources: another modem manager 3.5.5 band profile 12d11566 (E3372 debug composition of the 12d1:1506 hardware) and its HiLink notes (debug reverts on reboot, bands over the HTTP API); docs/modem-zoo/modems/huawei-hilink.md; docs/HANDOFF.md 131 (AT^SYSCFGEX= can switch debug off; IMEI randomised per re-enumeration on some E3372). Its serial ports are kept from ModemManager (mm_ports control) and the stick stays a router with them: DHCP and the web API, never a ModemManager dial over its debug AT ports (profiles audit 2026-10-19).",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "1566"
+  },
+  "policy": {
+    "owner_priority": [
+      "hilink"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
+  },
+  "hints": {
+    "protocols": [
+      "hilink",
+      "ecm",
+      "rndis"
+    ]
+  }
+}

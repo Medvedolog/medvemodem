@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "huawei-hilink-12d1-14dc",
+  "extends": "generic-hilink",
+  "description": "Huawei HiLink stick 12d1:14dc: E3372h in its web-only HiLink composition. A router inside the stick: cdc_ether (or rndis_host) and a DHCP address from the stick, no AT port and no cdc-wdm in this composition; signal, operator and SMS over the HiLink HTTP API (SesTokInfo session first), its address the stick's gateway (192.168.8.1 on most firmware, 192.168.43.1 seen too). The model is told only by its web (DeviceName): the engine keeps it and the card shows it. CD-ROM before the switch: 12d1:1f01. Newer firmware asks for the web password; the B-series RSA login is not supported yet. Some E3372 units randomise the IMEI on every re-enumeration. Reference only, not on our bench. Its debug mode (12d1:1566, AT ports added, gone after a reboot) is profile huawei-e3372-hilink-debug-1566; the same stick re-enumerates 14dc -> 1566 -> 1442 and stays one modem. Sources: another modem manager 3.5.8 modemswitch.sh (12d1:14dc web only), hilink.sh (14dc -> 1566 seen on an E3372, six ports in 10 s), msw/identity.sh (14dc <-> 1566 <-> 1442 one modem); imported catalog composition 12d1:14dc (3372h, hilink); docs/modem-zoo/modems/huawei-hilink.md; docs/HANDOFF.md 164",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "14dc"
+  }
+}

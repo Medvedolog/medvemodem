@@ -1,0 +1,67 @@
+name: Новый модем или модем известен не полностью
+description: Пришлите отчёт о модеме — по нему добавят или поправят профиль модели
+title: "Модем: "
+labels: ["new-modem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Отчёт собирается в LuCI: «Модем» → «MedveModem» → страница модема → «Диагностика» → «Отчёт о модеме» →
+        «Собрать отчёт для разбора» (или в консоли: `medvemodem diag profile <device-id> --at --stdout > report.json`).
+
+        IMEI, IMSI, ICCID, номера телефонов, PIN-коды, пароли и тексты SMS в отчёт не попадают, серийный номер
+        заменён хешем. Всё равно откройте файл и проверьте его перед отправкой: issue видят все.
+  - type: input
+    id: model
+    attributes:
+      label: Модель модема
+      description: Как написано на модеме или в магазине, и прошивка, если знаете
+      placeholder: "Например: Fibocom FM350-GL, прошивка 81600.0000.00.29.21.16"
+    validations:
+      required: true
+  - type: input
+    id: router
+    attributes:
+      label: Роутер и OpenWrt
+      placeholder: "Например: Orange Pi Zero 3, OpenWrt 25.12.0"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия MedveModem
+      description: Внизу страницы LuCI или `medvemodem status`
+      placeholder: "Например: 0.15.0-r78"
+    validations:
+      required: true
+  - type: dropdown
+    id: said
+    attributes:
+      label: Что говорит LuCI
+      options:
+        - «Модель распознана только по типу подключения (общий профиль)»
+        - «Известно семейство модемов, но не эта модель»
+        - «К модему подходят несколько профилей»
+        - «MedveModem не знает эту модель»
+        - Ничего не говорит, но модем работает не так
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Что работает и что нет
+      description: Подключение, сигнал, SMS, USSD, восстановление; что делали и что получилось
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Отчёт
+      description: Перетащите сюда файл medvemodem-report-….json (если GitHub не берёт .json — запакуйте в .zip)
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Ещё
+      description: "Ссылки на обсуждения (4PDA, Telegram), вывод lsusb -v, фото наклейки — всё, что поможет"

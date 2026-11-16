@@ -1,0 +1,283 @@
+#!/bin/sh
+# MedveModem's own update from its GitHub releases, from LuCI's components (the owner, 2026-11-14: «обновления МедвеМодема
+# и его бота автоматически с гитхаба изнутри Люси с проверкой наличия обновления и фоллбэком на прокси»):
+#
+#   self-update status                  what is installed, the last check (kept an hour), the last run; one line of JSON
+#   self-update check                   ask the releases now, then status
+#   self-update start [--lang=ru|en]    install the newer build in the background (one run at a time)
+#   self-update run                     the installation itself, logged
+#
+# The releases of medvemodem.core.update_repo (owner/name on GitHub), the channel medvemodem.core.update_channel: «bench»
+# takes the bench pre-releases (bench-v<version>-<commit>), «release» only v<version>. The archive for this router's
+# package architecture and OpenWrt line (medvemodem-<version>-<arch>-<openwrt>.tar.gz) is checked against the release's
+# SHA256SUMS before anything is installed. GitHub straight first, then each local tunnel proxy (local-proxy: podkop,
+# forkop, clash/mihomo, JustClash), as the QModem installer does. The engine and LuCI are installed as a pair, the bot and
+# its LuCI pages only when the bot is installed. Nothing else is touched; the settings stay.
+
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+RELEASE_FILE=${MEDVEMODEM_OPENWRT_RELEASE:-/etc/openwrt_release}
+RUN=${MEDVEMODEM_UPDATE_RUN:-/tmp/medvemodem/update}
+PROXY=${MEDVEMODEM_LOCAL_PROXY:-/usr/libexec/medvemodem/local-proxy}
+API=${MEDVEMODEM_UPDATE_API:-https://api.github.com}
+LOG="$RUN/log"
+CHECK="$RUN/latest"
+LANG_FILE="$RUN/lang"
+umask 077
+
+osrel() { sed -n "s/^$1=['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}\$/\1/p" "$RELEASE_FILE" 2>/dev/null | head -n 1; }
+REL=$(osrel DISTRIB_RELEASE)
+ARCH=$(osrel DISTRIB_ARCH)
+LINE=$(printf '%s' "$REL" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\)\..*/\1/p')
+if command -v apk >/dev/null 2>&1; then PM=apk
+elif command -v opkg >/dev/null 2>&1; then PM=opkg
+else PM=
+fi
+REPO=$(uci -q get medvemodem.core.update_repo 2>/dev/null)
+[ -n "$REPO" ] || REPO=Medvedolog/medvemodem
+case "$REPO" in */*) case "$REPO" in *[!A-Za-z0-9_./-]*|*..*) REPO= ;; esac ;; *) REPO= ;; esac
+CHANNEL=$(uci -q get medvemodem.core.update_channel 2>/dev/null)
+[ "$CHANNEL" = release ] || CHANNEL=bench
+
+T() { if [ "$(cat "$LANG_FILE" 2>/dev/null)" = ru ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+installed_version() {
+	case "$PM" in
+		opkg) opkg list-installed "$1" 2>/dev/null | sed -n "s/^$1 - //p" | head -n 1 ;;
+		apk) apk list -I "$1" 2>/dev/null | sed -n "s/^$1-\([0-9][^ ]*\) .*/\1/p" | head -n 1 ;;
+	esac
+}
+
+# true when $1 is older than $2, field by field (0.15.0-r188 < 0.15.0-r192)
+older() {
+	awk -v a="$1" -v b="$2" 'BEGIN {
+		na = split(a, x, /[^0-9]+/); nb = split(b, y, /[^0-9]+/)
+		for (i = 1; i <= (na > nb ? na : nb); i++) {
+			p = (i <= na && x[i] != "") ? x[i] + 0 : -1; q = (i <= nb && y[i] != "") ? y[i] + 0 : -1
+			if (p < q) exit 0
+			if (p > q) exit 1
+		}
+		exit 1 }'
+}
+
+# $1 url, $2 file: straight (curl, then uclient-fetch), then through the local proxies; the log says which way worked.
+# curl first: a release asset redirects to a storage host whose answer headers pass 4 KB, where uclient-fetch is
+# reported to hang (a field report, 2026-11-14); uclient-fetch stays for a router without curl, bounded by its timeout
+fetch() {
+	rm -f "$2"
+	if command -v curl >/dev/null 2>&1 && curl -fsSL --max-time 120 -o "$2" "$1" >/dev/null 2>&1; then return 0; fi
+	rm -f "$2"
+	if command -v uclient-fetch >/dev/null 2>&1 && uclient-fetch -q -T 30 -O "$2" "$1" >/dev/null 2>&1; then return 0; fi
+	rm -f "$2"
+	[ -x "$PROXY" ] && "$PROXY" fetch "$1" "$2" 2>>"$RUN/fetch.log" && return 0
+	rm -f "$2"
+	return 1
+}
+
+# GitHub's releases list: «<tag> <url>» per asset, newest release first (its JSON read as text, pretty-printed or not)
+assets() {
+	awk 'BEGIN { RS = "[,{}\\[\\]]" }
+		/"tag_name"[ \t]*:/ { v = $0; sub(/.*"tag_name"[ \t]*:[ \t]*"/, "", v); sub(/".*/, "", v); tag = v }
+		/"browser_download_url"[ \t]*:/ { v = $0; sub(/.*"browser_download_url"[ \t]*:[ \t]*"/, "", v); sub(/".*/, "", v)
+			if (tag != "") print tag, v }' "$1"
+}
+
+# the newest release of the channel with an archive for this router: «<version> <tag> <archive url> <sums url>»
+pick() {
+	assets "$1" | awk -v ch="$CHANNEL" -v arch="$ARCH" -v line="$LINE" '
+		{ tag = $1; url = $2; n = split(url, p, "/"); f = p[n] }
+		ch == "release" && tag !~ /^v[0-9]/ { next }
+		ch == "bench" && tag !~ /^(bench-)?v[0-9]/ { next }
+		f == "SHA256SUMS" { sums[tag] = url; next }
+		f ~ ("^medvemodem-[0-9].*-" arch "-" line "\\.[0-9]+\\.tar\\.gz$") && !(tag in arch_url) { arch_url[tag] = url; order[++k] = tag }
+		END {
+			for (i = 1; i <= k; i++) {
+				t = order[i]; v = t; sub(/^(bench-)?v/, "", v); sub(/-[0-9a-f]{7,}$/, "", v)
+				print v, t, arch_url[t], (t in sums ? sums[t] : "-"); exit
+			} }'
+}
+
+check() {
+	local json="$RUN/releases.json" line url
+	mkdir -p "$RUN"
+	: > "$RUN/fetch.log"
+	if [ -z "$REPO" ]; then printf 'error no update source (medvemodem.core.update_repo)\n' > "$CHECK"; return 1; fi
+	if ! fetch "$API/repos/$REPO/releases?per_page=15" "$json"; then
+		printf 'error the releases are not reachable, straight or through a local proxy\n' > "$CHECK"
+		return 1
+	fi
+	line=$(pick "$json")
+	if [ -z "$line" ]; then
+		printf 'error no build for %s on OpenWrt %s in the %s releases\n' "$ARCH" "$LINE" "$CHANNEL" > "$CHECK"
+		return 1
+	fi
+	printf 'ok %s %s\n' "$(date +%s)" "$line" > "$CHECK"
+	# the release's short highlights (HIGHLIGHTS.txt, from its changelog): shown, never needed to install
+	set -- $line
+	rm -f "$RUN/highlights"
+	url=$(assets "$json" | awk -v t="$2" '$1 == t && $2 ~ /\/HIGHLIGHTS\.txt$/ { print $2; exit }')
+	[ -n "$url" ] && fetch "$url" "$RUN/highlights.new" && head -c 16384 "$RUN/highlights.new" > "$RUN/highlights"
+	rm -f "$RUN/highlights.new"
+	return 0
+}
+
+# the highlights of the versions newer than the installed one, as a JSON array of {"v","t"}, 12 at most
+highlights() {
+	local inst="$1" v= t n=0 sep=
+	printf '['
+	[ -s "$RUN/highlights" ] && while IFS= read -r t; do
+		case "$t" in
+			'## '*) v=${t#\#\# }; v=$(jstr "$v") ;;
+			'- '*) [ -n "$v" ] && [ "$n" -lt 12 ] || continue
+			       [ -z "$inst" ] || older "$inst" "$v" || continue
+			       printf '%s{"v":"%s","t":"%s"}' "$sep" "$v" "$(jtext "${t#- }")"; sep=,; n=$((n + 1)) ;;
+		esac
+	done < "$RUN/highlights"
+	printf ']'
+}
+
+put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
+running() { local pid; pid=$(cat "$RUN/pid" 2>/dev/null); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }
+jstr() { printf '%s' "$1" | tr -d '"\\' | tr -cd '[:print:]'; }
+# a line of text in its own words (Cyrillic kept): only quotes, backslashes and control bytes go
+jtext() { printf '%s' "$1" | tr -d '"\\\000-\037'; }
+
+status() {
+	local eng luci bot lbot state=idle result= c latest= tag= at=0 err= newer=false
+	eng=$(installed_version medvemodem); luci=$(installed_version luci-app-medvemodem)
+	bot=$(installed_version medvemodem-bot); lbot=$(installed_version luci-app-medvemodem-bot)
+	if running; then state=running
+	elif [ -s "$RUN/result" ]; then state=$(sed -n 1p "$RUN/result"); result=$(sed -n 2p "$RUN/result")
+	fi
+	c=$(cat "$CHECK" 2>/dev/null)
+	case "$c" in
+		ok\ *) set -- $c; at=$2; latest=$3; tag=$4 ;;
+		error\ *) err=${c#error } ;;
+	esac
+	[ -n "$latest" ] && [ -n "$eng" ] && older "$eng" "$latest" && newer=true
+	printf '{"ok":true,"installed":{"engine":"%s","luci":"%s","bot":"%s","luci_bot":"%s"},"latest":"%s","tag":"%s","checked_at":%s,"error":"%s","newer":%s,"highlights":%s,"repo":"%s","channel":"%s","arch":"%s","openwrt":"%s","pm":"%s","state":"%s","result":"%s","log":"%s"}\n' \
+		"$(jstr "$eng")" "$(jstr "$luci")" "$(jstr "$bot")" "$(jstr "$lbot")" "$(jstr "$latest")" "$(jstr "$tag")" "${at:-0}" \
+		"$(jstr "$err")" "$newer" "$( [ "$newer" = true ] && highlights "$eng" || printf '[]')" "$(jstr "$REPO")" "$CHANNEL" "$(jstr "$ARCH")" "$(jstr "$REL")" "$PM" "$state" "$(jstr "$result")" "$LOG"
+}
+
+finish() {
+	printf '%s\n%s\n' "$1" "$2" > "$RUN/result"
+	rm -f "$RUN/pid"
+	rm -rf "$RUN/lock" "$RUN/work"
+	logger -t medvemodem "self-update: $1: $2" 2>/dev/null
+	exit 0
+}
+fail() { say "$(T ERROR ОШИБКА): $1"; say "$(T "Nothing is installed." "Ничего не установлено.")"; finish failed "$1"; }
+
+# the release's archive for this router into $RUN/work, its SHA256 checked against the release's SHA256SUMS, unpacked
+archive() {
+	local url="$1" sums="$2" f got want
+	rm -rf "$RUN/work"; mkdir -p "$RUN/work"
+	f="$RUN/work/${url##*/}"
+	fetch "$url" "$f" || fail "$(T "the archive did not download" "архив не загрузился")"
+	if [ "$sums" != - ] && fetch "$sums" "$RUN/work/SHA256SUMS"; then
+		want=$(awk -v n="${url##*/}" '$2 == n || $2 == "*" n { print $1; exit }' "$RUN/work/SHA256SUMS")
+		got=$(sha256sum "$f" | awk '{ print $1 }')
+		[ -n "$want" ] && [ "$want" = "$got" ] || fail "$(T "the archive does not match the release's SHA256SUMS" "архив не совпадает с SHA256SUMS выпуска")"
+		say "$(T "SHA256 checked" "SHA256 проверен")"
+	else
+		fail "$(T "the release has no SHA256SUMS to check the archive against" "в выпуске нет файла SHA256SUMS для проверки архива")"
+	fi
+	tar -C "$RUN/work" -xzf "$f" || fail "$(T "the archive does not unpack" "ошибка распаковки архива")"
+}
+
+# addon lpac: our pinned lpac build (medvemodem-lpac and its uqmi driver) from the newest release for this router, for
+# «Драйверы и пакеты» (the owner, 2026-11-15: «уметь ставить нашу сборку»). In the foreground, its log on stdout: the
+# components installer runs it. The engine itself is not touched.
+addon() {
+	local latest tag url sums pkgs out rc
+	case "$1" in lpac) ;; *) echo "usage: self-update addon lpac" >&2; exit 2 ;; esac
+	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
+	fail() { say "$(T ERROR ОШИБКА): $1"; rm -rf "$RUN/work"; exit 1; }
+	RUN="$RUN/addon"; mkdir -p "$RUN"; CHECK="$RUN/check"
+	say "$(T "Asking the releases of $REPO for lpac" "Запрос выпусков $REPO: сборка lpac")"
+	check || fail "$(sed 's/^error //' "$CHECK")"
+	set -- $(cat "$CHECK"); latest=$3; tag=$4; url=$5; sums=$6
+	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"
+	say "$(T "Downloading the archive of $latest ($tag)" "Загрузка архива $latest ($tag)")"
+	archive "$url" "$sums"
+	case "$PM" in
+		apk) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac-[0-9]*.apk medvemodem-lpac-uqmi-[0-9]*.apk 2>/dev/null) ;;
+		opkg) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac_*.ipk medvemodem-lpac-uqmi_*.ipk 2>/dev/null) ;;
+	esac
+	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no lpac packages for $PM in the archive" "в архиве нет пакетов lpac для $PM")"
+	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
+	case "$PM" in
+		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
+		opkg) out=$(cd "$RUN/work" && opkg install $pkgs 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	rm -rf "$RUN/work"
+	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; exit 1; }
+	say "$(T "lpac is installed: the eSIM tab can read the chip." "lpac установлен: чтение чипа eSIM доступно.")"
+}
+
+run() {
+	local c latest tag url sums f got want pkgs out rc
+	mkdir -p "$RUN"
+	put_pid $$
+	exec >>"$LOG" 2>&1
+	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
+	say "$(T "Router: OpenWrt ${REL:-?} ($ARCH), packages: $PM; installed: $(installed_version medvemodem)" "Роутер: OpenWrt ${REL:-?} ($ARCH), пакеты: $PM; установлено: $(installed_version medvemodem)")"
+	say "$(T "Asking the releases of $REPO ($CHANNEL)" "Запрос выпусков $REPO ($CHANNEL)")"
+	check || fail "$(sed 's/^error //' "$CHECK")"
+	set -- $(cat "$CHECK"); latest=$3; tag=$4; url=$5; sums=$6
+	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"
+	older "$(installed_version medvemodem)" "$latest" || { say "$(T "Already the newest: $latest" "Уже последняя версия: $latest")"; finish done "current"; }
+	say "$(T "Downloading $latest ($tag)" "Загрузка $latest ($tag)")"
+	archive "$url" "$sums"
+	# the engine and its LuCI as a pair; the bot and its pages only when installed
+	case "$PM" in
+		apk) pkgs=$(cd "$RUN/work" && ls medvemodem-0*.apk luci-app-medvemodem-[0-9]*.apk 2>/dev/null)
+		     [ -n "$(installed_version medvemodem-bot)" ] && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null)" ;;
+		opkg) pkgs=$(cd "$RUN/work" && ls medvemodem_*.ipk luci-app-medvemodem_*.ipk 2>/dev/null)
+		      [ -n "$(installed_version medvemodem-bot)" ] && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null)" ;;
+	esac
+	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"
+	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
+	case "$PM" in
+		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
+		opkg) out=$(cd "$RUN/work" && opkg install --force-reinstall $pkgs 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] || fail "$(T "the installation failed (code $rc)" "установка не прошла (код $rc)")"
+	say "$(T "Done: MedveModem $latest. LuCI reloads its pages in a moment." "Готово: MedveModem $latest. LuCI перезагрузит страницы через несколько секунд.")"
+	# rpcd reads the new ACL and LuCI's menu: after the log is written, the page asks again
+	( sleep 2; /etc/init.d/rpcd restart >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+	finish done "$latest"
+}
+
+start() {
+	[ -n "$PM" ] || { echo '{"ok":false,"error":"no package manager"}'; exit 1; }
+	[ -L "$RUN" ] && { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
+	mkdir -p "$RUN" || { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
+	mkdir "$RUN/lock" 2>/dev/null || { running && { echo '{"ok":false,"error":"running"}'; exit 1; }; rm -rf "$RUN/lock"; mkdir "$RUN/lock"; }
+	put_pid $$
+	rm -f "$RUN/result"
+	: > "$LOG"
+	case "$1" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"
+	( "$0" run </dev/null >/dev/null 2>&1 & put_pid $! )
+	echo '{"ok":true,"started":true}'
+}
+
+case "$1" in
+status) status ;;
+check) check; status ;;
+start) start "$2" ;;
+run) run ;;
+addon) mkdir -p "$RUN/addon" && LANG_FILE="$RUN/addon/lang"; case "$3" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"; addon "$2" ;;
+*) echo '{"ok":false,"error":"usage: self-update status|check|start [--lang=ru|en]|run|addon lpac"}'; exit 1 ;;
+esac

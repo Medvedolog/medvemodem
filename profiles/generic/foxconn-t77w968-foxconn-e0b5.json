@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968-foxconn-e0b5",
+  "extends": "foxconn-t77w968",
+  "description": "Foxconn T77W968 eSIM under its own ID, QMI or MBIM; in the kernel table",
+  "match": {
+    "bus": "usb",
+    "vid": "0489",
+    "pid": "e0b5"
+  },
+  "policy": {
+    "fcc_unlock": "foxconn-qmi"
+  }
+}

@@ -1,0 +1,181 @@
+#!/bin/sh
+# Does the internet answer through the router's tunnel? Run by medvemodemd while the carrier has limited access (an
+# operator's whitelist: a VLESS server on an allowed address carries the rest), and by proxy-probe for the proxy guard.
+#   tunnel-probe
+# The ways, the first that is there (the owner 2026-10-24: the Clash API may be off):
+#   0. a proxy the operator named (uci medvemodem.core.tunnel_proxy, socks5h:// or http://host:port), asked first;
+#   1. the tunnel's controller, the Clash API (GET /proxies, then /proxies/<outbound>/delay, as podkop's own latency
+#      check): sing-box's experimental.clash_api (the config of podkop, podkop-plus, forkop/forkop X or netshift,
+#      uci <pkg>.settings.config_path; homeproxy's; a plain sing-box), else clash/mihomo/nikki's external-controller;
+#   2. a local proxy inbound without users: sing-box's mixed/socks/http, xray's socks/http; then the mixed proxy
+#      podkop, podkop-plus, forkop and netshift turn on in their own UCI (mixed_proxy_enabled, mixed_proxy_port,
+#      2080 by default; the owner 2026-10-27), on the loopback and the LAN address; one request through it;
+#   3. sing-box's own `tools fetch -o <outbound>` with that config (podkop's check_proxy fetches so): a short
+#      second sing-box with the outbounds only, heavier, so the engine asks this way every 5 min.
+# Read only: no configuration of another program changes; a controller's secret goes to it alone, never printed.
+# Prints {"ok", "via", "outbound"?, "delay_ms"?} on one line; exit 0: the internet answers through the tunnel;
+# 1: it does not; 2: no tunnel known, or no curl/jsonfilter to ask with.
+URL=${MEDVEMODEM_TUNNEL_URL:-https://www.gstatic.com/generate_204}
+SINGBOX=${MEDVEMODEM_SINGBOX:-sing-box}
+command -v curl >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1 || exit 2
+
+esc() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+# every byte of an outbound's name as %XX: a clash name may carry spaces, flags, any letters
+# busybox awk, byte by byte: OpenWrt 25.12's busybox has no od, hexdump or xxd (a tester's OPiZ3, 2026-11-08: «od: not
+# found» five times a pass, the names went out empty)
+enc() { printf '%s' "$1" | LC_ALL=C awk 'BEGIN { for (i = 1; i < 256; i++) o[sprintf("%c", i)] = i }
+	{ n = length($0); for (i = 1; i <= n; i++) printf "%%%02x", o[substr($0, i, 1)] }'; }
+ms() { awk -v t="$1" 'BEGIN { printf "%d", t * 1000 }'; }
+# a listening address asked on the loopback when it is every address
+local_addr() { case "$1" in ''|0.0.0.0|::|'[::]') echo 127.0.0.1 ;; *) echo "$1" ;; esac; }
+answered() { echo "$*"; exit 0; }
+
+# the tunnel managers that keep their settings in UCI (forkop X shares forkop's)
+MANAGERS=${MEDVEMODEM_TUNNEL_MANAGERS:-podkop podkop-plus forkop netshift}
+singbox_configs=
+for f in $(for m in $MANAGERS; do uci -q get "$m.settings.config_path"; done 2>/dev/null) \
+	${MEDVEMODEM_SINGBOX_CONFIGS:-/etc/sing-box/config.json /var/run/homeproxy/sing-box-c.json}; do
+	case " $singbox_configs " in *" $f "*) continue ;; esac
+	[ -r "$f" ] && singbox_configs="$singbox_configs $f"
+done
+known=
+
+# a request through a local proxy: answered when anything comes back from the URL
+try_proxy() {	# try_proxy <scheme> <addr> <port> <via>
+	case "$3" in ''|*[!0-9]*) return 1 ;; esac
+	case "$2" in *[!A-Za-z0-9.:_-]*) return 1 ;; esac
+	known=$4
+	r=$(curl -s -m 8 -x "$1://$2:$3" -o /dev/null -w '%{http_code} %{time_total}' "$URL") || return 1
+	case "${r%% *}" in 2??|3??) ;; *) return 1 ;; esac
+	answered "{\"ok\":true,\"via\":\"$4\",\"delay_ms\":$(ms "${r#* }")}"
+}
+
+# 0. the operator's own
+for p in $(uci -q get medvemodem.core.tunnel_proxy 2>/dev/null); do
+	case "$p" in
+	socks5h://*:*|socks5://*:*) h=${p#*://} ; try_proxy socks5h "${h%:*}" "${h##*:}" configured ;;
+	http://*:*) h=${p#*://} ; try_proxy http "${h%:*}" "${h##*:}" configured ;;
+	esac
+done
+
+# 1. the Clash API
+ctl= secret= via=
+for f in $singbox_configs; do
+	c=$(jsonfilter -i "$f" -e '@.experimental.clash_api.external_controller' 2>/dev/null)
+	[ -n "$c" ] || continue
+	ctl=$c via=sing-box
+	secret=$(jsonfilter -i "$f" -e '@.experimental.clash_api.secret' 2>/dev/null)
+	break
+done
+if [ -z "$ctl" ]; then
+	for f in ${MEDVEMODEM_PROXY_CONFIGS:-/etc/clash/config.yaml /opt/clash/config.yaml /etc/mihomo/config.yaml /etc/mihomo/run/config.yaml /etc/nikki/run/config.yaml /etc/openclash/config.yaml}; do
+		[ -r "$f" ] || continue
+		c=$(sed -n "s/^external-controller *: *['\"]\{0,1\}\([^'\" ]*\).*/\1/p" "$f" | head -n 1)
+		[ -n "$c" ] || continue
+		ctl=$c via=clash
+		secret=$(sed -n "s/^secret *: *['\"]\{0,1\}\([^'\" ]*\).*/\1/p" "$f" | head -n 1)
+		break
+	done
+fi
+case "$ctl" in 0.0.0.0:*|:*|"[::]:"*) ctl=127.0.0.1:${ctl##*:} ;; esac
+case "$ctl" in *[!A-Za-z0-9.:_\[\]-]*) ctl= ;; esac
+ask() {	# ask <path> [curl args...]
+	p=$1
+	shift
+	if [ -n "$secret" ]; then
+		curl -s -m 8 -H "Authorization: Bearer $secret" "$@" "http://$ctl$p"
+	else
+		curl -s -m 8 "$@" "http://$ctl$p"
+	fi
+}
+if [ -n "$ctl" ] && list=$(ask /proxies) && [ -n "$list" ]; then
+	known=$via
+	names=$(jsonfilter -s "$list" -e '@.proxies[*].name' 2>/dev/null)
+	types=$(jsonfilter -s "$list" -e '@.proxies[*].type' 2>/dev/null)
+	out=$(i=0 tried=0
+	printf '%s\n' "$names" | while IFS= read -r name; do
+		i=$((i + 1))
+		t=$(printf '%s\n' "$types" | sed -n "${i}p" | tr 'A-Z' 'a-z')
+		case "$t" in direct|reject|rejectdrop|dns|block|pass|compatible|'') continue ;; esac
+		tried=$((tried + 1))
+		[ "$tried" -le 6 ] || break
+		r=$(ask "/proxies/$(enc "$name")/delay" -G --data-urlencode "url=$URL" --data-urlencode "timeout=5000") || continue
+		d=$(jsonfilter -s "$r" -e '@.delay' 2>/dev/null)
+		case "$d" in ''|*[!0-9]*) continue ;; esac
+		printf '{"ok":true,"via":"%s","outbound":"%s","delay_ms":%s}\n' "$via" "$(esc "$name")" "$d"
+		break
+	done)
+	[ -n "$out" ] && answered "$out"
+fi
+
+# 2. a local proxy inbound without users
+for f in $singbox_configs; do
+	n=$(jsonfilter -i "$f" -e '@.inbounds[*].type' 2>/dev/null | grep -c .)
+	i=0
+	while [ "$i" -lt "${n:-0}" ]; do
+		t=$(jsonfilter -i "$f" -e "@.inbounds[$i].type" 2>/dev/null)
+		if [ -z "$(jsonfilter -i "$f" -e "@.inbounds[$i].users" 2>/dev/null)" ]; then
+			a=$(local_addr "$(jsonfilter -i "$f" -e "@.inbounds[$i].listen" 2>/dev/null)")
+			p=$(jsonfilter -i "$f" -e "@.inbounds[$i].listen_port" 2>/dev/null)
+			case "$t" in mixed|socks) try_proxy socks5h "$a" "$p" sing-box-proxy ;; http) try_proxy http "$a" "$p" sing-box-proxy ;; esac
+		fi
+		i=$((i + 1))
+	done
+done
+for f in ${MEDVEMODEM_XRAY_CONFIGS:-/etc/xray/config.json /usr/share/xray/config.json}; do
+	[ -r "$f" ] || continue
+	n=$(jsonfilter -i "$f" -e '@.inbounds[*].protocol' 2>/dev/null | grep -c .)
+	i=0
+	while [ "$i" -lt "${n:-0}" ]; do
+		t=$(jsonfilter -i "$f" -e "@.inbounds[$i].protocol" 2>/dev/null)
+		if [ -z "$(jsonfilter -i "$f" -e "@.inbounds[$i].settings.accounts" 2>/dev/null)" ]; then
+			a=$(local_addr "$(jsonfilter -i "$f" -e "@.inbounds[$i].listen" 2>/dev/null)")
+			p=$(jsonfilter -i "$f" -e "@.inbounds[$i].port" 2>/dev/null)
+			case "$t" in socks) try_proxy socks5h "$a" "$p" xray-proxy ;; http) try_proxy http "$a" "$p" xray-proxy ;; esac
+		fi
+		i=$((i + 1))
+	done
+done
+
+# the mixed proxy a manager turns on in its UCI: socks5 on its port, listening on the router's addresses
+lan=$(uci -q get network.lan.ipaddr 2>/dev/null)
+lan=${lan%%/*}
+for m in $MANAGERS; do
+	for sec in $(uci -q show "$m" 2>/dev/null | sed -n "s/^$m\.\([A-Za-z0-9_]*\)\.mixed_proxy_enabled='1'$/\1/p"); do
+		[ "$(uci -q get "$m.$sec.enabled")" = 0 ] && continue
+		p=$(uci -q get "$m.$sec.mixed_proxy_port")
+		for a in 127.0.0.1 $lan; do
+			try_proxy socks5h "$a" "${p:-2080}" "$m-mixed"
+		done
+	done
+done
+
+# 3. sing-box's own fetch through each tunnel outbound
+TO=
+command -v timeout >/dev/null 2>&1 && TO="timeout 15"
+if command -v "$SINGBOX" >/dev/null 2>&1; then
+	for f in $singbox_configs; do
+		tags=$(jsonfilter -i "$f" -e '@.outbounds[*].tag' 2>/dev/null)
+		types=$(jsonfilter -i "$f" -e '@.outbounds[*].type' 2>/dev/null)
+		out=$(i=0 tried=0
+		printf '%s\n' "$tags" | while IFS= read -r tag; do
+			i=$((i + 1))
+			t=$(printf '%s\n' "$types" | sed -n "${i}p")
+			case "$t" in direct|block|dns|''|selector) continue ;; esac
+			tried=$((tried + 1))
+			[ "$tried" -le 3 ] || break
+			s=$(date +%s)
+			if $TO "$SINGBOX" tools fetch -c "$f" -D "${f%/*}" -o "$tag" "$URL" >/dev/null 2>&1; then
+				printf '{"ok":true,"via":"sing-box-fetch","outbound":"%s","delay_ms":%s}\n' "$(esc "$tag")" $((($(date +%s) - s) * 1000))
+				break
+			fi
+		done)
+		[ -n "$tags" ] && known=sing-box-fetch
+		[ -n "$out" ] && answered "$out"
+	done
+fi
+
+# the last way asked says how often to ask again (a fetch every 5 min)
+[ -n "$known" ] || exit 2
+printf '{"ok":false,"via":"%s"}\n' "$known"
+exit 1

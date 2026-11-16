@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "telit-lm960-1041",
+  "extends": "telit-lm960",
+  "description": "Telit LM940/LM960 (LE922A) MBIM composition: DIAG 0, MBIM before the ttys, AT 5 primary and 6 secondary, 4 and 7 not AT",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1041"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      5,
+      6
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/telit/77-mm-telit-port-types.rules (LE922, LM9x0 MBIM composition: 00 QCDM, 04 ignore, 05 AT primary, 06 AT secondary, 07 ignore)",
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ],
+    "ussd": "3g-only",
+    "ussd_source": "LM960A18: USSD only after a switch to 3G (AT+WS46=22); in LTE +CME ERROR: 30 or a timeout; another modem manager field notes via the owner's digest 2026-11-02"
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ]
+  }
+}

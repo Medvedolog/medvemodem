@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "zte-web-19d2-0558",
+  "extends": "generic-hilink",
+  "description": "ZTE web stick (MF79 and relatives) (19d2:0558). A router inside the stick: cdc_ether or rndis_host and a DHCP address, no AT port in this composition; signal, operator and SMS over the ZTE goform web API at 192.168.0.1 (Referer and X-Requested-With needed, a session first on newer firmware), the web password in the modem's settings. The model is told by its web (model_name, or the firmware string such as BD_XBKZMF79N...). Reference only, not on our bench. Sources: imported catalog 19d2:0558 (generic-hilink); another modem manager 3.5.8 hilink.sh (goform: Referer, X-Requested-With, session; MF79N firmware string); docs/modem-zoo/modems/zte-mf-family.md; docs/HANDOFF.md 162, 164",
+  "match": {
+    "bus": "usb",
+    "vid": "19d2",
+    "pid": "0558"
+  }
+}

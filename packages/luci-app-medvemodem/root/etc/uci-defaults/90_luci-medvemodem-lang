@@ -1,0 +1,8 @@
+#!/bin/sh
+# MedveModem's pages carry a Russian catalog (usr/lib/lua/luci/i18n/medvemodem.ru.lmo): Russian is put on LuCI's list
+# of languages, so «auto» picks it for a Russian browser as before, with or without LuCI's own Russian installed
+uci -q get luci.languages.ru >/dev/null || {
+	uci -q set luci.languages.ru='Русский (Russian)'
+	uci -q commit luci
+}
+exit 0

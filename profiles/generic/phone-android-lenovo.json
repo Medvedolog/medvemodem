@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "phone-android-lenovo",
+  "extends": "generic-hilink",
+  "description": "An Android phone of Lenovo (USB vendor 17ef) in USB tethering: RNDIS (rndis_host) and a DHCP address from the phone, which routes and NATs itself; no AT port, no control channel. A phone, not a modem: its APN, network mode and SIM are set on the phone, and it may stop tethering when its screen locks or the cable is replugged. Router mode is its only mode: no problem to report. Added at the owner's word (2026-11-01); USB vendor IDs from the Linux USB ID list. RNDIS only: 17ef also names laptop WWAN modules and modem-like dongles that come with NCM or ECM (another modem manager 3.5.3 keeps the vendor out of its NCM/ECM phone rule, behaviour only).",
+  "match": {
+    "bus": "usb",
+    "vid": "17ef",
+    "drivers_any": [
+      "rndis_host"
+    ]
+  },
+  "hints": {
+    "title": "Телефон Android (режим модема)",
+    "router_mode": "only"
+  }
+}

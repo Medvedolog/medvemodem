@@ -1,0 +1,397 @@
+#!/bin/sh
+# QModem's core for the modems whose profile prefers it (FM350, Quectel),
+# installed from LuCI (spec 12.6).
+#
+#   qmodem-install status       what is installed, whether this router can take it, the last run
+#   qmodem-install start [--lang=ru|en]    run the installation in the background (one at a time)
+#   qmodem-install run [file]   the installation itself, logged; [file] = a local tarball instead of the download
+#   qmodem-install remove [--lang=ru|en]   remove QModem's core in the background (the owner, 2026-10-19), with the same log
+#   qmodem-install unrun        the removal itself: QModem's services stop, its packages go; its settings stay
+#
+# The packages are QModem's own source built by MedveModem's CI with this
+# router's SDK (QModem's releases need OpenWrt main's libubus/libubox). They come
+# from the release named in /usr/share/medvemodem/qmodem/source, TLS verified,
+# then checked against that release's SHA256SUMS. A dry run comes first: when
+# the router's feeds lack a dependency, nothing is installed and the log says
+# what is missing. Nothing is ever forced. QModem's own auto-probe is off
+# (qmodem.main.block_auto_probe=1) before its packages land: its USB and net
+# hotplug scripts would otherwise claim any USB modem, and any USB network
+# device, the moment an installed kmod binds one. QModem gets only the modems
+# MedveModem hands it, as with every QModem hand-over (spec 12.5).
+# The log is for the operator, in LuCI's language (start|remove --lang=ru|en,
+# English without it); status and start answer one line of JSON.
+
+# rpcd's file exec hands the caller's environment over (LuCI's fs.exec(cmd, args, env)), and this runs as
+# root: installed, nothing from that environment is taken (review 2026-10-17: a release file pointed at
+# /proc/self/environ ran a line as root). The copies in the source tree keep their test overrides.
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+SOURCE=${MEDVEMODEM_QMODEM_SOURCE:-/usr/share/medvemodem/qmodem/source}
+RELEASE_FILE=${MEDVEMODEM_OPENWRT_RELEASE:-/etc/openwrt_release}
+QMODEM_DIR=${MEDVEMODEM_QMODEM_DIR:-/usr/share/qmodem}
+RUN=${MEDVEMODEM_QMODEM_RUN:-/tmp/medvemodem/qmodem}
+CONF=${MEDVEMODEM_QMODEM_CONF:-/etc/config/qmodem}
+LOG="$RUN/log"
+PROXY=${MEDVEMODEM_LOCAL_PROXY:-/usr/libexec/medvemodem/local-proxy}
+# the log's language: LuCI's, handed over to start as --lang=ru|en and kept for the run (every line is written
+# in both, T picks one); English when none was given
+LANG_FILE="$RUN/lang"
+T() { if [ "$(cat "$LANG_FILE" 2>/dev/null)" = ru ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+# $1 --lang=…: written for the run; only ru is taken, anything else is English
+put_lang() { case "$1" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"; }
+WORK="$RUN/work"
+NAMES="qmodem qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M ndisc6"
+
+conf() { sed -n "s/^$1=//p" "$SOURCE" 2>/dev/null | head -n 1; }
+# read, never sourced: a value is text, not a command
+osrel() { sed -n "s/^$1=['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}\$/\1/p" "$RELEASE_FILE" 2>/dev/null | head -n 1; }
+
+VERSION=$(conf version)
+ARCHES=$(conf arches)
+[ -n "$ARCHES" ] || ARCHES=aarch64_cortex-a53
+BASE=${QMODEM_URL:-$(uci -q get medvemodem.core.qmodem_url 2>/dev/null)}
+[ -n "$BASE" ] || BASE=$(conf base)
+ARCH=$(osrel DISTRIB_ARCH)
+REL=$(osrel DISTRIB_RELEASE)
+LINE=$(printf '%s' "$REL" | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\)\..*/\1/p')
+case "$LINE" in
+	24.10) PM=opkg ;;
+	25.12) PM=apk ;;
+	*) PM= ;;
+esac
+
+# why this router cannot take the packages, or nothing
+unsupported() {
+	[ -n "$VERSION" ] || { echo "this MedveModem build carries no QModem"; return; }
+	[ -n "$PM" ] || { echo "OpenWrt ${REL:-?} is not 24.10 or 25.12"; return; }
+	case " $ARCHES " in *" $ARCH "*) ;; *) echo "no QModem packages for $ARCH"; return ;; esac
+	command -v "$PM" >/dev/null 2>&1 || { echo "$PM is missing"; return; }
+}
+
+installed() { [ -f "$QMODEM_DIR/modem_scan.sh" ]; }
+
+installed_version() {
+	case "$PM" in
+		opkg) opkg list-installed qmodem 2>/dev/null | sed -n 's/^qmodem - //p' | head -n 1 ;;
+		apk) apk list -I qmodem 2>/dev/null | sed -n 's/^qmodem-\([0-9][^ ]*\) .*/\1/p' | head -n 1 ;;
+	esac
+}
+
+# the installed QModem is this build's (its version, a package release after it): else this build updates it — ours
+# carries its own version (3.3.0_p20261108) so a router with an earlier build of the same upstream version gets it
+# true when $1 is older than $2: numbers compared field by field (2.6.10 > 2.6.9; 2.6.3-r1 > 2.6.3)
+older() {
+	awk -v a="$1" -v b="$2" 'BEGIN {
+		na = split(a, x, /[^0-9]+/); nb = split(b, y, /[^0-9]+/)
+		for (i = 1; i <= (na > nb ? na : nb); i++) {
+			p = (i <= na && x[i] != "") ? x[i] + 0 : -1; q = (i <= nb && y[i] != "") ? y[i] + 0 : -1
+			if (p < q) exit 0
+			if (p > q) exit 1
+		}
+		exit 1 }'
+}
+
+# ours or newer: a newer QModem the owner put in is never offered as an «update» (apk add would take it back;
+# HANDOFF 200 item 13)
+current() {
+	local v
+	v=$(installed_version)
+	case "$v" in "$VERSION"|"$VERSION"-*) return 0 ;; '') return 1 ;; esac
+	! older "$v" "$VERSION"
+}
+
+# the pid file is replaced, never truncated in place: a status read between a truncation and the
+# write saw no pid and no result, «idle» while the run had just started (CI, 2026-10-13)
+put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
+
+running() {
+	local pid
+	pid=$(cat "$RUN/pid" 2>/dev/null)
+	[ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+status() {
+	local why state result inst=false ver= update=false
+	why=$(unsupported)
+	installed && { inst=true; ver=$(installed_version); }
+	[ "$inst" = true ] && [ -n "$VERSION" ] && ! current && update=true
+	if running; then state=running
+	elif [ -s "$RUN/result" ]; then state=$(sed -n 1p "$RUN/result"); result=$(sed -n 2p "$RUN/result")
+	else state=idle
+	fi
+	printf '{"ok":true,"version":"%s","installed":%s,"installed_version":"%s","update":%s,"supported":%s,"why":"%s","source":%s,"arch":"%s","openwrt":"%s","state":"%s","result":"%s","log":"%s"}\n' \
+		"$VERSION" "$inst" "$ver" "$update" "$([ -z "$why" ] && echo true || echo false)" "$why" \
+		"$([ -n "$BASE" ] && echo true || echo false)" "$ARCH" "$REL" "$state" "$result" "$LOG"
+}
+
+# one run at a time, taken atomically as pkg-install does: two buttons (install in one tab, remove in another) passed
+# the pid check together, and the second run's cleanup removed the first one's download (audit 2026-10-20). A lock
+# left by a run that died is taken over; until the run writes its own pid, this process stands for it.
+take_lock() {
+	mkdir -p "$RUN" || { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
+	if ! mkdir "$RUN/lock" 2>/dev/null; then
+		running && { echo '{"ok":false,"error":"running"}'; exit 1; }
+		rmdir "$RUN/lock" 2>/dev/null
+		mkdir "$RUN/lock" 2>/dev/null || { echo '{"ok":false,"error":"running"}'; exit 1; }
+	fi
+	running && { rmdir "$RUN/lock"; echo '{"ok":false,"error":"running"}'; exit 1; }
+	put_pid $$
+}
+
+start() {
+	local why
+	running && { echo '{"ok":false,"error":"running"}'; exit 1; }
+	why=$(unsupported)
+	[ -z "$why" ] || { printf '{"ok":false,"error":"%s"}\n' "$why"; exit 1; }
+	installed && current && { echo '{"ok":false,"error":"installed"}'; exit 1; }
+	[ -n "$BASE" ] || { echo '{"ok":false,"error":"no source"}'; exit 1; }
+	take_lock
+	rm -f "$RUN/result"
+	: > "$LOG"
+	put_lang "$LANG_ARG"
+	# detached from rpcd's exec: it answers now, the log tells the rest
+	( "$0" run </dev/null >/dev/null 2>&1 & put_pid $! )
+	echo '{"ok":true,"started":true}'
+}
+
+say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+finish() {
+	# $1 done|failed, $2 the outcome in one line
+	printf '%s\n%s\n' "$1" "$2" > "$RUN/result"
+	rm -f "$RUN/pid"
+	rmdir "$RUN/lock" 2>/dev/null
+	rm -rf "$WORK"
+	logger -t medvemodem "QModem install: $1: $2" 2>/dev/null
+	exit 0
+}
+
+fail() { say "$(T ERROR ОШИБКА): $1"; say "$(T "Nothing is installed." "Ничего не установлено.")"; finish failed "$1"; }
+
+# QModem's core as qmodem-install puts it (ndisc6 and the router's own packages stay)
+QMODEM_PKGS="qmodem qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M"
+
+remove() {
+	running && { echo '{"ok":false,"error":"running"}'; exit 1; }
+	installed || { echo '{"ok":false,"error":"not installed"}'; exit 1; }
+	[ -n "$PM" ] || { echo '{"ok":false,"error":"no package manager"}'; exit 1; }
+	take_lock
+	rm -f "$RUN/result"
+	: > "$LOG"
+	put_lang "$LANG_ARG"
+	( "$0" unrun </dev/null >/dev/null 2>&1 & put_pid $! )
+	echo '{"ok":true,"started":true}'
+}
+
+unrun() {
+	local p have= s rc out
+	mkdir -p "$RUN"
+	put_pid $$
+	exec >>"$LOG" 2>&1
+	say "$(T "Removing QModem $(installed_version)" "Удаление QModem $(installed_version)")"
+	for s in qmodem_network qmodem_init qmodem_monitor qmodem_hc_sim qmodem_led qmodem_reboot qmodem_usage_stats; do
+		[ -x "/etc/init.d/$s" ] || continue
+		"/etc/init.d/$s" stop >/dev/null 2>&1
+		"/etc/init.d/$s" disable >/dev/null 2>&1
+		say "$(T "Service $s stopped" "Служба $s остановлена")"
+	done
+	for p in $QMODEM_PKGS; do
+		case "$PM" in
+		apk) apk info -e "$p" >/dev/null 2>&1 && have="$have $p" ;;
+		opkg) opkg status "$p" 2>/dev/null | grep -q '^Status:.* installed' && have="$have $p" ;;
+		esac
+	done
+	[ -n "$have" ] || { say "$(T "No QModem packages found" "Пакетов QModem не найдено")"; finish done "removed"; }
+	say "$(T "Removing:$have" "Удаляются:$have")"
+	case "$PM" in
+		apk) out=$(apk del $have 2>&1); rc=$? ;;
+		opkg) out=$(opkg remove $have 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	if [ "$rc" -ne 0 ] || installed; then
+		say "$(T "ERROR: the removal failed (code $rc)" "ОШИБКА: удаление не прошло (код $rc)")"
+		finish failed "remove failed"
+	fi
+	say "$(T "Done: QModem is removed. Its settings (/etc/config/qmodem) are kept; MedveModem connects the modems it ran by itself." "Готово: QModem удалён. Его настройки (/etc/config/qmodem) оставлены; его модемы MedveModem подключит автоматически.")"
+	finish done "removed"
+}
+
+# $1 url, $2 file: uclient-fetch, else curl; each failure is said in the log in the tool's own words
+# (field 2026-10-12: a failed download left nothing to read)
+fetch() {
+	local out rc tried=
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		tried=1
+		out=$(uclient-fetch -q -T 30 -O "$2" "$1" 2>&1); rc=$?
+		[ "$rc" -eq 0 ] && return 0
+		say "    uclient-fetch ($(T code код) $rc): $(printf '%s' "${out:-$(T "no answer" "нет ответа")}" | tr '\n' ' ')"
+		case "$out" in *SSL*|*ssl*|*TLS*|*tls*) say "$(T "    the firmware seems to lack TLS for uclient-fetch (package libustream-mbedtls)" "    похоже, в прошивке нет TLS для uclient-fetch (пакет libustream-mbedtls)")" ;; esac
+	fi
+	if command -v curl >/dev/null 2>&1; then
+		tried=1
+		out=$(curl -fsSL --max-time 120 -o "$2" "$1" 2>&1); rc=$?
+		[ "$rc" -eq 0 ] && return 0
+		say "    curl ($(T code код) $rc): $(printf '%s' "${out:-$(T "no answer" "нет ответа")}" | tr '\n' ' ')"
+	fi
+	[ -n "$tried" ] || say "$(T "    the router has neither uclient-fetch nor curl" "    на роутере нет ни uclient-fetch, ни curl")"
+	rm -f "$2"
+	# the direct way failed: the router's own tunnel (podkop, forkop, clash/mihomo), when it runs one
+	if [ -x "$PROXY" ] && [ -n "$("$PROXY" list 2>/dev/null)" ]; then
+		say "$(T "    trying through the router's local proxy" "    повторная попытка через локальный прокси роутера")"
+		out=$("$PROXY" fetch "$1" "$2" 2>&1); rc=$?
+		printf '%s\n' "$out" | while read -r l; do [ -n "$l" ] && say "    $l"; done
+		[ "$rc" -eq 0 ] && return 0
+		rm -f "$2"
+	fi
+	return 1
+}
+
+# what to do when the router cannot download: the same archive by hand
+offline_hint() {
+	say "$(T "It can be installed without a download from the router: on a computer, download" "Можно установить без загрузки с роутера: скачайте на компьютере")"
+	say "    $BASE/$asset"
+	say "$(T "copy it to the router into /tmp and run:" "скопируйте на роутер в /tmp и выполните:")"
+	say "    $0 run /tmp/$asset"
+}
+
+# the package manager's own words, indented in the log
+pm_do() { "$@" 2>&1 | sed 's/^/    /'; }
+
+# $PM update, as pkg-install: when the feeds do not answer straight, once more through each local tunnel proxy that
+# speaks HTTP (local-proxy http); the one that works stays in http_proxy/https_proxy for the dry run and the install.
+# The log names the proxy, never its login.
+pm_update() {
+	local out rc proxy src hp
+	out=$("$PM" update 2>&1); rc=$?
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] && return 0
+	[ -x "$PROXY" ] || return 1
+	while read -r proxy src; do
+		[ -n "$proxy" ] || continue
+		hp=${proxy#http://}; hp=${hp#*@}
+		say "$(T "The feeds do not answer straight: again through the local proxy" "Репозитории недоступны напрямую: повторная попытка через локальный прокси") http://$hp ($src)"
+		out=$(http_proxy=$proxy https_proxy=$proxy "$PM" update 2>&1); rc=$?
+		printf '%s\n' "$out" | sed 's/^/    /'
+		if [ "$rc" -eq 0 ]; then export http_proxy="$proxy" https_proxy="$proxy"; return 0; fi
+	done <<EOF
+$("$PROXY" http 2>/dev/null)
+EOF
+	return 1
+}
+
+run() {
+	local local_tar="$1" asset tar sum want got files f n ok update
+	mkdir -p "$RUN"
+	put_pid $$
+	exec >>"$LOG" 2>&1
+	say "$(T "Installing QModem $VERSION (the core, without its LuCI pages)" "Установка QModem $VERSION (ядро, без его страниц LuCI)")"
+	say "$(T "Router: OpenWrt ${REL:-?}, $ARCH, packages: ${PM:-?}" "Роутер: OpenWrt ${REL:-?}, $ARCH, пакеты: ${PM:-?}")"
+	why=$(unsupported)
+	[ -z "$why" ] || fail "$(T "the packages do not fit this router: $why" "пакеты не подходят для этого роутера: $why")"
+	update=
+	if installed; then
+		if current; then
+			say "$(T "QModem is already installed ($(installed_version)); nothing to do." "QModem уже установлен ($(installed_version)); пропуск.")"
+			finish done "already installed"
+		fi
+		update=$(installed_version)
+		say "$(T "Updating QModem: $update is installed, this MedveModem build carries $VERSION" "Обновление QModem: установлен $update, в сборке MedveModem — $VERSION")"
+	fi
+	rm -rf "$WORK"
+	mkdir -p "$WORK/pkg" || fail "$(T "cannot write to $WORK" "нет доступа на запись в $WORK")"
+	asset="qmodem-$VERSION-$ARCH-$LINE.tar.gz"
+	tar="$WORK/$asset"
+	if [ -n "$local_tar" ]; then
+		say "$(T "Packages from the file $local_tar" "Пакеты из файла $local_tar")"
+		cp "$local_tar" "$tar" || fail "$(T "cannot read $local_tar" "не удалось прочитать $local_tar")"
+	else
+		[ -n "$BASE" ] || fail "$(T "this MedveModem build has no address of the QModem packages" "в этой сборке MedveModem нет адреса пакетов QModem")"
+		say "$(T "Downloading $BASE/$asset" "Загрузка $BASE/$asset")"
+		fetch "$BASE/$asset" "$tar" || { offline_hint; fail "$(T "the download failed (no network, no TLS or no such file in the release)" "загрузка не удалась (нет сети, нет TLS или файла нет в релизе)")"; }
+		fetch "$BASE/SHA256SUMS" "$WORK/SHA256SUMS" || { offline_hint; fail "$(T "SHA256SUMS could not be downloaded" "не удалось загрузить SHA256SUMS")"; }
+		want=$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1 }' "$WORK/SHA256SUMS")
+		got=$(sha256sum "$tar" | cut -d ' ' -f 1)
+		[ -n "$want" ] || fail "$(T "SHA256SUMS has no $asset" "в SHA256SUMS нет $asset")"
+		[ "$want" = "$got" ] || fail "$(T "the checksum does not match: the file is damaged or replaced" "контрольная сумма не совпала: файл повреждён или подменён")"
+		say "$(T "The checksum matches ($got)" "Контрольная сумма совпала ($got)")"
+	fi
+	tar -xzf "$tar" -C "$WORK/pkg" || fail "$(T "the archive is damaged" "архив повреждён")"
+	files=
+	for f in "$WORK"/pkg/*.ipk "$WORK"/pkg/*.apk; do
+		[ -f "$f" ] || continue
+		n=$(basename "$f")
+		ok=
+		for want in $NAMES; do
+			case "$n" in "${want}_"[0-9]*.ipk|"${want}-"[0-9]*.apk) ok=1 ;; esac
+		done
+		[ -n "$ok" ] || fail "$(T "an extra package in the archive: $n" "в архиве лишний пакет $n")"
+		case "$n" in *.ipk) case "$n" in *"_$ARCH.ipk"|*_all.ipk) ;; *) fail "$(T "package $n is not built for $ARCH" "пакет $n собран не для $ARCH")" ;; esac ;; esac
+		files="$files $f"
+	done
+	[ -n "$files" ] || fail "$(T "the archive has no packages for $PM" "в архиве нет пакетов для $PM")"
+	say "$(T Packages Пакеты): $(for f in $files; do printf '%s ' "$(basename "$f")"; done)"
+	say "$(T "Updating the package lists ($PM update)" "Обновление списков пакетов ($PM update)")"
+	pm_update
+	say "$(T "Dry run: is everything in the router's feeds" "Проверка: есть ли все зависимости в репозиториях роутера")"
+	case "$PM" in
+		opkg) out=$(opkg install --noaction $files 2>&1); rc=$? ;;
+		apk) out=$(apk add --simulate --allow-untrusted $files 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] || fail "$(T "the dry run failed: some dependency is missing from the router's feeds (see above)" "проверка не пройдена: части зависимостей нет в репозиториях роутера (см. выше)")"
+	# the flag is in place before any QModem hotplug script exists: a kmod the
+	# install loads may bind a USB device at once
+	seeded=
+	if [ -f "$CONF" ]; then
+		uci -q set qmodem.main=main && uci -q set qmodem.main.block_auto_probe=1 && uci -q commit qmodem
+	else
+		printf "config main 'main'\n\toption block_auto_probe '1'\n" > "$CONF" && seeded=1
+	fi
+	say "$(T "QModem's modem auto-probe is switched off beforehand: MedveModem hands it the modems." "Автопоиск модемов в QModem выключен заранее: модемы ему передаёт MedveModem.")"
+	say "$(T "Installing" "Установка")"
+	case "$PM" in
+		opkg) out=$(opkg install $files 2>&1); rc=$? ;;
+		apk) out=$(apk add --allow-untrusted $files 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	if [ "$rc" -ne 0 ] || ! installed; then
+		[ -z "$seeded" ] || rm -f "$CONF"
+		say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не удалась (код $rc)")"
+		finish failed "install failed"
+	fi
+	# the package manager kept our file and put QModem's defaults beside it:
+	# those defaults with the flag replace it in one move
+	for new in "$CONF-opkg" "$CONF.apk-new"; do
+		[ -f "$new" ] || continue
+		mkdir -p "$WORK/uci" && cp "$new" "$WORK/uci/qmodem" &&
+			uci -q -c "$WORK/uci" set qmodem.main.block_auto_probe=1 && uci -q -c "$WORK/uci" commit qmodem &&
+			mv -f "$WORK/uci/qmodem" "$CONF" && rm -f "$new"
+	done
+	if uci -q set qmodem.main.block_auto_probe=1 && uci -q commit qmodem; then
+		say "$(T "QModem's default settings are in place, its auto-probe is off." "Применены настройки QModem по умолчанию, автоматический поиск модемов выключен.")"
+	else
+		say "$(T "WARNING: QModem's auto-probe could not be switched off (uci qmodem.main.block_auto_probe)." "ВНИМАНИЕ: не удалось выключить автопоиск QModem (uci qmodem.main.block_auto_probe).")"
+	fi
+	if [ -n "$update" ]; then
+		say "$(T "Done: QModem is updated from $update to $(installed_version). Its settings and modem sections are kept." "Готово: QModem обновлён с $update до $(installed_version). Его настройки и разделы модемов сохранены.")"
+		finish done "updated"
+	fi
+	say "$(T "Done: QModem $(installed_version) is installed. MedveModem hands it the modems whose profile chooses QModem (Quectel) by itself." "Готово: QModem $(installed_version) установлен. Модемы, для которых профиль выбирает QModem (Quectel), MedveModem передаст ему сам.")"
+	finish done "installed"
+}
+
+case "${1:-status}" in
+	status) status ;;
+	start) LANG_ARG=$2; start ;;
+	run) run "$2" ;;
+	remove) LANG_ARG=$2; remove ;;
+	unrun) unrun ;;
+	*) echo '{"ok":false,"error":"usage: qmodem-install status|start|run [file]|remove"}'; exit 1 ;;
+esac

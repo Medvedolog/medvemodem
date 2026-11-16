@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "telit-fn990-1071",
+  "extends": "telit-fn990",
+  "description": "Telit FN990 MBIM composition: DIAG 0, MBIM before the ttys, NMEA 4, AT 5 primary and 6 secondary, 7 not AT",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1071"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      5,
+      6
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/telit/77-mm-telit-port-types.rules (FN990 MBIM composition: 00 QCDM, 04 GPS, 05 AT primary, 06 AT secondary, 07 ignore)",
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ]
+  }
+}

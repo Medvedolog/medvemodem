@@ -1,0 +1,119 @@
+#!/bin/sh
+# SMS forwarding (the owner, 2026-10-19): each new received message
+# goes to ntfy or to a webhook the operator set in «Настройки» → «Пересылка SMS» (config sms_forward 'sms_forward').
+#
+#   sms-forward         stdin: one JSON object per new message, {"modem", "number", "text", "time"}, from medvemodemd
+#   sms-forward test    a test message with the saved settings; one line of JSON: {"ok": true} or {"ok": false, "error"}
+#
+# The number and the text go only to the address set; nothing of them is logged, here or by the engine. TLS is
+# verified (no --insecure, no --no-check-certificate). The token goes to curl on its stdin, never on a command line:
+# without curl only a forward without a token is sent (uclient-fetch).
+#
+#   option enabled '1'
+#   option kind 'ntfy' | 'webhook'   ntfy: the message as text with the sender in front; webhook: the JSON object
+#   option url 'https://ntfy.sh/<topic>' | 'https://…'
+#   option lang 'ru' | 'en'          the language of ntfy's heading and of the test: the LuCI page's that saved it
+#                                    (none: Russian, as before it was asked)
+#   (token)                          optional: ntfy's access token or the webhook's bearer token, in
+#                                    /etc/config/medvemodem-secret (0600), set through rpcd's medvemodem.forward
+
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+UCI=${MEDVEMODEM_UCI_BIN:-uci}
+CURL=${MEDVEMODEM_CURL:-curl}
+FETCH=${MEDVEMODEM_FETCH:-uclient-fetch}
+JF=${MEDVEMODEM_JSONFILTER:-jsonfilter}
+RUN=${MEDVEMODEM_RUN:-/tmp/medvemodem}/sms-forward
+umask 077
+
+get() { $UCI -q get "medvemodem.sms_forward.$1"; }
+say() { logger -t medvemodem "sms-forward: $*"; }
+
+ENABLED=$(get enabled)
+KIND=$(get kind)
+URL=$(get url)
+# en, or Russian: what LuCI wrote on saving; a setting from before has none
+T() { if [ "$(get lang)" = en ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }
+# the token in its own 0600 file, which no LuCI ACL names (audit 2026-10-21); an earlier version's in medvemodem until
+# the page's first look moves it
+TOKEN=$($UCI -q get medvemodem-secret.sms_forward.token)
+[ -n "$TOKEN" ] || TOKEN=$(get token)
+
+# one message: $1 the file with the body, $2 its content type; exit 0 when the server took it
+send() {
+	if command -v "$CURL" >/dev/null 2>&1; then
+		# the token and the URL in curl's config on its stdin: neither shows in the process list
+		{
+			printf 'url = "%s"\n' "$URL"
+			printf 'header = "Content-Type: %s"\n' "$2"
+			[ -n "$TOKEN" ] && printf 'header = "Authorization: Bearer %s"\n' "$TOKEN"
+		} | "$CURL" -sS -f -o /dev/null --max-time 20 -X POST --data-binary "@$1" -K - 2>/dev/null
+		return $?
+	fi
+	[ -n "$TOKEN" ] && return 9	# a token needs curl
+	"$FETCH" -q -T 20 -O /dev/null --post-file="$1" "$URL" >/dev/null 2>&1
+}
+
+# killed mid-send: the file with the sender and the text does not stay behind (audit 2026-10-20)
+trap 'rm -f "$RUN/body.$$"; exit 1' INT TERM HUP
+
+forward() {
+	local body="$RUN/body.$$" line
+	mkdir -p "$RUN"
+	case "$KIND" in ntfy|webhook) ;; *) return 8 ;; esac
+	case "$URL" in https://?*|http://?*) ;; *) return 8 ;; esac
+	# curl's config quotes them: a quote, a backslash or a space would break out of it, and a newline (or any other
+	# control or non-ASCII byte) would start a config line of its own — upload-file, output — as root (audit
+	# 2026-10-21: the ACL lets uci write these without the page's check). Printable ASCII only.
+	case "$URL$TOKEN" in *'"'*|*\\*|*' '*|*[!!-~]*) return 8 ;; esac
+	if [ "$KIND" = webhook ]; then
+		printf '%s\n' "$1" > "$body"
+		send "$body" application/json; rc=$?
+	else
+		{
+			printf "$(T 'SMS from %s' 'SMS от %s')" "$($JF -s "$1" -e '@.number' 2>/dev/null)"
+			m=$($JF -s "$1" -e '@.modem' 2>/dev/null)
+			[ -n "$m" ] && printf ' (%s)' "$m"
+			printf ':\n%s\n' "$($JF -s "$1" -e '@.text' 2>/dev/null)"
+		} > "$body"
+		send "$body" 'text/plain; charset=utf-8'; rc=$?
+	fi
+	rm -f "$body"
+	return $rc
+}
+
+why() {
+	case "$1" in
+	8) echo "the kind or the address is not set" ;;
+	9) echo "a token needs curl, which is not installed" ;;
+	*) echo "the server did not take it (exit $1)" ;;
+	esac
+}
+
+if [ "$1" = test ]; then
+	[ "$ENABLED" = 1 ] || { echo '{"ok":false,"error":"forwarding is off"}'; exit 0; }
+	forward "{\"modem\":\"MedveModem\",\"number\":\"MedveModem\",\"text\":\"$(T 'An SMS forwarding test' 'Проверка пересылки SMS')\",\"time\":\"\"}"
+	rc=$?
+	if [ $rc = 0 ]; then echo '{"ok":true}'; else printf '{"ok":false,"error":"%s"}\n' "$(why $rc)"; fi
+	exit 0
+fi
+
+[ "$ENABLED" = 1 ] || exit 0
+n=0 bad=0
+while IFS= read -r line; do
+	[ -n "$line" ] || continue
+	n=$((n + 1))
+	forward "$line" || { rc=$?; bad=$((bad + 1)); }
+done
+# counts and the reason only: never a number or a text
+if [ $bad -gt 0 ]; then say "$bad of $n message(s) not forwarded via $KIND: $(why $rc)"
+elif [ $n -gt 0 ]; then say "$n message(s) forwarded via $KIND"
+fi
+exit 0

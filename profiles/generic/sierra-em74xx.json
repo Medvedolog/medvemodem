@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx",
+  "abstract": true,
+  "description": "Sierra Wireless EM7455 / MC7455 / EM7565 and the Dell DW5811e (an EM7455): family base, never matched itself. Qualcomm QMI modules on qcserial + qmi_wwan: interface 0 DM/DIAG, 2 NMEA, 3 AT, 8 QMI (a second QMI on 10 for EM74xx/MC74xx; MBIM in the module's other USB configuration). ModemManager's Sierra plugin owns them. Radio over AT is the Sierra dialect: AT!SELRAT mode, AT!BAND band sets, AT!GSTATUS? / AT!LTEINFO? telemetry; writes need AT!ENTERCND with the module's password first. The QDL/boot identities (1199:907a for EM74xx, 1199:9090 for EM7565) are service mode, not a modem; 1199:9078 and 1199:907b are EM74xx modem compositions (the kernel's qcserial and qmi_wwan tables). No AT eUICC probing on Sierra (a CCHO probe hung the SIM on the EM9190)",
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ],
+    "at_interface_numbers": [
+      3
+    ],
+    "at_source": "Sierra layout DM 0, NMEA 2, AT 3, QMI 8 (Linux 6.12 drivers/usb/serial/qcserial.c QCSERIAL_SWI); ModemManager 1.25.95 src/plugins/sierra/77-mm-sierra.rules marks interface 3 AT primary for 1199:9071, 9079, 9091"
+  },
+  "radio": {
+    "dialect": "sierra",
+    "status": "reference",
+    "source": "Sierra AirPrime EM74xx/MC74xx AT command reference (!SELRAT, !BAND, !ENTERCND); another modem manager 3.5.5 Sierra Gobi LTE profile (AT!GSTATUS?, AT!LTEINFO?, AT!BAND, AT!SELRAT after AT!ENTERCND); no field report of ours"
+  }
+}

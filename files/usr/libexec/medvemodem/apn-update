@@ -1,0 +1,87 @@
+#!/bin/sh
+# The APN database (providers.tsv) for the APN suggestion.
+#
+#   apn-update version   what the engine reads now
+#   apn-update check     compare with the published copy, change nothing
+#   apn-update update    fetch it, check it, swap it in atomically
+#
+# The fetched copy goes to /etc/medvemodem/providers.tsv: /usr/share belongs
+# to the package manager and an upgrade would put the build-day copy back.
+# The engine prefers /etc and re-reads it when it changes. TLS is verified
+# (never --no-check-certificate); the URL is UCI medvemodem.core.apn_db_url
+# (a mirror for routers that reach only trusted hosts). Only a file that
+# looks like the database replaces the one in use: an HTML error page or a
+# torn download never does. Answers one line of JSON.
+
+# rpcd's file exec hands the caller's environment over (LuCI's fs.exec(cmd, args, env)), and this runs as
+# root: installed, nothing from that environment is taken (review 2026-10-17: a release file pointed at
+# /proc/self/environ ran a line as root). The copies in the source tree keep their test overrides.
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+STATE=${MEDVEMODEM_APN_STATE:-/etc/medvemodem}
+PKG=${MEDVEMODEM_APN_PKG:-/usr/share/medvemodem/apn/providers.tsv}
+DB="$STATE/providers.tsv"
+URL=${APN_DB_URL:-$(uci -q get medvemodem.core.apn_db_url 2>/dev/null)}
+[ -n "$URL" ] || URL="https://raw.githubusercontent.com/DarthAnwalt/openwrt-apn-autoconfig/main/apn-autoconfig-providers/files/usr/share/apn-autoconfig/providers.tsv"
+TMP="/tmp/medvemodem-apn.$$"
+PROXY=${MEDVEMODEM_LOCAL_PROXY:-/usr/libexec/medvemodem/local-proxy}
+trap 'rm -f "$TMP"' EXIT
+
+ver() { sed -n 's/^# *database-version: *//p' "$1" 2>/dev/null | head -n 1 | tr -cd '0-9.'; }
+count() { awk -F '\t' '!/^[[:space:]]*#/ && NF >= 8 { c++ } END { print c + 0 }' "$1" 2>/dev/null; }
+valid() {
+	[ -s "$1" ] && grep -q '^# *database-format: *2' "$1" && [ -n "$(ver "$1")" ] && [ "$(count "$1")" -ge 500 ]
+}
+current() { if [ -s "$DB" ]; then echo "$DB"; else echo "$PKG"; fi; }
+source_of() { if [ "$1" = "$DB" ]; then echo downloaded; else echo package; fi; }
+fetch() {
+	rm -f "$TMP"
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -q -T 20 -O "$TMP" "$URL" >/dev/null 2>&1
+	else
+		curl -fsSL --max-time 20 -o "$TMP" "$URL" >/dev/null 2>&1
+	fi && return 0
+	# the direct way failed: the router's own tunnel (podkop, forkop, clash/mihomo), when it runs one
+	rm -f "$TMP"
+	[ -x "$PROXY" ] && "$PROXY" fetch "$URL" "$TMP" >/dev/null 2>&1 && return 0
+	rm -f "$TMP"
+	return 1
+}
+fail() { printf '{"ok":false,"error":"%s"}\n' "$1"; exit 1; }
+
+cur=$(current)
+case "${1:-version}" in
+version)
+	printf '{"ok":true,"version":"%s","count":%s,"source":"%s"}\n' "$(ver "$cur")" "$(count "$cur")" "$(source_of "$cur")"
+	;;
+check|update)
+	fetch || fail "download failed (no network, no TLS support or the address is unreachable)"
+	valid "$TMP" || fail "the downloaded file is not an APN database"
+	new=$(ver "$TMP")
+	old=$(ver "$cur")
+	newer=false
+	[ "$new" \> "$old" ] && newer=true
+	if [ "$1" = check ]; then
+		printf '{"ok":true,"version":"%s","available":"%s","newer":%s}\n' "$old" "$new" "$newer"
+		exit 0
+	fi
+	if [ "$newer" = false ]; then
+		printf '{"ok":true,"version":"%s","count":%s,"updated":false}\n' "$old" "$(count "$cur")"
+		exit 0
+	fi
+	mkdir -p "$STATE" || fail "cannot write $STATE"
+	cp "$TMP" "$DB.new" && mv -f "$DB.new" "$DB" || { rm -f "$DB.new"; fail "cannot write the database"; }
+	logger -t medvemodem "APN database updated: $old -> $new ($(count "$DB") rows)" 2>/dev/null
+	printf '{"ok":true,"version":"%s","count":%s,"updated":true}\n' "$new" "$(count "$DB")"
+	;;
+*)
+	fail "usage: apn-update version|check|update"
+	;;
+esac

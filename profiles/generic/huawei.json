@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "huawei",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "Huawei modems in modem (stick) mode, USB 12d1 with an NCM, serial, QMI or MBIM function: E3372s-stick, ME909/ME906, MH5000/MT5700. ModemManager owns them (its Huawei support speaks AT^NDISDUP over NCM); plain NCM otherwise. HiLink builds (cdc_ether/rndis only, a router inside the stick) do not match and stay with generic-hilink. QModem lists the 5G modules (MH5000, MT5700) but there is no field evidence yet: not preferred. Radio over AT is the Huawei dialect: AT^SYSCFGEX mode/bands, AT^HCSQ signal",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "drivers_any": [
+      "huawei_cdc_ncm",
+      "cdc_ncm",
+      "option",
+      "qmi_wwan",
+      "cdc_mbim"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "ncm"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "ncm"
+    ]
+  },
+  "radio": {
+    "dialect": "huawei",
+    "status": "reference",
+    "source": "Huawei AT command reference (SYSCFGEX, HCSQ); another modem manager 3.2.2 huawei profile; no field report of ours yet"
+  }
+}

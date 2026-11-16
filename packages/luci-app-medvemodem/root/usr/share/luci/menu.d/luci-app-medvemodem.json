@@ -1,0 +1,53 @@
+{
+  "admin/modem": {
+    "title": "Modem",
+    "order": 30,
+    "action": {
+      "type": "firstchild",
+      "recurse": true
+    }
+  },
+  "admin/modem/medvemodem": {
+    "title": "MedveModem",
+    "order": 10,
+    "action": {
+      "type": "firstchild"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-medvemodem"
+      ]
+    }
+  },
+  "admin/modem/medvemodem/dashboard": {
+    "title": "Modems",
+    "order": 10,
+    "action": {
+      "type": "view",
+      "path": "medvemodem/dashboard"
+    }
+  },
+  "admin/modem/medvemodem/settings": {
+    "title": "Settings",
+    "order": 20,
+    "action": {
+      "type": "view",
+      "path": "medvemodem/settings"
+    }
+  },
+  "admin/modem/medvemodem/whitelist": {
+    "title": "Whitelists",
+    "order": 22,
+    "action": {
+      "type": "view",
+      "path": "medvemodem/settings"
+    }
+  },
+  "admin/modem/medvemodem/modem": {
+    "order": 30,
+    "action": {
+      "type": "view",
+      "path": "medvemodem/modem"
+    }
+  }
+}

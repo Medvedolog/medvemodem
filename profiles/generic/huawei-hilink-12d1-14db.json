@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "huawei-hilink-12d1-14db",
+  "extends": "generic-hilink",
+  "description": "Huawei HiLink stick 12d1:14db: E3372h and E8372h (with Wi-Fi; also sold as MTS 8211F) in their HiLink firmware. A router inside the stick: cdc_ether (or rndis_host) and a DHCP address from the stick, no AT port and no cdc-wdm in this composition; signal, operator and SMS over the HiLink HTTP API (SesTokInfo session first), its address the stick's gateway (192.168.8.1 on most firmware, 192.168.43.1 seen too). The model is told only by its web (DeviceName): the engine keeps it and the card shows it. CD-ROM before the switch: 12d1:1f01. Newer firmware asks for the web password; the B-series RSA login is not supported yet. Some E3372 units randomise the IMEI on every re-enumeration. Reference only, not on our bench. Sources: another modem manager 3.5.8 msw/hilink.sh (12d1:14db = E8372 / MTS 8211F, missed by its ID list once and taken for a modem with ports) and modemswitch.sh (HILINK_IDS), hilink.sh (session, gateway address, 192.168.43.1 on a tested E3372h); imported catalog composition 12d1:14db (3372h, hilink); docs/modem-zoo/modems/huawei-hilink.md; docs/HANDOFF.md 126 (E3372 IMEI randomised per re-enumeration), 164 (the web reader)",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "14db"
+  }
+}

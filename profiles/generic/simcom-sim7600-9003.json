@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "id": "simcom-sim7600-9003",
+  "extends": "generic-modemmanager",
+  "description": "SIMCom SIM7500/SIM7600 MBIM composition 1e0e:9003 (Linux 6.12 option.c: 'Simcom SIM7500/SIM7600 MBIM mode', vendor-class ttys only). As for 9001 the model comes from AT+CGMM, never from the PID. Interface numbers not known to us: no AT interface declared, ModemManager's SIMCom plugin finds its ports. netifd-mbim as the fallback, as on the other MBIM compositions; another modem manager 3.5.8 reads it with its 1e0e:9001 profile. Reference only, no bench of ours; profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "1e0e",
+    "pid": "9003",
+    "drivers_any": [
+      "cdc_mbim",
+      "option"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "radio": {
+    "dialect": "simcom",
+    "status": "reference",
+    "source": "another modem manager 3.5.5 1e0e9001 band profile (AT+CNMP, AT+CNBP, AT+CSYSSEL) and quirks.sh (SIM7600E-H LE11B11SIM7600M22: one slot, raw-text USSD answered); docs/modem-zoo/modems/simcom-sim7x.md (CPSI layout per RAT); SIMCom SIM7500/SIM7600 AT command manual"
+  }
+}

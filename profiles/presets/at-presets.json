@@ -1,0 +1,725 @@
+{
+  "schema": "medvemodem.at-presets/1",
+  "note": "AT console presets (LuCI «AT», spec 11.5). Commands are documented in docs/modem-zoo (AT-COMMANDS.md, AT-REFERENCE.md, with the sources and confidence of each); titles are ours. A preset is shown for a modem when any of its 'match' rules fits (profile id prefix, ModemManager manufacturer or model substring, VID); no 'match' means every modem. The engine marks each command with its hazard class; the console sends only what mm_at_console_refusal allows, the rest is reference. A preset's 'risk' (read_only by default, disruptive, persistent, dangerous) and its 'effects' (drops_connection, writes_nvram, requires_reboot) say what it does: LuCI asks before a disruptive or a persistent one, a dangerous one is documentation only; the engine's hazard list decides what is sent at all (the owner, 2026-11-14).",
+  "groups": [
+    {
+      "id": "info",
+      "title": "About the modem"
+    },
+    {
+      "id": "sim",
+      "title": "SIM card"
+    },
+    {
+      "id": "network",
+      "title": "Network and signal"
+    },
+    {
+      "id": "cells",
+      "title": "Cells and aggregation"
+    },
+    {
+      "id": "modes",
+      "title": "Modes and bands"
+    },
+    {
+      "id": "data",
+      "title": "Data"
+    },
+    {
+      "id": "sms",
+      "title": "SMS and USSD"
+    },
+    {
+      "id": "hardware",
+      "title": "Temperature and power"
+    },
+    {
+      "id": "usb",
+      "title": "USB composition and modes"
+    },
+    {
+      "id": "danger",
+      "title": "Dangerous: for reference only"
+    }
+  ],
+  "sets": [
+    {
+      "id": "3gpp",
+      "title": "Standard (3GPP 27.007)",
+      "source": "3GPP TS 27.007 / 27.005",
+      "presets": [
+        {
+          "group": "info",
+          "title": "Model and firmware",
+          "command": "ATI"
+        },
+        {
+          "group": "info",
+          "title": "Manufacturer",
+          "command": "AT+CGMI"
+        },
+        {
+          "group": "info",
+          "title": "Model",
+          "command": "AT+CGMM"
+        },
+        {
+          "group": "info",
+          "title": "Firmware version",
+          "command": "AT+CGMR"
+        },
+        {
+          "group": "sim",
+          "title": "SIM state (PIN)",
+          "command": "AT+CPIN?"
+        },
+        {
+          "group": "sim",
+          "title": "PIN/PUK attempts left",
+          "command": "AT+CPINR"
+        },
+        {
+          "group": "network",
+          "title": "Operator and technology",
+          "command": "AT+COPS?"
+        },
+        {
+          "group": "network",
+          "title": "Signal level (CSQ)",
+          "command": "AT+CSQ"
+        },
+        {
+          "group": "network",
+          "title": "Signal by technology (CESQ)",
+          "command": "AT+CESQ"
+        },
+        {
+          "group": "network",
+          "title": "2G/3G registration",
+          "command": "AT+CREG?"
+        },
+        {
+          "group": "network",
+          "title": "LTE registration",
+          "command": "AT+CEREG?"
+        },
+        {
+          "group": "network",
+          "title": "5G registration",
+          "command": "AT+C5GREG?"
+        },
+        {
+          "group": "network",
+          "title": "Radio mode",
+          "command": "AT+CFUN?"
+        },
+        {
+          "group": "data",
+          "title": "Access points (APN)",
+          "command": "AT+CGDCONT?"
+        },
+        {
+          "group": "data",
+          "title": "Session addresses",
+          "command": "AT+CGPADDR"
+        },
+        {
+          "group": "data",
+          "title": "Active sessions",
+          "command": "AT+CGACT?"
+        },
+        {
+          "group": "sms",
+          "title": "SMS memory: used and total",
+          "command": "AT+CPMS?"
+        },
+        {
+          "group": "sms",
+          "title": "SMS centre",
+          "command": "AT+CSCA?"
+        },
+        {
+          "group": "sms",
+          "title": "SMS format (0 PDU, 1 text)",
+          "command": "AT+CMGF?"
+        },
+        {
+          "group": "danger",
+          "title": "Restart the modem (the “Restart the modem” recovery step)",
+          "command": "AT+CFUN=1,1",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "requires_reboot"
+          ]
+        },
+        {
+          "group": "danger",
+          "title": "Switch the radio off",
+          "command": "AT+CFUN=0",
+          "risk": "disruptive",
+          "effects": [
+            "drops_connection"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foxconn-sdx55",
+      "title": "Foxconn T99W175 / T77W968 (Qualcomm)",
+      "source": "docs/modem-zoo/AT-COMMANDS.md (T99W175, SDX55 common); composition queries: HANDOFF 82; $QCRSRP?/$QCRSRQ?/^GETLTECAT?/^BAND_PRI?: a vendor router's operator lists (HANDOFF 170)",
+      "match": [
+        {
+          "profile": "foxconn-"
+        },
+        {
+          "manufacturer": "foxconn"
+        },
+        {
+          "model": "T99W175"
+        },
+        {
+          "model": "Snapdragon X55"
+        },
+        {
+          "vid": "0489"
+        }
+      ],
+      "presets": [
+        {
+          "group": "hardware",
+          "title": "Temperature (TSENS, PA, case)",
+          "command": "AT^TEMP?"
+        },
+        {
+          "group": "cells",
+          "title": "Serving cell, signal, aggregation",
+          "command": "AT^DEBUG?"
+        },
+        {
+          "group": "cells",
+          "title": "Carrier aggregation",
+          "command": "AT^CA_INFO?"
+        },
+        {
+          "group": "cells",
+          "title": "Neighbour cells: level (RSRP)",
+          "command": "AT$QCRSRP?"
+        },
+        {
+          "group": "cells",
+          "title": "Neighbour cells: quality (RSRQ)",
+          "command": "AT$QCRSRQ?"
+        },
+        {
+          "group": "cells",
+          "title": "LTE category",
+          "command": "AT^GETLTECAT?"
+        },
+        {
+          "group": "modes",
+          "title": "Network mode (2G/3G/4G/5G)",
+          "command": "AT^SLMODE?"
+        },
+        {
+          "group": "modes",
+          "title": "Allowed bands",
+          "command": "AT^BAND_PREF?"
+        },
+        {
+          "group": "modes",
+          "title": "Band priority at registration",
+          "command": "AT^BAND_PRI?"
+        },
+        {
+          "group": "modes",
+          "title": "LTE cell lock",
+          "command": "AT^LTE_LOCK?"
+        },
+        {
+          "group": "modes",
+          "title": "5G cell lock",
+          "command": "AT^NR5G_LOCK?"
+        },
+        {
+          "group": "sim",
+          "title": "SIM slot (physical / eSIM)",
+          "command": "AT^SWITCH_SLOT?"
+        },
+        {
+          "group": "usb",
+          "title": "USB composition",
+          "command": "AT^USBSWITCH?"
+        },
+        {
+          "group": "usb",
+          "title": "PCIe mode",
+          "command": "AT^PCIEMODE?"
+        },
+        {
+          "group": "usb",
+          "title": "Configuration (QMI/MBIM)",
+          "command": "AT^SETCONFIG?"
+        },
+        {
+          "group": "danger",
+          "title": "Reset the band masks of every technology",
+          "command": "AT^BAND_PREF",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "writes_nvram"
+          ]
+        },
+        {
+          "group": "danger",
+          "title": "Change the USB composition (the modem reconnects)",
+          "command": "AT^USBSWITCH=<n>",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "writes_nvram",
+            "requires_reboot"
+          ]
+        },
+        {
+          "group": "danger",
+          "title": "Restart the modem",
+          "command": "AT+RESET",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "requires_reboot"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quectel",
+      "title": "Quectel",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (quectel)",
+      "match": [
+        {
+          "profile": "quectel"
+        },
+        {
+          "manufacturer": "quectel"
+        },
+        {
+          "vid": "2c7c"
+        }
+      ],
+      "presets": [
+        {
+          "group": "cells",
+          "title": "Serving cell",
+          "command": "AT+QENG=\"servingcell\""
+        },
+        {
+          "group": "cells",
+          "title": "Neighbour cells",
+          "command": "AT+QENG=\"neighbourcell\""
+        },
+        {
+          "group": "cells",
+          "title": "Carrier aggregation",
+          "command": "AT+QCAINFO"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+QTEMP"
+        },
+        {
+          "group": "modes",
+          "title": "Preferred network mode",
+          "command": "AT+QNWPREFCFG=\"mode_pref\""
+        },
+        {
+          "group": "modes",
+          "title": "Allowed LTE bands",
+          "command": "AT+QNWPREFCFG=\"lte_band\""
+        },
+        {
+          "group": "modes",
+          "title": "Allowed 5G bands (SA)",
+          "command": "AT+QNWPREFCFG=\"nr5g_band\""
+        },
+        {
+          "group": "sim",
+          "title": "SIM state",
+          "command": "AT+QSIMSTAT?"
+        },
+        {
+          "group": "sim",
+          "title": "Active SIM slot",
+          "command": "AT+QUIMSLOT?"
+        },
+        {
+          "group": "usb",
+          "title": "USB network mode",
+          "command": "AT+QCFG=\"usbnet\""
+        },
+        {
+          "group": "danger",
+          "title": "Change the USB network mode (the modem reconnects)",
+          "command": "AT+QCFG=\"usbnet\",<n>",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "writes_nvram",
+            "requires_reboot"
+          ]
+        },
+        {
+          "group": "danger",
+          "title": "Power the modem off",
+          "command": "AT+QPOWD",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fibocom-mtk",
+      "title": "Fibocom FM350 / RW350 (MediaTek)",
+      "source": "docs/modem-zoo/modems/fibocom-fm350.md; AT-REFERENCE.md (fibocom); AT+CFUN=15 as the reboot: a vendor router's operator list (HANDOFF 170), F28",
+      "match": [
+        {
+          "profile": "fibocom-fm350"
+        },
+        {
+          "vid": "0e8d"
+        },
+        {
+          "model": "FM350"
+        }
+      ],
+      "presets": [
+        {
+          "group": "modes",
+          "title": "Network mode and bands",
+          "command": "AT+GTACT?"
+        },
+        {
+          "group": "modes",
+          "title": "Supported modes and bands",
+          "command": "AT+GTACT=?"
+        },
+        {
+          "group": "cells",
+          "title": "Serving and neighbour cells",
+          "command": "AT+GTCCINFO?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+GTSENRDTEMP=1",
+          "risk": "read_only"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature by zones (when the first is silent)",
+          "command": "AT+ETHERMAL?"
+        },
+        {
+          "group": "usb",
+          "title": "USB mode",
+          "command": "AT+GTUSBMODE?"
+        },
+        {
+          "group": "sim",
+          "title": "Active SIM slot",
+          "command": "AT+GTDUALSIM?"
+        },
+        {
+          "group": "sms",
+          "title": "USSD does not work on this modem (checked in the field)",
+          "command": "AT+CUSD=?"
+        },
+        {
+          "group": "danger",
+          "title": "Change the USB mode (the modem reconnects)",
+          "command": "AT+GTUSBMODE=<n>",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "writes_nvram",
+            "requires_reboot"
+          ]
+        },
+        {
+          "group": "danger",
+          "title": "Modem restart (on the FM350 this way, not CFUN=1,1)",
+          "command": "AT+CFUN=15",
+          "risk": "dangerous",
+          "effects": [
+            "drops_connection",
+            "requires_reboot"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fibocom-qualcomm",
+      "title": "Fibocom FM150 / FM160 / FM190 (Qualcomm)",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (fibocom)",
+      "match": [
+        {
+          "model": "FM150"
+        },
+        {
+          "model": "FM160"
+        },
+        {
+          "model": "FM190"
+        },
+        {
+          "manufacturer": "fibocom"
+        }
+      ],
+      "presets": [
+        {
+          "group": "cells",
+          "title": "Serving and neighbour cells",
+          "command": "AT+GTCCINFO?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+MTSM=1",
+          "risk": "read_only"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+GTSENRDTEMP=1",
+          "risk": "read_only"
+        },
+        {
+          "group": "sim",
+          "title": "Active SIM slot",
+          "command": "AT+GTDUALSIM?"
+        },
+        {
+          "group": "usb",
+          "title": "USB mode",
+          "command": "AT+GTUSBMODE?"
+        }
+      ]
+    },
+    {
+      "id": "fibocom-xmm",
+      "title": "Fibocom L850 / L860 (Intel XMM)",
+      "source": "docs/modem-zoo/modems/fibocom-l850-l860.md",
+      "match": [
+        {
+          "profile": "fibocom-xmm"
+        },
+        {
+          "model": "L850"
+        },
+        {
+          "model": "L860"
+        },
+        {
+          "vid": "2cb7"
+        }
+      ],
+      "presets": [
+        {
+          "group": "modes",
+          "title": "Network mode",
+          "command": "AT+XACT?"
+        },
+        {
+          "group": "cells",
+          "title": "Serving cell",
+          "command": "AT+XCCINFO?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+MTSM=1",
+          "risk": "read_only"
+        }
+      ]
+    },
+    {
+      "id": "huawei",
+      "title": "Huawei",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (huawei); the port and mode reads: HANDOFF 129, F19, F20 (AT^GETPORTMODE left out: it crashes the MU609, 12d1:1573; the SETPORT/U2DIAG writes are composition hazards)",
+      "match": [
+        {
+          "manufacturer": "huawei"
+        },
+        {
+          "vid": "12d1"
+        }
+      ],
+      "presets": [
+        {
+          "group": "network",
+          "title": "Mode and registration",
+          "command": "AT^SYSINFOEX"
+        },
+        {
+          "group": "network",
+          "title": "Signal by technology",
+          "command": "AT^HCSQ?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT^CHIPTEMP?"
+        },
+        {
+          "group": "network",
+          "title": "Mode and registration (old 3G modems)",
+          "command": "AT^SYSINFO"
+        },
+        {
+          "group": "modes",
+          "title": "Network mode and bands",
+          "command": "AT^SYSCFGEX?"
+        },
+        {
+          "group": "modes",
+          "title": "Network mode (old 3G modems)",
+          "command": "AT^SYSCFG?"
+        },
+        {
+          "group": "usb",
+          "title": "USB port composition",
+          "command": "AT^SETPORT?"
+        },
+        {
+          "group": "usb",
+          "title": "Possible port compositions",
+          "command": "AT^SETPORT=?"
+        },
+        {
+          "group": "usb",
+          "title": "USB mode (U2DIAG)",
+          "command": "AT^U2DIAG?"
+        }
+      ]
+    },
+    {
+      "id": "sierra",
+      "title": "Sierra Wireless",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (sierra)",
+      "match": [
+        {
+          "manufacturer": "sierra"
+        },
+        {
+          "vid": "1199"
+        }
+      ],
+      "presets": [
+        {
+          "group": "network",
+          "title": "General state",
+          "command": "AT!GSTATUS?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT!PCTEMP?"
+        }
+      ]
+    },
+    {
+      "id": "telit",
+      "title": "Telit",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (telit)",
+      "match": [
+        {
+          "manufacturer": "telit"
+        },
+        {
+          "vid": "1bc7"
+        }
+      ],
+      "presets": [
+        {
+          "group": "cells",
+          "title": "Radio state",
+          "command": "AT#RFSTS"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT#TEMPSENS=2",
+          "risk": "read_only"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+TEMP",
+          "risk": "read_only"
+        },
+        {
+          "group": "usb",
+          "title": "USB configuration",
+          "command": "AT#USBCFG?"
+        }
+      ]
+    },
+    {
+      "id": "simcom",
+      "title": "SIMCom",
+      "source": "docs/modem-zoo/AT-REFERENCE.md (simcom)",
+      "match": [
+        {
+          "manufacturer": "simcom"
+        },
+        {
+          "vid": "1e0e"
+        }
+      ],
+      "presets": [
+        {
+          "group": "cells",
+          "title": "Serving cell",
+          "command": "AT+CPSI?"
+        },
+        {
+          "group": "modes",
+          "title": "Network mode",
+          "command": "AT+CNMP?"
+        },
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+CPMUTEMP"
+        }
+      ]
+    },
+    {
+      "id": "meig",
+      "title": "MeiG",
+      "source": "a field report (MeiG SRM8xx: +TEMP: \"cpu0-0-usr\",\"45\")",
+      "match": [
+        {
+          "manufacturer": "meig"
+        },
+        {
+          "vid": "2dee"
+        }
+      ],
+      "presets": [
+        {
+          "group": "hardware",
+          "title": "Temperature",
+          "command": "AT+TEMP",
+          "risk": "read_only"
+        }
+      ]
+    }
+  ]
+}

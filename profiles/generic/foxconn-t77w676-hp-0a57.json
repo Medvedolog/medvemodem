@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w676-hp-0a57",
+  "extends": "foxconn-t77w676",
+  "description": "HP lt4220 second identity (T77W676 under HP's VID; another modem manager 3.2.15 gives 03f0:0857 and 03f0:0a57 one T77W676 profile): not in the kernel tables of Linux 6.12 or master; MBIM binds by class, QMI and the ttys only through a new_id; ModemManager uses its generic plugin",
+  "match": {
+    "bus": "usb",
+    "vid": "03f0",
+    "pid": "0a57"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "thales-mv32w-1e2d-00f4",
+  "extends": "generic-mbim",
+  "description": "Thales (Cinterion) MV32-W, the T99W373 platform (Snapdragon X62) under VID 1e2d, 1e2d:00f4 with cdc_mbim. VID 1e2d is not shared with the Compal prototypes at these IDs. Experimental (the owner, 2026-11-06: «пусть хотя бы инет поднимается»): the internet through ModemManager over MBIM (cdc_mbim binds by its class, no ID table needed), no AT console or radio dialect until a bench (the SDX62's AT set is not the T99W175's), no driver binding; recovery on the operator's request only. Reference only, no bench of ours: QModem's modem_support.json (t99w373: USB mbim and rmnet; Thales mv32-w-a 1e2d:00f1 mbim, mv32-w-b 1e2d:00f2 mbim and rmnet), another modem manager field notes",
+  "match": {
+    "bus": "usb",
+    "vid": "1e2d",
+    "pid": "00f4",
+    "drivers_any": [
+      "cdc_mbim"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "recovery": {
+    "status": "field-reported",
+    "session_restart": true,
+    "radio_cycle": true,
+    "soft_reset": true,
+    "driver_rebind": false,
+    "usb_reauthorize": false,
+    "power_cycle": false,
+    "settle_ms": 60000,
+    "source": "experimental: reconnect, radio and reset through ModemManager on request; nothing at the USB level until a bench"
+  }
+}

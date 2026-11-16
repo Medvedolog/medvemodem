@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "zte-mf100-19d2-0031",
+  "extends": "zte",
+  "description": "ZTE MF100 (19d2:0031, «ZTE WCDMA Technologies MSM», firmware BD_UAKVSP671A1V1.0.0B02): an old 3G (HSDPA) stick, no network function: QCDM on interface 00 (ttyUSB0), AT on 01 and 03 (ttyUSB1, ttyUSB2, the primary), storage on 02; ModemManager's zte plugin dials PPP. A tester's Nokia XG-040G-MD report, 2026-11-04 (OpenWrt snapshot, ModemManager 1.24)",
+  "match": {
+    "bus": "usb",
+    "vid": "19d2",
+    "pid": "0031"
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "ppp"
+    ]
+  }
+}

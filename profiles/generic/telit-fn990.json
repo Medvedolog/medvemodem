@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "telit-fn990",
+  "abstract": true,
+  "description": "Telit FN990 (FN990A28 / FN990A40, Snapdragon X62 5G): family base, never matched itself; rmnet/QMI (1bc7:1070) or MBIM (1bc7:1071); RNDIS 1072 and ECM 1073 exist too and are not covered here. ModemManager's Telit plugin owns it; its AT ports come up late (ModemManager retries the AT probe 14 times). Two SIM slots, read and switched through QMI UIM (no Telit AT slot command). Radio over AT is the Telit dialect: AT#BND, AT#CAINFOEXT?, AT+CESQ; AT#SERVINFO columns differ per RAT; of #TEMPSENS/#TMLVL/#LAPS/#CQI/#LRXDIV some firmwares answer ERROR, and one ERROR aborts a chained command: probe them one at a time No netifd-qmi fallback: OpenWrt's stock qmi protocol brings these modules up with the radio off (UIM reported illegal) and cycles them, and in raw-ip they took an address that carried no traffic (another modem manager 3.5.8 routes them to its own raw QMI protocol; profiles audit 2026-10-19).",
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ]
+  },
+  "radio": {
+    "dialect": "telit",
+    "status": "reference",
+    "source": "another modem manager 3.5.5 1bc71070 band profile (AT#BND, AT+WS46) and quirks.sh (FN990: slots through QMI, field report 2026-09-05); docs/HANDOFF.md 131 (FN990A28 command notes); Telit FN990 AT command reference"
+  }
+}

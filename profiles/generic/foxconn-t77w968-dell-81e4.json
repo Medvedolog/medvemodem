@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968-dell-81e4",
+  "extends": "foxconn-t77w968",
+  "description": "Dell DW5821e variant (T77W968) listed by another modem manager with the 81d7 profile; not in the kernel table",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81e4"
+  },
+  "policy": {
+    "fcc_unlock": "foxconn-qmi"
+  }
+}

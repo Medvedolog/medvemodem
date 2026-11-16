@@ -1,0 +1,38 @@
+#!/bin/sh
+# Failover's connection flush (spec 20.8), run by medvemodemd after the traffic left a channel:
+#   conntrack-flush link|all <dev>...
+# The routes moved, yet the connections the kernel tracks keep the old channel's address (masquerade picked
+# it when they started): their packets leave through the new channel with a source it drops, and the
+# clients wait out their timeouts. mwan3 flushes the whole table on an interface's event (flush_conntrack);
+# here, with conntrack-tools, only the connections whose replies come to the old channel's addresses go,
+# the LAN's own and the other channels' stay. Without the conntrack tool, or with "all", the whole table is
+# flushed through OpenWrt's /proc/net/nf_conntrack, as mwan3 does.
+CONNTRACK=${MEDVEMODEM_CONNTRACK:-conntrack}
+TABLE=${MEDVEMODEM_NF_CONNTRACK:-/proc/net/nf_conntrack}
+
+mode=$1
+[ $# -ge 1 ] && shift
+case "$mode" in link|all) ;; *) echo "conntrack-flush: usage: conntrack-flush link|all <dev>..." >&2; exit 2 ;; esac
+
+flush_all() {
+	[ -w "$TABLE" ] || { echo "conntrack-flush: no conntrack table to flush" >&2; return 1; }
+	echo f > "$TABLE" && echo "conntrack-flush: the whole connection table flushed${1:+ ($1)}" >&2
+}
+
+[ "$mode" = all ] && { flush_all; exit $?; }
+command -v "$CONNTRACK" >/dev/null 2>&1 || { flush_all "no conntrack tool"; exit $?; }
+
+status=0
+for dev in "$@"; do
+	case "$dev" in ''|*[!A-Za-z0-9._@-]*) echo "conntrack-flush: bad device name" >&2; status=2; continue ;; esac
+	# the device's global addresses, IPv4 and IPv6
+	for a in $(ip -o addr show dev "$dev" scope global 2>/dev/null | while read -r _ _ fam addr _; do
+		case "$fam" in inet|inet6) printf '%s %s\n' "$fam" "${addr%/*}" ;; esac
+	done | tr ' ' ','); do
+		fam=${a%%,*} addr=${a#*,}
+		[ "$fam" = inet6 ] && f=ipv6 || f=ipv4
+		"$CONNTRACK" -D -f "$f" -q "$addr" >/dev/null 2>&1
+		echo "conntrack-flush: $dev: the connections through $addr dropped" >&2
+	done
+done
+exit $status

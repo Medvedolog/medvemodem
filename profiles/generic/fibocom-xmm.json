@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "fibocom-xmm",
+  "abstract": true,
+  "description": "Fibocom L850-GL / L860-GL (Intel XMM 7360/7560), USB MBIM: family base, never matched itself. ModemManager owns it (its XMM support speaks MBIM); QModem does not list the family. Radio over AT is the XMM dialect: AT+XACT mode/bands (LTE as 100+band, the band tail kept on a mode change), AT+XLEC aggregation, write-only at@sic:freq_lock cell lock with CFUN=4 / CFUN=15 around it (docs/modem-zoo/modems/fibocom-l850-l860.md)",
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "radio": {
+    "dialect": "xmm",
+    "status": "field-reported",
+    "source": "another modem manager 3.2.2 L850/L860 profiles; Telegram field notes (CFUN=15 after freq_lock on L860-GL-16 fw 18601)"
+  }
+}

@@ -1,0 +1,46 @@
+config core 'core'
+	option enabled '1'
+	option settle_ms '2500'
+	option log_level 'info'
+	# driver bindings bench-validated profiles declare (an AT port the stock driver misses)
+	option host_fixes '1'
+	# a new modem with no interface connects by itself, its APN by the SIM (once per USB attachment)
+	option auto_connect '1'
+	# automatic recovery: engine levels always, disruptive ones only from bench-validated profiles
+	option auto_recovery '1'
+	# the modem's network interface: device path of this boot, a firewall zone (wan) when it has none
+	option repair_interfaces '1'
+	# ModemManager's cell info and 3GPP location (neighbour cells, eNodeB, distance): off, they hung an
+	# Orange Pi Zero 3 with a T99W175 (bench 2026-10-15); turn on to try on other hardware
+	option cell_info '0'
+	# the levels on each antenna and the carriers (qmicli through ModemManager's proxy, while a page looks)
+	option antennas '1'
+	# the gentle poll: with a page open, ModemManager is read at most once in this many seconds
+	# (0: every 15 s). Try 60 on a router that hangs while the page is open (bench 2026-10-15)
+	#option mm_poll_s '60'
+	# USB autosuspend of the modems: off (a suspended usbnet modem's data path hangs, NETDEV WATCHDOG);
+	# '1' leaves the kernel's setting as it is
+	#option usb_autosuspend '1'
+	# reachability check through each uplink's own device (an answer, a refusal too, proves the path)
+	#list reach_target '1.1.1.1:443'
+	#list reach_target '8.8.8.8:443'
+	# tried when no reach_target answers: an answer here means an operator whitelist, not a fault ('none' turns it off)
+	#list reach_restricted '77.88.55.242:443'
+	#list reach_restricted '87.240.132.72:443'
+	# how often SMS are read from ModemManager-owned modems, seconds (min 15; 0: only when the page asks)
+	#option sms_poll '60'
+	# a modem's SMS storage three quarters full: the oldest received ones move to the router (/etc/medvemodem/sms-archive.json)
+	#option sms_archive '1'
+	# every received SMS copied to the router at once, the modem keeps its own (it survives a modem that forgets them)
+	#option sms_keep_all '0'
+
+# a name for a modem, kept across USB ports and re-enumeration
+#config modem
+#	option device_id 'usb-serial:790cac97'
+#	option name 'Дача'
+
+# the operator's label of a SIM card, by its ICCID, in whichever modem it sits
+#config sim
+#	option iccid '8970199123456789012'
+#	option number '+79001234567'
+#	option description 'Рабочая, безлимит'

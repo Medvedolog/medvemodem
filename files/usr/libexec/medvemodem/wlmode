@@ -1,0 +1,375 @@
+#!/bin/sh
+# The whitelist mode's hands (TECHNICAL-SPEC §44), run by medvemodemd and by
+# the settings page. A tunnel manager that switches its servers while it runs: podkop-exp 0.8 (ubus podkop run
+# clash_api) or forkop 2 (forkop clash_api). Classic podkop 0.7 and forkop 1.x have no such switch: «detect» says so.
+#   wlmode detect                         {"managers":[{"name","kind","switchable","sections":[...]}]}
+#   wlmode servers <mgr> <section>        {"group","now","auto","auto_now","servers":[...],"names":[...],"sources":[...]}
+#        the section's group as the manager has it; names: what the manager's page shows (podkop-exp: the source's label
+#        for «src1:»); auto: the group follows its URL test, auto_now the server the test chose; sources (podkop-exp):
+#        every server source, used when it is a row of the rule (a source not in the rule has no server in its group)
+#   wlmode delay <mgr> <server>           {"delay_ms":N} or {"delay_ms":null}
+#   wlmode on <mgr> <section> <lan 0|1> <router 0|1> <server>...
+#        the first server that answers (in the order given; none: the first) is pinned in the section's group; with
+#        lan the LAN prefix and with router «@system» (forkop) go into the section's fully_routed_ips, the manager
+#        reloads; podkop-exp has no «@system»: apk/opkg/curl go through the section's mixed proxy (profile.d).
+#        What was added is kept in the ledger first, so off and a crash give back exactly that.
+#   wlmode check                          the pinned server still answers, else the next one of the ledger's list
+#   wlmode off                            the ledger undone: automatic choice back, our values out of the list
+#   wlmode status                         the ledger, or {}
+#   wlmode hints <mgr>                    {"hints":{"<server>":true|false}}: the server's address in the community's
+#        list of what stays open under the whitelists (github.com/hxehex/russia-mobile-internet-whitelist, spec §44.7);
+#        the list fetched at most once a day into /tmp, only on this ask; a server named by a domain is not judged
+# Never a network or wireless reload; uci commit only of the manager's own package. A link or a key never printed.
+# Exit: 0 done; 1 failed (the reason in "error"); 2 bad arguments or no such manager.
+
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+UBUS=${MEDVEMODEM_UBUS:-ubus}
+FORKOP=${MEDVEMODEM_FORKOP:-/usr/bin/forkop}
+PODKOP=${MEDVEMODEM_PODKOP:-/usr/bin/podkop}
+LEDGER=${MEDVEMODEM_WLMODE_LEDGER:-/etc/medvemodem/wlmode.json}
+PROFILE=${MEDVEMODEM_WLMODE_PROFILE:-/etc/profile.d/medvemodem-wlmode.sh}
+URL=${MEDVEMODEM_WLMODE_URL:-https://www.gstatic.com/generate_204}
+CIDR_URL=${MEDVEMODEM_WLMODE_CIDR_URL:-https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/main/cidrwhitelist.txt}
+CIDR=${MEDVEMODEM_WLMODE_CIDR:-/tmp/medvemodem/wl-cidr.txt}
+
+esc() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+# busybox awk, byte by byte: OpenWrt 25.12's busybox has no od, hexdump or xxd (a tester's OPiZ3, 2026-11-08: «od: not
+# found» five times a pass, the names went out empty)
+enc() { printf '%s' "$1" | LC_ALL=C awk 'BEGIN { for (i = 1; i < 256; i++) o[sprintf("%c", i)] = i }
+	{ n = length($0); for (i = 1; i <= n; i++) printf "%%%02x", o[substr($0, i, 1)] }'; }
+fail() { printf '{"ok":false,"error":"%s"}\n' "$(esc "$1")"; exit "${2:-1}"; }
+jf() { jsonfilter -s "$1" -e "$2" 2>/dev/null; }
+plain() { printf '%s' "$1" | grep -Eqx '[A-Za-z0-9_.@-]{1,64}'; }
+
+# the manager's package and kind: podkop-exp answers on ubus, forkop 2 has its CLI with clash_api
+kind_of() {
+	case "$1" in
+	podkop) "$UBUS" -S list podkop >/dev/null 2>&1 && echo podkop-exp || echo podkop-classic ;;
+	forkop) v=$([ -x "$FORKOP" ] && "$FORKOP" show_version 2>/dev/null); case "$v" in [2-9].*|[1-9][0-9].*) echo forkop2 ;; *) echo forkop1 ;; esac ;;
+	*) echo none ;;
+	esac
+}
+
+# the Clash API through the manager: body on stdout
+clash() {	# <mgr> <method> <path> [body]
+	case "$1" in
+	podkop) ;;	# podkop-exp names its commands, below
+	forkop)
+		_o=$("$FORKOP" clash_api "$2" "$3" "${4:-}" 2>/dev/null) || return 1
+		_b=$(jf "$_o" '@.body')
+		[ -n "$_b" ] && printf '%s' "$_b" || printf '%s' "$_o" ;;
+	esac
+}
+podkop_run() {	# clash_api <args...>: its stdout
+	_p=''
+	for a in "$@"; do _p="$_p${_p:+,}\"$(esc "$a")\""; done
+	_o=$("$UBUS" call podkop run "{\"command\":\"clash_api\",\"params\":[$_p]}" 2>/dev/null) || return 1
+	jf "$_o" '@.stdout'
+}
+
+proxies() {	# <mgr>: the controller's /proxies
+	case "$1" in
+	podkop) podkop_run get_proxies ;;
+	forkop) clash forkop GET /proxies ;;
+	esac
+}
+
+# the section's group tag: podkop-exp «<section>-out», forkop the section's label or name
+group_of() {	# <mgr> <section>
+	case "$1" in
+	podkop) echo "$2-out" ;;
+	forkop) l=$(uci -q get "forkop.$2.label"); echo "${l:-$2}" ;;
+	esac
+}
+
+delay() {	# <mgr> <server>: ms or nothing
+	case "$1" in
+	podkop) _d=$(podkop_run get_proxy_latency "$2" 3000) ;;
+	forkop) _d=$(clash forkop GET "/proxies/$(enc "$2")/delay?url=$(enc "$URL")&timeout=3000") ;;
+	esac
+	_n=$(jf "$_d" '@.delay')
+	case "$_n" in ''|*[!0-9]*|0) return 1 ;; esac
+	echo "$_n"
+}
+
+pin() {	# <mgr> <group> <server or empty for the automatic choice>
+	case "$1" in
+	podkop) _r=$(podkop_run set_group_proxy "$2" "$3"); [ "$(jf "$_r" '@.success')" = true ] ;;
+	forkop) clash forkop PUT "/proxies/$(enc "$2")" "{\"name\":\"$(esc "$3")\"}" >/dev/null ;;
+	esac
+}
+
+reload_manager() {
+	case "$1" in
+	podkop) "$PODKOP" reload >/dev/null 2>&1 ;;
+	forkop) "$FORKOP" reload >/dev/null 2>&1 ;;
+	esac
+}
+
+lan_prefix() {
+	_s=$("$UBUS" call network.interface.lan status 2>/dev/null)
+	_a=$(jf "$_s" '@["ipv4-address"][0].address'); _m=$(jf "$_s" '@["ipv4-address"][0].mask')
+	[ -n "$_a" ] && [ -n "$_m" ] || return 1
+	echo "$_a $_m" | awk '{ split($1, o, "."); m = $2; n = 0; for (i = 1; i <= 4; i++) { b = (m >= 8) ? 8 : (m > 0 ? m : 0); m -= b;
+		v = (b == 0) ? 0 : o[i] - o[i] % (2 ^ (8 - b)); printf "%s%d", (i > 1 ? "." : ""), v } printf "/%d\n", $2 }'
+}
+
+# podkop-exp's mixed proxy of the section, for apk/opkg/curl of the router: its address or nothing
+mixed_of() {	# <section>
+	[ "$(uci -q get "podkop.$1.mixed_proxy_enabled")" = 1 ] || return 1
+	_port=$(uci -q get "podkop.$1.mixed_proxy_port"); _port=${_port:-2080}
+	_ip=$(uci -q get podkop.settings.service_listen_address)
+	[ -n "$_ip" ] || { _s=$("$UBUS" call network.interface.lan status 2>/dev/null); _ip=$(jf "$_s" '@["ipv4-address"][0].address'); }
+	[ -n "$_ip" ] && echo "http://$_ip:$_port"
+}
+
+has() { uci -q get "$1.$2.fully_routed_ips" | tr ' ' '\n' | grep -qx "$3"; }
+
+# podkop-exp names a server «<source>: <name>» and its page shows the source's label in place of <source>
+pretty() {	# <mgr> <tag>
+	_t=$2
+	if [ "$1" = podkop ]; then
+		_src=${_t%%: *}
+		if [ "$_src" != "$_t" ] && plain "$_src"; then
+			_l=$(uci -q get "podkop.$_src.label")
+			[ -n "$_l" ] && _t="$_l: ${_t#*: }"
+		fi
+	fi
+	printf '%s' "$_t"
+}
+
+# the ledger, written whole and atomically: false when it could not be (then nothing of the manager is touched)
+ledger_write() {	# <mgr> <section> <group> <server> <servers, one a line> <added words> <profile 0|1> <since> <reload 0|1>
+	_sv=''
+	while read -r _t; do [ -n "$_t" ] && _sv="$_sv${_sv:+,}\"$(esc "$_t")\""; done <<EOF
+$5
+EOF
+	_ad=''; for _v in $6; do _ad="$_ad${_ad:+,}\"$(esc "$_v")\""; done
+	mkdir -p "$(dirname "$LEDGER")" || return 1
+	printf '{"manager":"%s","section":"%s","group":"%s","server":"%s","label":"%s","servers":[%s],"added":[%s],"profile":%s,"since":%s,"reload":%s}\n' \
+		"$1" "$2" "$(esc "$3")" "$(esc "$4")" "$(esc "$(pretty "$1" "$4")")" "$_sv" "$_ad" "$7" "${8:-0}" "${9:-0}" >"$LEDGER.tmp" &&
+		mv "$LEDGER.tmp" "$LEDGER" || { rm -f "$LEDGER.tmp"; return 1; }
+}
+lf() { jsonfilter -i "$LEDGER" -e "$1" 2>/dev/null; }
+
+# Give back what the ledger says (the audit of r162, 2026-11-06: an off that failed said «off» and dropped the ledger).
+# Every step checked; the ledger goes only when all is back, else it keeps what is left and UNDO_ERR says why: the next
+# off goes on from there. 0 all given back.
+undo() {
+	_m=$(lf '@.manager'); _s=$(lf '@.section'); _g=$(lf '@.group')
+	case "$_m" in podkop|forkop) ;; *) rm -f "$LEDGER"; UNDO_ERR="a ledger of no known manager: dropped"; return 1 ;; esac
+	plain "$_s" || { rm -f "$LEDGER"; UNDO_ERR="a ledger of a bad section: dropped"; return 1; }
+	UNDO_ERR=''
+	# the automatic choice back: podkop-exp's URL test, forkop's unpin
+	case "$_m" in
+	podkop) _p=$(proxies podkop); _u=$(urltest_of podkop "$_s" "$_p") || _u=$(jsonfilter -s "$_p" -e "@.proxies[\"$(esc "$_g")\"].all[0]" 2>/dev/null)
+		[ -n "$_u" ] && pin podkop "$_g" "$_u" || UNDO_ERR="the manager did not take its automatic choice back" ;;
+	forkop) pin forkop "$_g" '' || UNDO_ERR="the manager did not take its automatic choice back" ;;
+	esac
+	_left='' _changed=0
+	[ "$(lf '@.reload')" = 1 ] && _changed=1
+	for _v in $(lf '@.added[*]'); do
+		has "$_m" "$_s" "$_v" || continue
+		if uci del_list "$_m.$_s.fully_routed_ips=$_v"; then _changed=1; else _left="$_left $_v"; UNDO_ERR=${UNDO_ERR:-"$_v could not be taken out of fully_routed_ips"}; fi
+	done
+	_prof=$(lf '@.profile'); [ "$_prof" = 1 ] || _prof=0
+	if [ "$_prof" = 1 ]; then
+		rm -f "$PROFILE"; if [ -e "$PROFILE" ]; then UNDO_ERR=${UNDO_ERR:-"the router's proxy settings could not be removed"}; else _prof=0; fi
+	fi
+	_rl=0
+	if [ "$_changed" = 1 ]; then
+		if ! uci commit "$_m"; then
+			# nothing of ours left staged: the values are still in the file, the next off takes them out again
+			uci -q revert "$_m.$_s.fully_routed_ips"
+			_left=$(lf '@.added[*]' | tr '\n' ' '); UNDO_ERR=${UNDO_ERR:-"uci commit $_m failed"}
+		elif ! reload_manager "$_m"; then
+			_rl=1; UNDO_ERR=${UNDO_ERR:-"the manager did not reload"}
+		fi
+	fi
+	if [ -z "$UNDO_ERR" ]; then rm -f "$LEDGER"; return 0; fi
+	ledger_write "$_m" "$_s" "$_g" "$(lf '@.server')" "$(lf '@.servers[*]')" "$_left" "$_prof" "$(lf '@.since')" "$_rl"
+	return 1
+}
+
+# the group's automatic choice: podkop-exp's URL test «<rule>-urltest-out» (0.8.9; «<rule>-urltest» before); forkop none
+urltest_of() {	# <mgr> <section> <proxies>
+	[ "$1" = podkop ] || return 1
+	for _u in "$2-urltest-out" "$2-urltest"; do
+		[ -n "$(jsonfilter -s "$3" -e "@.proxies[\"$_u\"].type" 2>/dev/null)" ] && { echo "$_u"; return 0; }
+	done
+	return 1
+}
+
+case "$1" in
+detect)
+	out=''
+	for m in podkop forkop; do
+		[ -f "/etc/config/$m" ] || [ -n "$(uci -q show "$m" 2>/dev/null | head -1)" ] || continue
+		k=$(kind_of "$m")
+		secs=$(uci -q show "$m" 2>/dev/null | sed -n "s/^$m\.\([A-Za-z0-9_]*\)=section\$/\1/p" | while read -r s; do printf '"%s",' "$s"; done)
+		sw=false; case "$k" in podkop-exp|forkop2) sw=true ;; esac
+		out="$out${out:+,}{\"name\":\"$m\",\"kind\":\"$k\",\"switchable\":$sw,\"sections\":[${secs%,}]}"
+	done
+	echo "{\"managers\":[$out]}" ;;
+servers)
+	m=$2 s=$3
+	case "$m" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
+	plain "$s" || fail "bad section" 2
+	g=$(group_of "$m" "$s")
+	p=$(proxies "$m") || fail "the manager's controller does not answer"
+	all='' names=''
+	while read -r t; do
+		[ -n "$t" ] || continue
+		all="$all\"$(esc "$t")\","; names="$names\"$(esc "$(pretty "$m" "$t")")\","
+	done <<EOF
+$(jsonfilter -s "$p" -e "@.proxies[\"$(esc "$g")\"].all[*]" 2>/dev/null)
+EOF
+	[ -n "$all" ] || fail "no group $g in the manager"
+	now=$(jsonfilter -s "$p" -e "@.proxies[\"$(esc "$g")\"].now" 2>/dev/null)
+	auto=false auto_now=''
+	if u=$(urltest_of "$m" "$s" "$p") && [ "$now" = "$u" ]; then
+		auto=true; auto_now=$(jsonfilter -s "$p" -e "@.proxies[\"$(esc "$u")\"].now" 2>/dev/null)
+	fi
+	[ "$m" = forkop ] && [ -z "$now" ] && auto=true
+	srcs=''
+	if [ "$m" = podkop ]; then
+		rows=$(uci -q show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)=member$/\1/p' | while read -r r; do
+			[ "$(uci -q get "podkop.$r.section")" = "$s" ] && uci -q get "podkop.$r.source"; done)
+		for src in $(uci -q show podkop 2>/dev/null | sed -n 's/^podkop\.\([A-Za-z0-9_]*\)=source$/\1/p'); do
+			used=false; printf '%s\n' "$rows" | grep -qx "$src" && used=true
+			srcs="$srcs${srcs:+,}{\"name\":\"$src\",\"label\":\"$(esc "$(uci -q get "podkop.$src.label")")\",\"used\":$used}"
+		done
+	fi
+	printf '{"ok":true,"group":"%s","now":"%s","now_name":"%s","auto":%s,"auto_now":"%s","auto_now_name":"%s","servers":[%s],"names":[%s],"sources":[%s]}\n' \
+		"$(esc "$g")" "$(esc "$now")" "$(esc "$(pretty "$m" "$now")")" "$auto" "$(esc "$auto_now")" "$(esc "$(pretty "$m" "$auto_now")")" "${all%,}" "${names%,}" "$srcs" ;;
+delay)
+	case "$2" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
+	d=$(delay "$2" "$3") && echo "{\"delay_ms\":$d}" || echo '{"delay_ms":null}' ;;
+on)
+	m=$2 s=$3 lan=$4 router=$5
+	shift 5 2>/dev/null || fail "on <mgr> <section> <lan> <router> <server>..." 2
+	case "$m" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
+	plain "$s" || fail "bad section" 2
+	[ $# -gt 0 ] || fail "no server given" 2
+	case "$(kind_of "$m")" in podkop-exp|forkop2) ;; *) fail "this manager cannot switch servers while it runs" 2 ;; esac
+	# the mode on in another manager or section: given back there first, or nothing done (the audit of r162: the old
+	# manager's values stayed with no ledger left to take them out)
+	if [ -f "$LEDGER" ] && { [ "$(lf '@.manager')" != "$m" ] || [ "$(lf '@.section')" != "$s" ]; }; then
+		undo || fail "the whitelist mode in $(lf '@.manager') $(lf '@.section') could not be given back first: $UNDO_ERR"
+	fi
+	g=$(group_of "$m" "$s")
+	pick='' ms=null list=''
+	for t in "$@"; do
+		list="$list$t
+"
+		[ -n "$pick" ] && continue
+		d=$(delay "$m" "$t") && { pick=$t; ms=$d; }
+	done
+	[ -n "$pick" ] || pick=$1
+	added='' oprof=0 since=$(date +%s)
+	if [ -f "$LEDGER" ]; then
+		added=$(lf '@.added[*]' | tr '\n' ' '); oprof=$(lf '@.profile'); since=$(lf '@.since')
+		[ "$oprof" = 1 ] || oprof=0
+	fi
+	want=''
+	if [ "$lan" = 1 ]; then p=$(lan_prefix) && want="$want $p"; fi
+	if [ "$router" = 1 ] && [ "$m" = forkop ]; then want="$want @system"; fi
+	wprof=0 x=''
+	if [ "$router" = 1 ] && [ "$m" = podkop ]; then x=$(mixed_of "$s") && wprof=1; fi
+	new=''
+	for v in $want; do
+		case " $added " in *" $v "*) continue ;; esac
+		has "$m" "$s" "$v" || new="$new $v"
+	done
+	# the ledger first, with everything about to change: a crash or a failure below leaves what off needs
+	[ "$oprof" = 1 ] || [ "$wprof" = 1 ] && lp=1 || lp=0
+	ledger_write "$m" "$s" "$g" "$pick" "$list" "$added $new" "$lp" "$since" 0 || fail "the ledger could not be written: nothing changed"
+	pin "$m" "$g" "$pick" || fail "the manager did not take the server"
+	changed=0 keep=''
+	# ours no longer wanted (the LAN or the router switched off since) out; the admin's own values are never ours
+	for v in $added; do
+		case " $want " in *" $v "*) keep="$keep $v"; continue ;; esac
+		has "$m" "$s" "$v" || continue
+		uci del_list "$m.$s.fully_routed_ips=$v" && changed=1 || fail "$v could not be taken out of fully_routed_ips"
+	done
+	for v in $new; do
+		uci add_list "$m.$s.fully_routed_ips=$v" || fail "$v could not be added to fully_routed_ips"
+		changed=1 keep="$keep $v"
+	done
+	if [ "$wprof" = 1 ]; then
+		mkdir -p "$(dirname "$PROFILE")" && printf 'export http_proxy=%s https_proxy=%s\n' "$x" "$x" >"$PROFILE" ||
+			fail "the router's proxy settings could not be written"
+	elif [ "$oprof" = 1 ]; then
+		rm -f "$PROFILE"; [ -e "$PROFILE" ] && fail "the router's proxy settings could not be removed"
+	fi
+	if [ "$changed" = 1 ]; then
+		uci commit "$m" || fail "uci commit $m failed"
+	fi
+	ledger_write "$m" "$s" "$g" "$pick" "$list" "$keep" "$wprof" "$since" "$changed" || fail "the ledger could not be written"
+	if [ "$changed" = 1 ]; then
+		reload_manager "$m" || fail "the manager did not reload"
+		ledger_write "$m" "$s" "$g" "$pick" "$list" "$keep" "$wprof" "$since" 0 || fail "the ledger could not be written"
+	fi
+	a=''; for v in $keep; do a="$a${a:+,}\"$(esc "$v")\""; done
+	printf '{"ok":true,"server":"%s","label":"%s","delay_ms":%s,"added":[%s],"profile":%s}\n' "$(esc "$pick")" "$(esc "$(pretty "$m" "$pick")")" "$ms" "$a" "$wprof" ;;
+check)
+	[ -f "$LEDGER" ] || { echo '{"ok":true,"on":false}'; exit 0; }
+	m=$(jsonfilter -i "$LEDGER" -e '@.manager'); g=$(jsonfilter -i "$LEDGER" -e '@.group'); cur=$(jsonfilter -i "$LEDGER" -e '@.server')
+	d=$(delay "$m" "$cur") && { echo "{\"ok\":true,\"server\":\"$(esc "$cur")\",\"label\":\"$(esc "$(pretty "$m" "$cur")")\",\"delay_ms\":$d}"; exit 0; }
+	pick='' ms=null
+	# names of a subscription carry spaces and flags: one a line
+	while read -r t; do
+		[ -n "$t" ] && [ "$t" != "$cur" ] && [ -z "$pick" ] || continue
+		d=$(delay "$m" "$t") && { pick=$t; ms=$d; }
+	done <<EOF
+$(jsonfilter -i "$LEDGER" -e '@.servers[*]' 2>/dev/null)
+EOF
+	[ -n "$pick" ] || { echo "{\"ok\":false,\"server\":\"$(esc "$cur")\",\"error\":\"no server of the list answers\"}"; exit 1; }
+	pin "$m" "$g" "$pick" || fail "the manager did not take the server"
+	ledger_write "$m" "$(lf '@.section')" "$g" "$pick" "$(lf '@.servers[*]')" "$(lf '@.added[*]' | tr '\n' ' ')" "$(lf '@.profile')" "$(lf '@.since')" "$(lf '@.reload')" ||
+		fail "the ledger could not be written"
+	echo "{\"ok\":true,\"server\":\"$(esc "$pick")\",\"label\":\"$(esc "$(pretty "$m" "$pick")")\",\"delay_ms\":$ms,\"moved\":true}" ;;
+off)
+	[ -f "$LEDGER" ] || { echo '{"ok":true,"on":false}'; exit 0; }
+	undo || fail "not everything was given back: $UNDO_ERR; the next off goes on"
+	echo '{"ok":true,"on":false}' ;;
+status)
+	[ -f "$LEDGER" ] && cat "$LEDGER" || echo '{}' ;;
+hints)
+	case "$2" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
+	conf=$(uci -q get "$2.settings.config_path"); conf=${conf:-/etc/sing-box/config.json}
+	[ -r "$conf" ] || fail "the manager's sing-box config is not readable"
+	# the community list: once a day at most, on this ask only
+	if [ ! -s "$CIDR" ] || [ -n "$(find "$CIDR" -mmin +1440 2>/dev/null)" ]; then
+		mkdir -p "$(dirname "$CIDR")"
+		curl -fsS -m 30 -o "$CIDR.tmp" "$CIDR_URL" 2>/dev/null && mv "$CIDR.tmp" "$CIDR" || rm -f "$CIDR.tmp"
+	fi
+	[ -s "$CIDR" ] || fail "the community list could not be fetched"
+	# tag and IPv4 server of each outbound, one a line (a domain server is not judged)
+	n=$(jsonfilter -i "$conf" -e '@.outbounds[*].tag' 2>/dev/null | wc -l)
+	i=0 pairs=''
+	while [ "$i" -lt "$n" ] && [ "$i" -lt 400 ]; do
+		t=$(jsonfilter -i "$conf" -e "@.outbounds[$i].tag" 2>/dev/null)
+		a=$(jsonfilter -i "$conf" -e "@.outbounds[$i].server" 2>/dev/null)
+		printf '%s' "$a" | grep -Eqx '([0-9]{1,3}\.){3}[0-9]{1,3}' && pairs="$pairs$a	$t
+"
+		i=$((i + 1))
+	done
+	printf '%s' "$pairs" | awk -F'\t' -v list="$CIDR" '
+		function ip2n(s,  o) { split(s, o, "."); return ((o[1] * 256 + o[2]) * 256 + o[3]) * 256 + o[4] }
+		BEGIN { while ((getline l < list) > 0) { if (l !~ /^[0-9.]+\/[0-9]+$/) continue; split(l, c, "/"); k++; lo[k] = ip2n(c[1]);
+			hi[k] = lo[k] + 2 ^ (32 - c[2]) - 1 } }
+		NF == 2 { x = ip2n($1); in_ = "false"; for (j = 1; j <= k; j++) if (x >= lo[j] && x <= hi[j]) { in_ = "true"; break }
+			gsub(/["\\]/, "", $2); out = out (out ? "," : "") "\"" $2 "\":" in_ }
+		END { print "{\"ok\":true,\"hints\":{" out "}}" }' ;;
+*)
+	echo "usage: wlmode detect|servers|delay|on|check|off|status" >&2; exit 2 ;;
+esac

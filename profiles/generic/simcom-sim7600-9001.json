@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "simcom-sim7600-9001",
+  "extends": "generic-qmi",
+  "description": "SIMCom default QMI composition 1e0e:9001: SIM7100E, SIM7600 (E-H, G-H, ...) and other SIM7xxx/SIM8200 modules share it, so the model comes from AT+CGMM, never from the PID. Interfaces: DIAG 0, NMEA 1, AT 2 primary, 3 AT/PPP, 4 audio, 5 QMI (qmi_wwan with the DTR quirk; option leaves 5 and 6 alone). ModemManager's SIMCom plugin owns it (it disables QMI WDS PCO for this ID). Radio over AT is the SIMCom dialect: AT+CNMP mode, AT+CNBP bands, AT+CPSI? serving cell, whose field layout differs per RAT (parse the RAT first; a negative RSSI is not a band). SIM7600E-H: one SIM slot; USSD must be sent as raw text (a GSM7-packed code answers 'retry operation'). RNDIS (1e0e:9011) and MBIM (1e0e:9003) compositions are not this profile (simcom-sim7600-9011, simcom-sim7600-9003). No netifd-qmi fallback: on this composition OpenWrt's stock qmi protocol left the 802.3 netdev without DHCP (another modem manager 3.5.8 needs its own raw QMI protocol; profiles audit 2026-10-19).",
+  "match": {
+    "bus": "usb",
+    "vid": "1e0e",
+    "pid": "9001",
+    "drivers_any": [
+      "qmi_wwan",
+      "option"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi"
+    ],
+    "at_interface_numbers": [
+      2
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/simtech/77-mm-simtech-port-types.rules (SIM7000/SIM7100/SIM7600: 00 QCDM, 01 GPS, 02 AT primary, 03 AT secondary, 04 audio); Linux 6.12 qmi_wwan.c QMI on interface 5, option.c reserves 5 and 6"
+  },
+  "radio": {
+    "dialect": "simcom",
+    "status": "reference",
+    "source": "another modem manager 3.5.5 1e0e9001 band profile (AT+CNMP, AT+CNBP, AT+CSYSSEL) and quirks.sh (SIM7600E-H LE11B11SIM7600M22: one slot, raw-text USSD answered); docs/modem-zoo/modems/simcom-sim7x.md (CPSI layout per RAT); SIMCom SIM7500/SIM7600 AT command manual"
+  }
+}

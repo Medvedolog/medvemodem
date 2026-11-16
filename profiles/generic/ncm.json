@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "generic-ncm",
+  "fit": "generic",
+  "extends": "generic-modemmanager",
+  "description": "Generic USB NCM modem",
+  "match": {
+    "bus": "usb",
+    "drivers_any": ["cdc_ncm", "huawei_cdc_ncm"]
+  },
+  "policy": {
+    "owner_priority": ["modemmanager", "ncm"],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": ["modemmanager", "ncm"]
+  }
+}

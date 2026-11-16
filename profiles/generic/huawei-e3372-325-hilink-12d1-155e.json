@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "huawei-e3372-325-hilink-12d1-155e",
+  "extends": "generic-hilink",
+  "description": "Huawei E3372-325 HiLink at 12d1:155e: on the owner's bench (2026-10-20 and 2026-10-22) the stick shows USB manufacturer/product «Mobile», a cdc_ether function (interfaces 00, 01) with a DHCP address and the HiLink web API, no serial number, so it is port-identified and the model comes from its web (DeviceName). Field report outranks the Modem Zoo here: the zoo lists 155e as an E3272/E3372-class stick with AT under ModemManager, and the huawei family profile still takes that stick composition (NCM/option without an Ethernet function), since this profile matches only with cdc_ether or rndis_host. Router mode only. Sources: docs/HANDOFF.md 195 and 200 (the owner's logread and the r82 UI report), docs/modem-zoo/modems/huawei-hilink.md, profiles/catalog/known-compositions.json composition-12d1-155e-6 (imported, mode hilink)",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "155e",
+    "drivers_any": [
+      "cdc_ether",
+      "rndis_host"
+    ]
+  },
+  "hints": {
+    "router_mode": "only"
+  }
+}

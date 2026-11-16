@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "quectel-ep06",
+  "extends": "quectel",
+  "description": "Quectel EP06 / EG06 / EM06 (2c7c:0306, LTE-A Cat.6): DIAG 0, NMEA 1, AT 2 primary, 3 AT/PPP, network function after them (QMI by default; ModemManager's rules name ports 0-3 for this PID whatever the usbnet mode, but a usbnet change re-enumerates and was field-reported to lose the AT port and the data interface on one host). EP06-E / EG06-E: USSD is not supported by the firmware (AT+CUSD answers OK, no network answer ever comes); not generalised to EP06-A, which shares the PID. SIM slots: two, reported by QMI UIM and ModemManager; AT+QUIMSLOT does not answer on this model (that is the EM12/RM5xx command). Band tables differ per firmware under the same PID; legacy AT+QCFG=\"band\" / \"nwscanmode\" (0 auto, 2 WCDMA, 3 LTE on EP06-E), not QNWPREFCFG",
+  "match": {
+    "bus": "usb",
+    "vid": "2c7c",
+    "pid": "0306"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      2
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/quectel/77-mm-quectel-port-types.rules (EG06/EP06 2c7c:0306: if 0 QCDM, 1 GPS, 2 AT primary, 3 AT secondary); Linux 6.12 qmi_wwan.c QMI_MATCH_FF_FF_FF for 0306",
+    "ussd": "unconfirmed",
+    "ussd_source": "EP06-E/EG06-E: AT+CUSD answers OK and no network answer follows; another modem manager field notes via the owner's digest 2026-11-02"
+  },
+  "radio": {
+    "dialect": "quectel",
+    "status": "field-reported",
+    "source": "another modem manager 3.5.5 quirks.sh (EP06-E/EG06-E USSD unsupported; slots via QMI, live 2026-08-05; no QUIMSLOT); docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md (nwscanmode values, firmware-specific band masks; 4PDA topic 994474 post 8569 usbnet hazard)"
+  }
+}

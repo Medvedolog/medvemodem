@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "phone-android-honor",
+  "extends": "generic-hilink",
+  "description": "An Android phone of Honor (USB vendor 339b) in USB tethering: RNDIS (rndis_host), or CDC ECM/NCM on newer Android, and a DHCP address from the phone, which routes and NATs itself; no AT port, no control channel. A phone, not a modem: its APN, network mode and SIM are set on the phone, and it may stop tethering when its screen locks or the cable is replugged. Router mode is its only mode: no problem to report. Added at the owner's word (2026-11-01); USB vendor IDs from the Linux USB ID list.",
+  "match": {
+    "bus": "usb",
+    "vid": "339b",
+    "drivers_any": [
+      "rndis_host",
+      "cdc_ether",
+      "cdc_ncm"
+    ]
+  },
+  "hints": {
+    "title": "Телефон Android (режим модема)",
+    "router_mode": "only"
+  }
+}

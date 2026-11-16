@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx-1199-9091",
+  "extends": "sierra-em74xx",
+  "description": "Sierra Wireless EM7565 (M.2, LTE Cat.18), QMI composition (qcserial DEVICE_SWI, qmi_wwan on 8 with the DTR quirk)",
+  "match": {
+    "bus": "usb",
+    "vid": "1199",
+    "pid": "9091"
+  }
+}

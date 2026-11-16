@@ -1,0 +1,227 @@
+{
+  "luci-app-medvemodem": {
+    "description": "MedveModem dashboard, modem page, connection settings, recovery steps, radio settings, SMS and USSD, the SIM unlock, router settings",
+    "read": {
+      "ubus": {
+        "medvemodem": [
+          "status",
+          "devices",
+          "device",
+          "uplink",
+          "events",
+          "sms_list",
+          "ussd_status",
+          "presets",
+          "radio",
+          "cells",
+          "signal_history",
+          "traffic_history",
+          "metrics",
+          "web_info",
+          "usbtree",
+          "usbtree_detail",
+          "usb_rescue",
+          "neighbours"
+        ],
+        "medvemodem.forward": [
+          "status"
+        ],
+        "uci": [
+          "get"
+        ]
+      },
+      "uci": [
+        "medvemodem"
+      ],
+      "file": {
+        "/usr/libexec/medvemodem/apn-update version": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/qmodem-install status": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/pkg-install status": [
+          "exec"
+        ],
+        "/usr/sbin/medvemodem diag profile *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/ttl-fix status": [
+          "exec"
+        ],
+        "/usr/sbin/medvemodem channels": [
+          "exec"
+        ],
+        "/tmp/medvemodem/pkg/log": [
+          "read"
+        ],
+        "/tmp/medvemodem/qmodem/log": [
+          "read"
+        ],
+        "/usr/libexec/medvemodem/service status": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg get *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/sbin/medvemodem channels": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/sbin/medvemodem diag profile *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/wlmode detect": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/wlmode servers *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/wlmode delay *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/wlmode hints *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/local-proxy show": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/self-update status": [
+          "exec"
+        ],
+        "/tmp/medvemodem/update/log": [
+          "read"
+        ]
+      }
+    },
+    "write": {
+      "ubus": {
+        "medvemodem": [
+          "recover",
+          "bringup",
+          "connect",
+          "priority",
+          "check",
+          "sms_send",
+          "alerts",
+          "web_do",
+          "sms_delete",
+          "sms_center",
+          "sms_storage",
+          "sms_clear",
+          "ussd_start",
+          "ussd_respond",
+          "ussd_cancel",
+          "sim_unlock",
+          "failover_forgive",
+          "radio_set",
+          "radio_confirm",
+          "modeswitch_run",
+          "freeze",
+          "handover",
+          "sim_slot",
+          "reregister",
+          "fplmn",
+          "web_open",
+          "esim_status",
+          "esim_action",
+          "wlmode",
+          "usb_class",
+          "usb_rescue_run"
+        ],
+        "medvemodem.forward": [
+          "token_set",
+          "token_clear"
+        ],
+        "uci": [
+          "add",
+          "set",
+          "delete",
+          "commit",
+          "revert"
+        ]
+      },
+      "uci": [
+        "medvemodem"
+      ],
+      "file": {
+        "/usr/libexec/medvemodem/apn-update update": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/netcheck *": [
+          "exec"
+        ],
+        "/usr/sbin/medvemodem dns-check *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/sms-forward test": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/libexec/medvemodem/apn-update update": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/libexec/medvemodem/netcheck *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/sbin/medvemodem dns-check *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/bg start * /usr/libexec/medvemodem/speedtest *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/speedtest *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/local-proxy check *": [
+          "exec"
+        ]
+      }
+    }
+  },
+  "luci-app-medvemodem-engineer": {
+    "description": "MedveModem engineer's tools: AT commands and presets, the AT port probe, the ModemManager restart, the usb-modeswitch rule fix, the FCC unlock hook, the QModem installer, the switch of the MedveModem service and the other modem services and the installer of drivers and ModemManager from the router's feeds (root-equivalent)",
+    "write": {
+      "ubus": {
+        "medvemodem": [
+          "at_command",
+          "probe",
+          "mm_restart",
+          "modeswitch_fix",
+          "fcc_unlock"
+        ]
+      },
+      "file": {
+        "/usr/libexec/medvemodem/qmodem-install start": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/qmodem-install start --lang=*": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/pkg-install start *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/service *": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/qmodem-install remove": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/qmodem-install remove --lang=*": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/self-update check": [
+          "exec"
+        ],
+        "/usr/libexec/medvemodem/self-update start *": [
+          "exec"
+        ]
+      }
+    },
+    "read": {
+      "ubus": {
+        "medvemodem": [
+          "at_history"
+        ]
+      }
+    }
+  }
+}

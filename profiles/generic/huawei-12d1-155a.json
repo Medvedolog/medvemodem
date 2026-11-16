@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "huawei-12d1-155a",
+  "extends": "huawei",
+  "description": "Huawei E3372h in the HiLink \"Gateway NCM\" stick mode (12d1:155a): NCM data and AT ports, so ModemManager owns it as a Huawei stick; the E3372 AT set (AT^HCSQ signal, AT^SYSCFGEX bands, AT^CHIPTEMP). Reference only, not on our bench. Sources: another modem manager 3.5.8 README (added from 4PDA reports) and modem/usb/12d1155a (the 12d1:1506 E3272/E3372/E3276 AT profile); docs/HANDOFF.md 126 (12d1:155a E3372h NCM, to the catalog)",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "155a"
+  }
+}

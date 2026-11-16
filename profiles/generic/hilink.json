@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "generic-hilink",
+  "fit": "generic",
+  "description": "Device-managed USB Ethernet modem",
+  "match": {
+    "bus": "usb",
+    "drivers_any": ["cdc_ether", "rndis_host"]
+  },
+  "policy": {
+    "owner_priority": ["hilink"],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": ["hilink", "ecm", "rndis"],
+    "router_mode": "only"
+  }
+}

@@ -1,0 +1,639 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medvemodem.local/schema/device-profile-v1.json",
+  "title": "MedveModem device profile",
+  "type": "object",
+  "required": [
+    "schema",
+    "id"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 95
+    },
+    "extends": {
+      "type": "string"
+    },
+    "abstract": {
+      "const": true,
+      "description": "a family base: never matched itself (it has no match), only inherited through extends; its children name the USB identities"
+    },
+    "fit": {
+      "enum": [
+        "family",
+        "generic"
+      ],
+      "description": "how well a match knows the model: family (a vendor's profile, models differ) or generic (by driver only); absent: the model's own profile. Not inherited. LuCI offers a report for anything but the model's own."
+    },
+    "description": {
+      "type": "string"
+    },
+    "match": {
+      "type": "object",
+      "properties": {
+        "bus": {
+          "enum": [
+            "usb",
+            "pci",
+            "mhi",
+            "any"
+          ]
+        },
+        "vid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{4}$"
+        },
+        "pid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{4}$"
+        },
+        "manufacturer_contains": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product_contains": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mm_manufacturer_contains": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mm_model_contains": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "drivers_any": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "owner_priority": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "modemmanager",
+              "netifd-qmi",
+              "netifd-mbim",
+              "ncm",
+              "xmm",
+              "hilink",
+              "vendor",
+              "qmodem",
+              "native"
+            ]
+          },
+          "minItems": 1,
+          "description": "owners in order of preference; with option backend 'auto' a first 'qmodem' hands the modem to QModem when QModem is installed (USB modems), otherwise the next owner applies; a second 'native' is the engine's own path (its AT dial recipe), taken under 'auto' instead of ModemManager when QModem is not installed"
+        },
+        "allow_direct_at_when_mm_owned": {
+          "type": "boolean"
+        },
+        "allow_dynamic_new_id": {
+          "type": "boolean"
+        },
+        "allow_usb_rebind": {
+          "type": "boolean"
+        },
+        "mm_ports": {
+          "enum": [
+            "all",
+            "control"
+          ],
+          "description": "which of the modem's ports ModemManager is told about: all, or only the QMI/MBIM control and network ports (its serial ports stay with the engine; recovery study R3). With a first owner hilink, control also keeps a web modem with serial functions (HiLink debug, ZTE) a router: DHCP and its web API"
+        },
+        "fcc_unlock": {
+          "enum": [
+            "foxconn-qmi"
+          ],
+          "description": "the module's firmware keeps its radio off until the host sends an FCC unlock: foxconn-qmi is Foxconn's QMI FCC authentication (T77W968 family). The engine never sends it by itself: the operator's button links medvemodem's hook into ModemManager's fcc-unlock.d for this USB ID, and ModemManager runs it when the radio refuses to turn on"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hints": {
+      "type": "object",
+      "properties": {
+        "protocols": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "modemmanager",
+              "qmi",
+              "mbim",
+              "ncm",
+              "ecm",
+              "rndis",
+              "xmm",
+              "hilink",
+              "ppp"
+            ]
+          }
+        },
+        "at_interface_numbers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "at_source": {
+          "type": "string",
+          "description": "where at_interface_numbers comes from (composition documentation, field reports, bench)"
+        },
+        "usb_configurations": {
+          "type": "object",
+          "description": "the USB configurations (bConfigurationValue) of the module by their names, e.g. {\"1\": \"QMI (RMNET)\", \"2\": \"MBIM\"}: the «Композиция USB» choice names them",
+          "patternProperties": {
+            "^[1-9]$": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "additionalProperties": false
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "the device's name for people when its USB strings say nothing (a UFI stick says «Android»): the cards show it"
+        },
+        "router_mode": {
+          "enum": [
+            "only",
+            "switchable"
+          ],
+          "description": "a router inside the device: «only» when it has no other mode, so router mode is no problem to report"
+        },
+        "ussd": {
+          "enum": [
+            "unsupported",
+            "unconfirmed",
+            "3g-only"
+          ],
+          "description": "unsupported: the firmware does not answer USSD, the engine refuses at once and the page hides it; unconfirmed: the modem answers OK but a network answer was never seen (the page says so); 3g-only: in LTE the modem refuses USSD (CME ERROR 30), it works in 3G (the page says so)"
+        },
+        "ussd_source": {
+          "type": "string",
+          "description": "where the ussd hint comes from"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dial": {
+      "description": "Data session dialled over AT by the engine (native backend); the netifd proto 'medvemodem' asks for it. Placeholders: {cid}, {pdp}, {apn}.",
+      "type": "object",
+      "required": [
+        "transport",
+        "status",
+        "cid",
+        "setup",
+        "address",
+        "addressing",
+        "teardown"
+      ],
+      "properties": {
+        "transport": {
+          "const": "at"
+        },
+        "status": {
+          "enum": [
+            "unverified",
+            "field-reported",
+            "bench-validated"
+          ],
+          "description": "'unverified': built from other projects' field knowledge, never run on a modem of ours; the engine takes it only on the operator's explicit backend 'native'"
+        },
+        "cid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200,
+            "pattern": "^AT[A-Z+^$#%&*]"
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "address": {
+          "type": "object",
+          "required": [
+            "command",
+            "prefix"
+          ],
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 200,
+              "pattern": "^AT[A-Z+^$#%&*]"
+            },
+            "prefix": {
+              "type": "string",
+              "pattern": "^\\+[A-Z]+:$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "dns": {
+          "type": "object",
+          "required": [
+            "command",
+            "prefix"
+          ],
+          "properties": {
+            "command": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 200,
+              "pattern": "^AT[A-Z+^$#%&*]"
+            },
+            "prefix": {
+              "type": "string",
+              "pattern": "^\\+[A-Z]+:$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "addressing": {
+          "type": "object",
+          "required": [
+            "mode",
+            "prefix_len",
+            "gateway"
+          ],
+          "properties": {
+            "mode": {
+              "const": "static"
+            },
+            "prefix_len": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 30
+            },
+            "gateway": {
+              "enum": [
+                "first-host",
+                "on-link"
+              ]
+            },
+            "arp": {
+              "description": "false: the link answers no ARP (XMM NCM), the handler turns ARP off on it",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "teardown": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200,
+            "pattern": "^AT[A-Z+^$#%&*]"
+          },
+          "maxItems": 4
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
+        },
+        "flow": {
+          "description": "'3gpp': the dialogue of src/dial_at.c (registration, a session reused, CGACT=0 before 1, the other PDP type, CGCONTRDP); without it the setup commands run as they stand",
+          "enum": [
+            "3gpp"
+          ]
+        },
+        "login": {
+          "description": "'xgauth': the APN login goes as AT+XGAUTH=<cid>,<prot>,\"user\",\"pass\" first, AT+CGAUTH when the modem refuses it (Intel XMM)",
+          "enum": [
+            "xgauth"
+          ]
+        },
+        "before_activate": {
+          "description": "commands sent after the context is defined (and the login), before it is activated; an error answer does not stop the dial (AT+XDNS on XMM)",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200,
+            "pattern": "^AT[A-Z+^$#%&*]"
+          },
+          "maxItems": 4
+        },
+        "data_port": {
+          "description": "a session whose data is bound to a port of its own (Intel XMM over NCM): the commands go to the tty of this USB interface once an address is there, never on a reused session; that port carries data afterwards and is never the AT port",
+          "type": "object",
+          "required": [
+            "interface",
+            "commands"
+          ],
+          "properties": {
+            "interface": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            },
+            "commands": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 200,
+                "pattern": "^AT[A-Z+^$#%&*]"
+              },
+              "minItems": 1,
+              "maxItems": 4
+            }
+          },
+          "additionalProperties": false
+        },
+        "net_interface": {
+          "description": "the USB interface number of the network device the session uses (XMM: the first of three NCM functions); without it the modem's first network device",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31
+        }
+      },
+      "additionalProperties": false
+    },
+    "recovery": {
+      "description": "Recovery levels this modem is known to come back from (spec 22.1.3). A level not declared true is never attempted. field-reported allows an operator request only; bench-validated also automatic recovery. Levels 0-2 stay inside the engine and need no declaration; session_restart false says a reconnect does not help.",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "field-reported",
+            "bench-validated"
+          ]
+        },
+        "session_restart": {
+          "type": "boolean"
+        },
+        "radio_cycle": {
+          "type": "boolean"
+        },
+        "soft_reset": {
+          "type": "boolean"
+        },
+        "driver_rebind": {
+          "type": "boolean"
+        },
+        "usb_reauthorize": {
+          "type": "boolean"
+        },
+        "power_cycle": {
+          "type": "boolean"
+        },
+        "settle_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 180000
+        },
+        "source": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300
+        }
+      },
+      "additionalProperties": false
+    },
+    "bind": {
+      "description": "Host-side driver binding the engine applies per attachment (spec 15.2 stage 4): interface-scoped dynamic new_id, the interfaces it must not take given back, verified. Only bench-validated bindings run automatically.",
+      "type": "object",
+      "required": [
+        "status",
+        "serial"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "field-reported",
+            "bench-validated"
+          ]
+        },
+        "net": {
+          "description": "The data driver's dynamic new_id for an ID no kernel table names: it holds these interfaces, what else it took is given back, a serial driver holding one is made to let go (owner 2026-10-26, as the reference stacks do it).",
+          "type": "object",
+          "required": [
+            "driver",
+            "interfaces"
+          ],
+          "properties": {
+            "driver": {
+              "enum": [
+                "qmi_wwan",
+                "cdc_mbim",
+                "cdc_ncm",
+                "cdc_ether",
+                "rndis_host"
+              ]
+            },
+            "interfaces": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{2}$"
+              },
+              "minItems": 1,
+              "maxItems": 4,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "serial": {
+          "type": "object",
+          "required": [
+            "driver",
+            "usb_serial_driver",
+            "interfaces"
+          ],
+          "properties": {
+            "driver": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]{2,32}$"
+            },
+            "usb_serial_driver": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]{2,32}$"
+            },
+            "interfaces": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^([0-9a-f]{2}|\\*)$"
+              },
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300
+        }
+      },
+      "additionalProperties": false
+    },
+    "radio": {
+      "description": "How the modem's radio settings (network mode, preferred technology, bands, cell lock) are read and, later, changed when the engine itself talks AT (spec 25.9.12). ModemManager and QModem have their own ways; the dialect names the AT command set for the native path.",
+      "type": "object",
+      "required": [
+        "dialect",
+        "status"
+      ],
+      "properties": {
+        "dialect": {
+          "enum": [
+            "3gpp",
+            "quectel",
+            "fibocom-mtk",
+            "fibocom-qualcomm",
+            "xmm",
+            "foxconn-sdx",
+            "foxconn-t77",
+            "huawei",
+            "sierra",
+            "telit",
+            "simcom"
+          ]
+        },
+        "status": {
+          "enum": [
+            "reference",
+            "field-reported",
+            "bench-validated"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "ussd_at_on_lte": {
+          "description": "On LTE (and 5G) this modem's USSD goes straight to the engine's AT port: the network refuses ModemManager's request on LTE and answers the AT one. ModemManager stays the path on 2G/3G and when the engine has no AT port.",
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "ussd_cs_fallback": {
+          "description": "USSD on LTE makes this modem fall back to the operator's 2G/3G for the circuit-switched call domain, and its data session can drop meanwhile (CSFB). The page asks before sending a code while the modem is on LTE.",
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "extends"
+              ]
+            },
+            {
+              "required": [
+                "abstract"
+              ]
+            }
+          ]
+        }
+      },
+      "then": {
+        "required": [
+          "match",
+          "policy"
+        ],
+        "properties": {
+          "policy": {
+            "required": [
+              "owner_priority"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "abstract"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "match"
+          ]
+        },
+        "required": [
+          "policy"
+        ],
+        "properties": {
+          "policy": {
+            "required": [
+              "owner_priority"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

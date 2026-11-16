@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968-dell-81d8",
+  "extends": "foxconn-t77w968",
+  "description": "Dell DW5821e variant (T77W968) not in the kernel table: serial ports need option new_id with class ff (another modem manager usbports)",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81d8"
+  },
+  "policy": {
+    "fcc_unlock": "foxconn-qmi"
+  },
+  "bind": {
+    "status": "field-reported",
+    "serial": {
+      "driver": "option",
+      "usb_serial_driver": "option1",
+      "interfaces": [
+        "*"
+      ]
+    },
+    "source": "another modem manager usbports.sh: option1 new_id '<vid> <pid> ff' (the class keeps cdc_mbim's data interface); every vendor interface but ADB; the working notes"
+  }
+}

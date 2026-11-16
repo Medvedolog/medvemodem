@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medvemodem.local/schema/catalog-v1.json",
+  "title": "MedveModem imported hardware catalog",
+  "type": "object",
+  "required": ["schema", "status", "records"],
+  "properties": {
+    "schema": { "const": 1 },
+    "status": { "const": "imported-unvalidated" },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "match", "status"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "bus": { "enum": ["usb", "pci"] },
+          "match": { "type": "object" },
+          "model": { "type": "string" },
+          "models": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "alias": { "type": ["string", "null"] },
+          "observed": { "type": "object" },
+          "hints": { "type": "object" },
+          "safety": {
+            "type": "object",
+            "properties": {
+              "operational": { "const": false },
+              "reason": { "type": "string" }
+            }
+          },
+          "status": { "const": "imported-unvalidated" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,33 @@
+#!/bin/sh
+# The proxy guard (spec 20.8), run by medvemodemd when every direct check of
+# every uplink fails:
+#   proxy-probe <proxy|auto> <target> [<target> ...]
+# Does the internet answer through the router's local proxy? Then the checks
+# are blocked by a firewall (a VPN kill switch), not the links dead, and the
+# engine must not recover a modem. <proxy> is host:port, or auto: the HTTP
+# (mixed) port of a local clash/mihomo from its configuration (read only:
+# another program's configuration is never changed). A target is host[:port]
+# from the reach checks; one plain HTTP request to it through the proxy, any
+# answer counts. Without such a port, auto asks the tunnel's controller (tunnel-probe:
+# podkop's sing-box). Exit 0: the internet answers through the proxy; 1: it does
+# not; 2: no proxy or no curl to ask with.
+
+proxy=$1
+shift
+command -v curl >/dev/null 2>&1 || exit 2
+if [ "$proxy" = auto ]; then
+	port=$(sed -n 's/^\(mixed-port\|port\) *: *\([0-9][0-9]*\).*/\2/p' \
+		${MEDVEMODEM_PROXY_CONFIGS:-/etc/clash/config.yaml /opt/clash/config.yaml /etc/mihomo/config.yaml /etc/openclash/config.yaml} \
+		2>/dev/null | head -n 1)
+	# no clash/mihomo HTTP port: a tunnel's controller is asked instead (podkop's sing-box has no HTTP port unless
+	# its mixed proxy is on, but always its Clash API)
+	case "$port" in ''|0) exec "${0%/*}/tunnel-probe" >/dev/null ;; esac
+	proxy=127.0.0.1:$port
+fi
+case "$proxy" in *[!A-Za-z0-9.:_-]*|'') exit 2 ;; esac
+for t in "$@"; do
+	host=${t%:*}
+	case "$host" in *[!A-Za-z0-9._-]*|'') continue ;; esac
+	curl -s -m 5 -x "http://$proxy" -o /dev/null "http://$host/" && exit 0
+done
+exit 1

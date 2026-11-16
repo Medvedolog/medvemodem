@@ -1,0 +1,68 @@
+#!/bin/sh
+# DNS follows the traffic (spec 20.8, R35), run by medvemodemd while failover
+# has steered traffic away from dead links:
+#   dns-follow [<dev> ...]
+# The listed devices' DNS servers leave dnsmasq's upstream list
+# (/tmp/resolv.conf.d/resolv.conf.auto, netifd's file, a block per
+# interface); the servers of an interface dropped earlier and no longer
+# listed come back. dnsmasq rereads the file on SIGHUP. The list never ends
+# empty: when only dead servers are left they stay (stale servers beat none).
+# netifd rewrites the file whenever an interface changes; the daemon runs this
+# again when it does.
+
+resolv=${MEDVEMODEM_RESOLV:-/tmp/resolv.conf.d/resolv.conf.auto}
+state=${MEDVEMODEM_DNS_STATE:-/var/run/medvemodem/dns-dropped}
+
+for dev in "$@"; do
+	case "$dev" in ''|*[!A-Za-z0-9._@-]*) echo "dns-follow: bad device name" >&2; exit 2 ;; esac
+done
+dump=$(ubus call network.interface dump 2>/dev/null) || { echo "dns-follow: no netifd" >&2; exit 1; }
+[ -f "$resolv" ] || exit 0
+
+# the interfaces (and their dynamic _4/_6 children) on the dead devices
+dead=
+for dev in "$@"; do
+	for name in $(jsonfilter -s "$dump" -e "@.interface[@.l3_device=\"$dev\"].interface" 2>/dev/null); do
+		dead="$dead $name"
+	done
+done
+dropped=$(cat "$state" 2>/dev/null)
+
+tmp="$resolv.medvemodem"
+cp "$resolv" "$tmp" 2>/dev/null || exit 1
+changed=
+
+# back: an interface dropped before and alive now gets its block again (netifd may have written it already)
+for name in $dropped; do
+	case " $dead " in *" $name "*) continue ;; esac
+	grep -qx "# Interface $name" "$tmp" && continue
+	servers=$(jsonfilter -s "$dump" -e "@.interface[@.interface=\"$name\"]['dns-server'][*]" 2>/dev/null)
+	[ -n "$servers" ] || continue
+	{ printf '# Interface %s\n' "$name"; printf 'nameserver %s\n' $servers; } >> "$tmp"
+	changed=1
+	logger -t medvemodem "failover: DNS servers of $name are back"
+done
+
+# away: the blocks of the dead interfaces, unless nothing else would be left
+if [ -n "$dead" ]; then
+	awk -v dead=" $dead " '
+		/^# Interface / { skip = index(dead, " " $3 " ") > 0 }
+		!skip { print }
+	' "$tmp" > "$tmp.new"
+	if grep -q '^nameserver ' "$tmp.new" && ! cmp -s "$tmp.new" "$tmp"; then
+		mv "$tmp.new" "$tmp"
+		changed=1
+		logger -t medvemodem "failover: DNS servers of$dead left the resolver list"
+	else
+		rm -f "$tmp.new"
+	fi
+fi
+
+mkdir -p "${state%/*}"
+printf '%s\n' $dead > "$state"
+if [ -n "$changed" ]; then
+	cat "$tmp" > "$resolv"
+	killall -HUP dnsmasq 2>/dev/null
+fi
+rm -f "$tmp"
+exit 0

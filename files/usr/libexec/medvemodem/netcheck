@@ -1,0 +1,91 @@
+#!/bin/sh
+# Which services answer through one modem (the «Проверка сервисов» button):
+#   netcheck <dev>
+# asks every service of the list in parallel through <dev> (curl --interface: the modem's
+# own operator, whatever the default route), TLS verified, 8 s each, and prints
+#   {"device", "at", "results": [{"id", "name", "group", "verdict", "code", "ms"}]}
+# verdict: ok, blocked (403/451), timeout, dns, refused, reset (the connection cut: DPI),
+# tls (the handshake failed), cert (the certificate did not verify: interception),
+# tunnel (the router's DNS gave a FakeIP of podkop and its kin, 198.18.0.0/15: the name goes to the tunnel, the
+# modem cannot be judged by it), other (an answer of another code). One run at a time on the router.
+# Exit: 0 done; 1 busy; 2 bad device; 3 no curl; 4 no root certificates (package ca-bundle).
+
+# rpcd's file exec hands the caller's environment over (LuCI's fs.exec(cmd, args, env)), and this runs as
+# root: installed, nothing from that environment is taken (review 2026-10-17: a release file pointed at
+# /proc/self/environ ran a line as root). The copies in the source tree keep their test overrides.
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+LIST=${MEDVEMODEM_NETCHECK_LIST:-/usr/share/medvemodem/netcheck.list}
+# the Telegram bot runs it as its own user (2026-10-28): its run directory is its own
+if [ "$(id -u)" = 0 ]; then RUN=${MEDVEMODEM_NETCHECK_RUN:-/tmp/medvemodem/netcheck}
+else RUN=${MEDVEMODEM_NETCHECK_RUN:-/tmp/medvemodem-bot/netcheck}; fi
+dev=$1
+
+case "$dev" in ''|*[!A-Za-z0-9._@-]*) echo '{"error":"bad device"}'; exit 2 ;; esac
+command -v curl >/dev/null 2>&1 || { echo '{"error":"no curl"}'; exit 3; }
+# without the root certificates every check would read as interception: say so instead
+CA=${MEDVEMODEM_NETCHECK_CA:-/etc/ssl/certs}
+[ -s "$CA/ca-certificates.crt" ] || ls "$CA"/*.0 >/dev/null 2>&1 || { echo '{"error":"no ca"}'; exit 4; }
+mkdir -p "${RUN%/*}"
+if ! mkdir "$RUN" 2>/dev/null; then
+	# a run killed before its cleanup leaves the directory: older than a minute is stale
+	if [ -n "$(find "$RUN" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
+		rm -rf "$RUN"; mkdir "$RUN" || exit 1
+	else
+		echo '{"error":"busy"}'; exit 1
+	fi
+fi
+trap 'rm -rf "$RUN"' EXIT
+# stopped from outside: the checks still running go too, and nothing half-done is printed (audit 2026-10-20)
+trap 'kill $(jobs -p) 2>/dev/null; exit 1' INT TERM HUP
+
+n=0
+while IFS='|' read -r id name group url extra; do
+	case "$id" in ''|\#*) continue ;; esac
+	n=$((n + 1))
+	(
+		# the device in curl's strict form (if!: never taken for an address or a host), no proxy from the environment
+		w=$(curl -s -o /dev/null --noproxy '*' --interface "if!$dev" --connect-timeout 5 --max-time 8 \
+			-A 'Mozilla/5.0 (X11; Linux x86_64) MedveModem-netcheck' \
+			-w '%{http_code} %{time_total} %{remote_ip}' "$url" 2>/dev/null)
+		rc=$?
+		code=${w%% *} t=${w#* } ip=${t#* } t=${t%% *}
+		[ "$ip" = "$t" ] && ip=
+		ms=$(awk -v t="$t" 'BEGIN { printf "%d", t * 1000 }')
+		case "$rc" in
+			0)
+				case "$code" in
+					2??|3??) v=ok ;;
+					# an operator's anti-bot page answers 403 too: the list's extra codes say it is reachable
+					403|451) v=blocked; for c in $extra; do [ "$code" = "$c" ] && v=ok; done ;;
+					*) v=other; for c in $extra; do [ "$code" = "$c" ] && v=ok; done ;;
+				esac ;;
+			6) v=dns ;;
+			7) v=refused ;;
+			28) v=timeout ;;
+			35) v=tls ;;
+			51|60) v=cert ;;
+			52|55|56) v=reset ;;
+			*) v=other ;;
+		esac
+		case "$ip" in 198.18.*|198.19.*) v=tunnel ;; esac
+		printf '{"id":"%s","name":"%s","group":"%s","verdict":"%s","code":%d,"ms":%d}' \
+			"$id" "$name" "$group" "$v" "${code:-0}" "${ms:-0}" > "$RUN/$n.json"
+	) &
+done < "$LIST"
+wait
+
+printf '{"device":"%s","at":%s,"results":[' "$dev" "$(date +%s)"
+i=1 sep=
+while [ "$i" -le "$n" ]; do
+	[ -s "$RUN/$i.json" ] && { printf '%s' "$sep"; cat "$RUN/$i.json"; sep=,; }
+	i=$((i + 1))
+done
+printf ']}\n'

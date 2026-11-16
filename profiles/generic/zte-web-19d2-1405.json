@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "zte-web-19d2-1405",
+  "extends": "generic-hilink",
+  "description": "ZTE MF823 / MF667-class stick in its web (RNDIS) composition: a router inside, Wi-Fi clients may drop when the stick re-enumerates out of its CD-ROM (19d2:1405). A router inside the stick: cdc_ether or rndis_host and a DHCP address, no AT port in this composition; signal, operator and SMS over the ZTE goform web API at 192.168.0.1 (Referer and X-Requested-With needed, a session first on newer firmware), the web password in the modem's settings. The model is told by its web (model_name, or the firmware string such as BD_XBKZMF79N...). Reference only, not on our bench. Sources: imported catalog 19d2:1405 (mf823, hilink); another modem manager 3.5.8 collect.sh and msw/hilink.sh (live reports 2026-09-08 on an AX3000 router: two CD-ROM re-enumerations in a row, both normal); another modem manager 3.5.8 hilink.sh (goform: Referer, X-Requested-With, session; MF79N firmware string); docs/modem-zoo/modems/zte-mf-family.md; docs/HANDOFF.md 162, 164",
+  "match": {
+    "bus": "usb",
+    "vid": "19d2",
+    "pid": "1405"
+  }
+}

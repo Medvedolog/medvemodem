@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "fibocom-fm350-rndis",
+  "extends": "fibocom-fm350",
+  "description": "Fibocom FM350-GL, RNDIS + AT composition 0e8d:7126 (AT+GTUSBMODE? 40); historical AT port ttyUSB1",
+  "match": {
+    "pid": "7126"
+  },
+  "hints": {
+    "protocols": [
+      "rndis"
+    ],
+    "ussd": "unsupported",
+    "ussd_source": "another modem manager quirks.sh: the same firmware family as 0e8d:7127 (AT+CUSD answers neither OK, ERROR nor +CUSD); field reports (Modem Zoo TELEGRAM-FIELD-NOTES)"
+  }
+}

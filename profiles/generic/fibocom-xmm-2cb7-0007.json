@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "fibocom-xmm-2cb7-0007",
+  "extends": "fibocom-xmm",
+  "description": "Fibocom VID: L850-GL / L860-GL MBIM composition",
+  "match": {
+    "bus": "usb",
+    "vid": "2cb7",
+    "pid": "0007"
+  }
+}

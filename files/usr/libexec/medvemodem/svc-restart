@@ -1,0 +1,28 @@
+#!/bin/sh
+# Run by medvemodemd when the router's internet works again (a boot, or the carrier back after a minute or more):
+#   svc-restart <service>...
+# Each service the operator chose (core list restart_on_uplink) restarts through its init script, one after
+# another, at most 60 s each: a tunnel or a bypass that started before the modem had dialled sets itself up again
+# with the internet there. Only a name that is an executable /etc/init.d/<name>; nothing else of the router changes.
+INITD=${MEDVEMODEM_INITD:-/etc/init.d}
+status=0
+for s in "$@"; do
+	case "$s" in ''|.*|*[!A-Za-z0-9_.-]*) echo "svc-restart: bad service name" >&2; status=2; continue ;; esac
+	if [ ! -x "$INITD/$s" ]; then
+		echo "svc-restart: $s is not installed" >&2
+		continue
+	fi
+	if command -v timeout >/dev/null 2>&1; then
+		timeout 60 "$INITD/$s" restart >/dev/null 2>&1
+	else
+		"$INITD/$s" restart >/dev/null 2>&1
+	fi
+	rc=$?
+	if [ "$rc" = 0 ]; then
+		echo "svc-restart: $s restarted" >&2
+	else
+		echo "svc-restart: $s restart ended with status $rc" >&2
+		[ "$status" = 0 ] && status=1
+	fi
+done
+exit $status

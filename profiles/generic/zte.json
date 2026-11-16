@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "id": "zte",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "ZTE modems and router modules in modem mode, USB 19d2 with serial, QMI, NCM or MBIM functions: MF821 (19d2:0167), MF28D / MF290 (0189), P685M / ZM8630A (1275), MF286 / MF286A (1432), MF286D / MF289F (1485), MF286R (1489), MF823 in NCM (1402), MF831 in MBIM (9994). ModemManager owns them. Their AT set is ZTE's: AT+ZRSSI, AT+ZCELLINFO?, AT+ZCAINFO? (no ZTE dialect in the engine yet: radio through ModemManager); the MF286D keeps SMS in storage MT. CD-ROM identities 19d2:0542 / 0548 / 0564 eject to a modem (19d2:0565) with a StandardEject rule that OpenWrt's usb-mode.json may lack: the engine switches nothing itself; a CD-ROM re-enumeration is not a power fault. The web sticks (cdc_ether / rndis only, a router inside: MF79, MF823/MF667 in RNDIS, Tenda MF6) do not match and have their own zte-web profiles. Reference only, not on our bench. Sources: another modem manager 3.5.8 modem/usb/19d2* (model names and the ZTE AT set), lib.sh (19d2:1485 SMS storage MT), usb-mode-extra.json (0542/0548/0564 StandardEject), collect.sh (19d2:1405 CD-ROM re-enumeration, live report 2026-09-08); imported catalog compositions 19d2:1402 (mf823, ncm) and 19d2:9994 (mf831, mbim); docs/modem-zoo/modems/zte-mf-family.md; docs/HANDOFF.md 126, 162",
+  "match": {
+    "bus": "usb",
+    "vid": "19d2",
+    "drivers_any": [
+      "option",
+      "qmi_wwan",
+      "cdc_ncm",
+      "cdc_mbim",
+      "cdc_acm"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "ncm",
+      "mbim"
+    ]
+  }
+}

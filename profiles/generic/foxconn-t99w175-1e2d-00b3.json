@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "foxconn-t99w175-1e2d-00b3",
+  "extends": "generic-mbim",
+  "description": "Foxconn T99W175 platform under VID 1e2d (sold as Cinterion/Thales MV31), MBIM composition 1e2d:00b3 (AT+USBSWITCH=00B3 on documented firmware). The VID is not shared with the Compal prototypes, so no ModemManager identity is required. Interface numbers not known to us: no AT interface declared, ModemManager keeps its ttys, no driver binding. Reference only, no bench of ours: the modem zoo page foxconn-t99w175 (1e2d:00b3 MBIM, 1e2d:00b7 QMI/RMNET), a vendor router's modem table (T99W175, AT on the first tty)",
+  "match": {
+    "bus": "usb",
+    "vid": "1e2d",
+    "pid": "00b3",
+    "drivers_any": [
+      "cdc_mbim"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "recovery": {
+    "status": "field-reported",
+    "radio_cycle": true,
+    "soft_reset": true,
+    "driver_rebind": false,
+    "usb_reauthorize": true,
+    "source": "as the 05c6 compositions (foxconn-t99w175-qmi): radio and reset through ModemManager; not bench-validated"
+  },
+  "radio": {
+    "dialect": "foxconn-sdx",
+    "status": "field-reported",
+    "source": "another modem manager 3.4.0 _qualcomm_sdx55_common (AT^SLMODE mask 1 WCDMA, 2 LTE, 4 NR5G, 0 auto; AT^BAND_PREF=<tech>,2,<list> unquoted, never the bare reset); QModem vendor/foxconn.sh (the same SLMODE table, NR5G_NSA/NR5G_SA lines)",
+    "ussd_cs_fallback": {
+      "source": "bench 2026-10-16 (T99W175, Tele2): USSD on LTE fell back to a 3G cell, was rejected (SupsFailureCase) and the data session dropped; ModemManager showed cs 'searching' while eps was 'home'"
+    }
+  }
+}

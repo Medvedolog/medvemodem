@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="700" viewBox="0 0 1120 700" font-family="-apple-system, 'Segoe UI', Roboto, 'DejaVu Sans', Arial, sans-serif" role="img" aria-label="MedveModem: how it works">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9aa5b1"/></marker></defs>
+<rect width="1120" height="700" fill="#ffffff"/>
+<text x="560.0" y="32" font-size="20" font-weight="bold" fill="#1f2933" text-anchor="middle">MedveModem: how it works</text>
+<text x="250" y="64" font-size="13" font-weight="bold" fill="#52606d" text-anchor="start">Front ends</text>
+<rect x="250.0" y="72" width="202.66666666666666" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="351.3333333333333" y="94" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">LuCI</text>
+<text x="351.3333333333333" y="112" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">the router's web UI</text>
+<rect x="468.66666666666663" y="72" width="202.66666666666666" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="570.0" y="94" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">medvemodem</text>
+<text x="570.0" y="112" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">console: CLI and top screen</text>
+<rect x="687.3333333333333" y="72" width="202.66666666666666" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="788.6666666666666" y="94" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">Telegram bot</text>
+<text x="788.6666666666666" y="112" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">ucode, optional</text>
+<line x1="570.0" y1="128" x2="570.0" y2="160" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+<text x="580.0" y="149" font-size="12" font-weight="normal" fill="#52606d" text-anchor="start">ubus: the "medvemodem" object — one API for all</text>
+<rect x="250" y="164" width="640" height="300" rx="10" fill="#f0fff4" stroke="#2f855a" stroke-width="1.5"/>
+<text x="264" y="188" font-size="15" font-weight="bold" fill="#1f2933" text-anchor="start">medvemodemd — the engine in C, one process (uloop)</text>
+<rect x="262" y="202" width="205" height="250" rx="8" fill="#ffffff" stroke="#2f855a" stroke-width="1.5"/>
+<text x="272" y="222" font-size="13" font-weight="bold" fill="#2f855a" text-anchor="start">Core</text>
+<text x="272" y="248" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• USB device registry, profiles</text>
+<text x="272" y="278" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• who owns the modem</text>
+<text x="272" y="308" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• connection, netifd interface</text>
+<text x="272" y="338" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• reachability check</text>
+<text x="272" y="368" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• channel failover, DNS</text>
+<text x="272" y="398" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• recovery step by step</text>
+<rect x="477" y="202" width="205" height="250" rx="8" fill="#ffffff" stroke="#2f855a" stroke-width="1.5"/>
+<text x="487" y="222" font-size="13" font-weight="bold" fill="#2f855a" text-anchor="start">Modules mgr_*</text>
+<text x="487" y="248" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• SMS and forwarding</text>
+<text x="487" y="278" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• radio, signal history</text>
+<text x="487" y="308" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• modem web (HiLink, ZTE)</text>
+<text x="487" y="338" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• traffic, SIM limits</text>
+<text x="487" y="368" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• SIM, eSIM, alerts</text>
+<text x="487" y="398" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• whitelist mode</text>
+<rect x="692" y="202" width="186" height="250" rx="8" fill="#fffaf0" stroke="#b7791f" stroke-width="1.5" stroke-dasharray="5 3"/>
+<text x="702" y="222" font-size="13" font-weight="bold" fill="#b7791f" text-anchor="start">Helpers</text>
+<text x="702" y="238" font-size="10" font-weight="normal" fill="#52606d" text-anchor="start">/usr/libexec/medvemodem</text>
+<text x="702" y="262" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• AT jobs</text>
+<text x="702" y="290" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• modem web reader</text>
+<text x="702" y="318" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• speed test</text>
+<text x="702" y="346" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• whitelist mode</text>
+<text x="702" y="374" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• SMS forwarding</text>
+<text x="702" y="402" font-size="12" font-weight="normal" fill="#1f2933" text-anchor="start">• package installer</text>
+<line x1="570.0" y1="466" x2="570.0" y2="500" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)"/>
+<text x="580.0" y="492" font-size="13" font-weight="bold" fill="#52606d" text-anchor="start">Executor — exactly one per modem</text>
+<rect x="250.0" y="504" width="151.0" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="325.5" y="526" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">ModemManager</text>
+<text x="325.5" y="544" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">mmcli</text>
+<line x1="325.5" y1="558" x2="325.5" y2="590" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)"/>
+<rect x="413.0" y="504" width="151.0" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="488.5" y="526" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">QModem</text>
+<text x="488.5" y="544" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">its scripts</text>
+<line x1="488.5" y1="558" x2="488.5" y2="590" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)"/>
+<rect x="576.0" y="504" width="151.0" height="52" rx="8" fill="#f0fff4" stroke="#2f855a" stroke-width="1.5"/>
+<text x="651.5" y="526" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">MedveModem itself</text>
+<text x="651.5" y="544" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">QMI · MBIM · AT</text>
+<line x1="651.5" y1="558" x2="651.5" y2="590" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)"/>
+<rect x="739.0" y="504" width="151.0" height="52" rx="8" fill="#ebf4ff" stroke="#2b6cb0" stroke-width="1.5"/>
+<text x="814.5" y="526" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="middle">Modem's web</text>
+<text x="814.5" y="544" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">HiLink · ZTE</text>
+<line x1="814.5" y1="558" x2="814.5" y2="590" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)"/>
+<rect x="250" y="594" width="640" height="46" rx="10" fill="#f5f7fa" stroke="#1f2933" stroke-width="1.5"/>
+<text x="570.0" y="622" font-size="13" font-weight="bold" fill="#1f2933" text-anchor="middle">Modems: USB and M.2 over USB, phones tethering, router-mode sticks</text>
+<rect x="20" y="164" width="200" height="210" rx="8" fill="#f5f7fa" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="32" y="186" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="start">Storage</text>
+<rect x="28" y="198" width="184" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="36" y="214" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">/etc/config/medvemodem</text>
+<text x="36" y="229" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">settings (UCI)</text>
+<rect x="28" y="242" width="184" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="36" y="258" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">…-secret</text>
+<text x="36" y="273" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">tokens, apart</text>
+<rect x="28" y="286" width="184" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="36" y="302" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">/etc/medvemodem</text>
+<text x="36" y="317" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">state on flash</text>
+<rect x="28" y="330" width="184" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="36" y="346" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">/var/run, /tmp</text>
+<text x="36" y="361" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">runtime, in RAM</text>
+<line x1="222" y1="230" x2="247" y2="230" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+<rect x="920" y="164" width="180" height="166" rx="8" fill="#f5f7fa" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="932" y="186" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="start">OpenWrt</text>
+<rect x="928" y="198" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="214" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">netifd, UCI</text>
+<text x="936" y="229" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">interfaces, firewall</text>
+<rect x="928" y="242" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="258" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">kernel routes</text>
+<text x="936" y="273" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">channel metrics</text>
+<rect x="928" y="286" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="302" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">sysfs, uevent</text>
+<text x="936" y="317" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">USB and drivers</text>
+<line x1="893" y1="230" x2="917" y2="230" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+<rect x="920" y="348" width="180" height="166" rx="8" fill="#f5f7fa" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="932" y="370" font-size="14" font-weight="bold" fill="#1f2933" text-anchor="start">Outside</text>
+<rect x="928" y="382" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="398" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">podkop / forkop</text>
+<text x="936" y="413" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">whitelist mode</text>
+<rect x="928" y="426" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="442" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">Telegram API</text>
+<text x="936" y="457" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">the bot</text>
+<rect x="928" y="470" width="164" height="38" rx="6" fill="#ffffff" stroke="#9aa5b1" stroke-width="1.5"/>
+<text x="936" y="486" font-size="12" font-weight="bold" fill="#1f2933" text-anchor="start">ntfy, webhook, SMS</text>
+<text x="936" y="501" font-size="11" font-weight="normal" fill="#52606d" text-anchor="start">forwarding</text>
+<line x1="893" y1="390" x2="917" y2="390" stroke="#9aa5b1" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+<text x="560.0" y="682" font-size="12" font-weight="normal" fill="#52606d" text-anchor="middle">Front ends never touch a modem themselves: they ask the engine, which decides and queues the job.</text>
+</svg>

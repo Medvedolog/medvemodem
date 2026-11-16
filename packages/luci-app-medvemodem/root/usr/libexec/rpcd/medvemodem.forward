@@ -1,0 +1,50 @@
+#!/bin/sh
+# rpcd executable plugin: the SMS forward's token (audit 2026-10-21: in /etc/config/medvemodem any session with the
+# page's uci read ACL got it back). It lives in /etc/config/medvemodem-secret, 0600, which no ACL names; the token comes
+# in on stdin (rpcd's call arguments), never on a command line, and never goes back out: status says only whether
+# one is kept.
+UCI=${MEDVEMODEM_UCI_BIN:-uci}
+JF=${MEDVEMODEM_JSONFILTER:-jsonfilter}
+CONF=${MEDVEMODEM_UCI_DIR:-/etc/config}/medvemodem-secret
+
+case "${1:-}" in
+list)
+	echo '{"status":{},"token_set":{"token":""},"token_clear":{}}'
+	exit 0 ;;
+call) ;;
+*) exit 1 ;;
+esac
+
+secret() {
+	umask 077
+	[ -f "$CONF" ] || : > "$CONF"
+	chmod 0600 "$CONF"
+	$UCI -q get medvemodem-secret.sms_forward >/dev/null || $UCI -q set medvemodem-secret.sms_forward=sms_forward
+}
+
+# a token an earlier version kept in /etc/config/medvemodem moves here once
+old=$($UCI -q get medvemodem.sms_forward.token)
+if [ -n "$old" ]; then
+	secret
+	$UCI -q set "medvemodem-secret.sms_forward.token=$old" && $UCI -q commit medvemodem-secret &&
+		$UCI -q delete medvemodem.sms_forward.token && $UCI -q commit medvemodem
+fi
+
+case "${2:-}" in
+status)
+	if [ -n "$($UCI -q get medvemodem-secret.sms_forward.token)" ]; then echo '{"token":true}'; else echo '{"token":false}'; fi ;;
+token_set)
+	# jsonfilter reads the call from stdin: the token is never an argument (HANDOFF 200 item 17)
+	token=$($JF -e '@.token' 2>/dev/null)
+	# curl's config quotes it (sms-forward): printable ASCII without a quote, a backslash or a space
+	case "$token" in ''|*'"'*|*\\*|*[!!-~]*) echo '{"ok":false,"error":"bad token"}'; exit 0 ;; esac
+	secret
+	$UCI -q set "medvemodem-secret.sms_forward.token=$token" && $UCI -q commit medvemodem-secret &&
+		echo '{"ok":true}' || echo '{"ok":false,"error":"not saved"}' ;;
+token_clear)
+	$UCI -q delete medvemodem-secret.sms_forward.token; $UCI -q commit medvemodem-secret
+	echo '{"ok":true}' ;;
+*)
+	exit 1 ;;
+esac
+exit 0

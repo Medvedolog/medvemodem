@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx-dell-81b6",
+  "extends": "sierra-em74xx",
+  "description": "Dell DW5811e Snapdragon X7 (a Sierra EM7455B under Dell's VID): qcserial DEVICE_SWI layout, qmi_wwan on 8 and 10 (Linux 6.12); ModemManager takes it through its Dell plugin, which hands Sierra firmware to the Sierra code; another modem manager 3.5.5 reads it with the 1199:9071 profile",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81b6"
+  }
+}

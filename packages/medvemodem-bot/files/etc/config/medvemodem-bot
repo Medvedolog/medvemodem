@@ -1,0 +1,63 @@
+config bot 'main'
+	option enabled '0'
+	option snapshot_minutes '15'
+	# the language of the bot's messages: auto (the admin's Telegram app), ru or en
+	option lang 'auto'
+	# «Входящие SMS» in Telegram: the sender's number and the text, nothing marked read on the router
+	option allow_sms_content '0'
+	# each new incoming SMS sent by itself, as it comes (r85); only with allow_sms_content
+	option sms_forward '0'
+	# modems from Telegram: make main, connect/disconnect, reconnect, freeze (the disruptive ones ask first);
+	# off: the bot only shows
+	option allow_control '0'
+	# sending an SMS (the modem, the number, the text, then «Отправить» on a page that shows all three) and USSD requests
+	# from Telegram (r184); they may cost money, so off unless switched on
+	option allow_send '0'
+	# «⚙️ Настройки» in Telegram: the notifications and the proxies to Telegram (rpcd bot_set, bot_proxy_*); 0: read-only
+	option allow_settings '1'
+	# Optional list emergency_ip contains owner-supplied IPv4 addresses.
+	# Used only after other routes fail and only with strict Telegram TLS.
+
+config administrator 'primary'
+	option user_id ''
+	option chat_id ''
+	option alias 'admin1'
+	option role 'admin'
+
+config transport 'poll'
+	option mode 'auto'
+	option fallback_direct '1'
+	option timeout_seconds '50'
+	# Optional kernel interface for DIRECT requests only (e.g. wwan0).
+	option bind_interface ''
+
+config transport 'send'
+	option bind_interface ''
+	option mode 'auto'
+	option fallback_direct '1'
+
+config notifications 'events'
+	option enabled '1'
+	option mode 'smart'
+	# the kinds (1: on): backup modems, ModemManager/QModem restarts, traffic limits, «MedveModem restarted»
+	option backup '1'
+	option services '1'
+	# the router's own trouble in the kernel's words (a dead USB controller, voltage, hangs)
+	option kernel '1'
+	option quota '1'
+	option restart '1'
+	# quiet hours: notifications without sound, none dropped; «no internet» and a used-up limit ring unless quiet_urgent 0
+	option quiet '0'
+	option quiet_from '23:00'
+	option quiet_to '07:00'
+	option quiet_urgent '1'
+
+# Optional route, disabled until configured. Credentials are NOT stored here.
+# SOCKS endpoints MUST use socks5h so DNS is resolved by the proxy.
+config proxy 'backup1'
+	option enabled '0'
+	option role 'fallback'
+	option priority '50'
+	option endpoint 'socks5h://127.0.0.1:2080'
+	# Optional; shared proxy password is in medvemodem-bot-secret.main.proxy_password.
+	option proxy_username ''

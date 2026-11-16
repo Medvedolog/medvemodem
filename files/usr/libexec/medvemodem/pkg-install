@@ -1,0 +1,329 @@
+#!/bin/sh
+# What a modem needs from the router besides MedveModem: ModemManager, the
+# mode switcher and the kernel's USB drivers. Shown and installed from LuCI
+# like QModem's core (qmodem-install), but from the router's own feeds.
+#
+#   pkg-install status          every component: installed or not, the last run
+#   pkg-install start [--lang=ru|en] <id>...   install those components in the background (one run at a time)
+#   pkg-install run <id>...     the installation itself, logged
+#
+# Only the components below can be named; anything else is refused. A dry run
+# comes first: when the feeds lack a package (kernel modules of a snapshot
+# build, a missing feed), nothing is installed and the log says what is
+# missing. Nothing is ever forced. A freshly installed ModemManager is enabled
+# and started; one already running is never restarted. A driver module is
+# loaded once installed, and the kernel gives it the interfaces waiting for it.
+# The log is for the operator, in LuCI's language (start --lang=ru|en, English
+# without it); status and start answer one line of JSON.
+
+# rpcd's file exec hands the caller's environment over (LuCI's fs.exec(cmd, args, env)), and this runs as
+# root: installed, nothing from that environment is taken (review 2026-10-17: a release file pointed at
+# /proc/self/environ ran a line as root). The copies in the source tree keep their test overrides.
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+RELEASE_FILE=${MEDVEMODEM_OPENWRT_RELEASE:-/etc/openwrt_release}
+RUN=${MEDVEMODEM_PKG_RUN:-/tmp/medvemodem/pkg}
+DRIVERS=${MEDVEMODEM_SYS_USB_DRIVERS:-/sys/bus/usb/drivers}
+MODULES=${MEDVEMODEM_MODULES_DIR:-/lib/modules/$(uname -r 2>/dev/null)}
+MM_INIT=${MEDVEMODEM_MM_INIT:-/etc/init.d/modemmanager}
+MM_PROTO=${MEDVEMODEM_MM_PROTO:-/lib/netifd/proto/modemmanager.sh}
+# netifd's protocol handlers: a direct MBIM, QMI or NCM session needs its package (the engine marks proto_missing)
+PROTO_DIR=${MEDVEMODEM_PROTO_DIR:-/lib/netifd/proto}
+MM_PROCESS=${MEDVEMODEM_MM_PROCESS:-ModemManager}
+# eSIM: our pinned lpac build, from MedveModem's own release (self-update addon), not from the router's feeds
+LPAC_OURS=${MEDVEMODEM_LPAC_OURS:-/usr/lib/medvemodem/lpac/lpac}
+LPAC_OTHER=${MEDVEMODEM_LPAC_OTHER:-/usr/lib/lpac}
+SELFUP=${MEDVEMODEM_SELFUP:-/usr/libexec/medvemodem/self-update}
+MODESWITCH=${MEDVEMODEM_MODESWITCH:-/usr/sbin/usb_modeswitch}
+# OpenWrt's usb-modeswitch package is usbmode (bench 2026-10-19: «не установлен» after it was installed)
+USBMODE=${MEDVEMODEM_USBMODE:-/sbin/usbmode}
+QMICLI=${MEDVEMODEM_QMICLI_BIN:-/usr/bin/qmicli}
+LSUSB=${MEDVEMODEM_LSUSB_BIN:-/usr/bin/lsusb}
+ETHTOOL=${MEDVEMODEM_ETHTOOL_BIN:-/usr/sbin/ethtool}
+# the package databases, read for the installed versions (no package manager call: status stays quick)
+APK_DB=${MEDVEMODEM_APK_DB:-/lib/apk/db/installed}
+OPKG_STATUS=${MEDVEMODEM_OPKG_STATUS:-/usr/lib/opkg/status}
+LOG="$RUN/log"
+PROXY=${MEDVEMODEM_LOCAL_PROXY:-/usr/libexec/medvemodem/local-proxy}
+# the log's language: LuCI's, handed over to start as --lang=ru|en and kept for the run (every line is written
+# in both, T picks one); English when none was given
+LANG_FILE="$RUN/lang"
+T() { if [ "$(cat "$LANG_FILE" 2>/dev/null)" = ru ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+# $1 --lang=…: written for the run; only ru is taken, anything else is English
+put_lang() { case "$1" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"; }
+umask 077
+
+# id, packages (comma-separated), kind
+COMPONENTS="modemmanager modemmanager,luci-proto-modemmanager service
+usb-modeswitch usb-modeswitch tool
+qmi-utils qmi-utils tool
+usbutils usbutils tool
+ethtool ethtool tool
+umbim umbim proto
+uqmi uqmi proto
+comgt-ncm comgt-ncm proto
+option kmod-usb-serial-option driver
+qmi_wwan kmod-usb-net-qmi-wwan driver
+cdc_mbim kmod-usb-net-cdc-mbim driver
+cdc_ncm kmod-usb-net-cdc-ncm driver
+huawei_cdc_ncm kmod-usb-net-huawei-cdc-ncm driver
+cdc_ether kmod-usb-net-cdc-ether driver
+rndis_host kmod-usb-net-rndis driver
+ipheth kmod-usb-net-ipheth,usbmuxd driver
+lpac medvemodem-lpac,medvemodem-lpac-uqmi ours"
+
+# read, never sourced: a value is text, not a command
+osrel() { sed -n "s/^$1=['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}\$/\1/p" "$RELEASE_FILE" 2>/dev/null | head -n 1; }
+REL=$(osrel DISTRIB_RELEASE)
+if command -v apk >/dev/null 2>&1; then PM=apk
+elif command -v opkg >/dev/null 2>&1; then PM=opkg
+else PM=
+fi
+
+# the id reaches awk through the environment: -v would turn \x6f into "o" (review 2026-10-17)
+field() { printf '%s\n' "$COMPONENTS" | ID="$1" awk -v n="$2" '$1 == ENVIRON["ID"] { print $n }'; }
+known() { case "$1" in *[!a-z0-9_-]*|'') return 1 ;; esac; [ -n "$(field "$1" 1)" ]; }
+packages() { field "$1" 2 | tr ',' ' '; }
+
+# installed | loaded (a driver the kernel has registered) | missing
+state_of() {
+	case "$(field "$1" 3)" in
+	service) [ -x "$MM_INIT" ] && [ -f "$MM_PROTO" ] && echo installed || echo missing ;;
+	tool)
+		case "$1" in
+		# not only /usr/bin (owner, 2026-10-20: «установлен», the page said missing): wherever PATH has it
+		qmi-utils) { [ -x "$QMICLI" ] || { [ -z "${MEDVEMODEM_QMICLI_BIN:-}" ] && command -v qmicli >/dev/null 2>&1; }; } &&
+			echo installed || echo missing ;;
+		# «Порты и устройства»: lsusb -t to check the tree, ethtool -i/-S for a driver's own counters (optional)
+		usbutils) { [ -x "$LSUSB" ] || { [ -z "${MEDVEMODEM_LSUSB_BIN:-}" ] && command -v lsusb >/dev/null 2>&1; }; } &&
+			echo installed || echo missing ;;
+		ethtool) { [ -x "$ETHTOOL" ] || { [ -z "${MEDVEMODEM_ETHTOOL_BIN:-}" ] && command -v ethtool >/dev/null 2>&1; }; } &&
+			echo installed || echo missing ;;
+		*) { [ -x "$USBMODE" ] || [ -x "$MODESWITCH" ]; } && echo installed || echo missing ;;
+		esac ;;
+	# the handler netifd runs for the protocol: umbim gives mbim.sh, uqmi qmi.sh, comgt-ncm ncm.sh
+	proto)
+		case "$1" in umbim) p=mbim ;; uqmi) p=qmi ;; *) p=ncm ;; esac
+		[ -f "$PROTO_DIR/$p.sh" ] && echo installed || echo missing ;;
+	# another lpac (OpenWrt's own, a manual install) works too: said apart, ours offered beside it
+	ours)
+		if [ -x "$LPAC_OURS" ]; then echo installed
+		elif [ -e "$LPAC_OTHER" ]; then echo other
+		else echo missing
+		fi ;;
+	driver)
+		if [ -d "$DRIVERS/$1" ]; then echo loaded
+		elif [ -n "$(find "$MODULES" -name "$1.ko" 2>/dev/null | head -n 1)" ]; then echo installed
+		else echo missing
+		fi ;;
+	esac
+}
+
+mm_running() { pidof "$MM_PROCESS" >/dev/null 2>&1; }
+
+# "<package> <version>" of every installed package, from apk's or opkg's database
+installed_versions() {
+	if [ -r "$APK_DB" ]; then
+		awk '/^P:/ { p = substr($0, 3) } /^V:/ && p != "" { print p, substr($0, 3); p = "" }' "$APK_DB"
+	elif [ -r "$OPKG_STATUS" ]; then
+		awk '/^Package: / { p = $2 } /^Version: / && p != "" { print p, $2; p = "" }' "$OPKG_STATUS"
+	fi
+}
+
+# the version of a component's first package (the one that carries it); empty when that package is not installed,
+# e.g. a driver built into the kernel. Only the characters a version has reach the JSON.
+version_of() {
+	printf '%s\n' "$VERSIONS" | PKG="$(packages "$1" | awk '{ print $1 }')" awk '$1 == ENVIRON["PKG"] { print $2; exit }' |
+		tr -cd 'A-Za-z0-9._~+:-'
+}
+
+put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
+
+running() {
+	local pid
+	pid=$(cat "$RUN/pid" 2>/dev/null)
+	[ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+status() {
+	local state result= target id sep= list= ver
+	if running; then state=running
+	elif [ -s "$RUN/result" ]; then state=$(sed -n 1p "$RUN/result"); result=$(sed -n 2p "$RUN/result")
+	else state=idle
+	fi
+	target=$(cat "$RUN/target" 2>/dev/null)
+	VERSIONS=$(installed_versions)
+	for id in $(printf '%s\n' "$COMPONENTS" | awk '{ print $1 }'); do
+		list="$list$sep{\"id\":\"$id\",\"packages\":\"$(packages "$id")\",\"kind\":\"$(field "$id" 3)\",\"state\":\"$(state_of "$id")\""
+		ver=$(version_of "$id")
+		[ -n "$ver" ] && list="$list,\"version\":\"$ver\""
+		[ "$id" = modemmanager ] && list="$list,\"running\":$(mm_running && echo true || echo false)"
+		list="$list}"
+		sep=,
+	done
+	printf '{"ok":true,"pm":"%s","openwrt":"%s","supported":%s,"components":[%s],"state":"%s","result":"%s","target":"%s","log":"%s"}\n' \
+		"$PM" "$REL" "$([ -n "$PM" ] && echo true || echo false)" "$list" "$state" "$result" "$target" "$LOG"
+}
+
+check_ids() {
+	local id
+	[ $# -gt 0 ] || { echo '{"ok":false,"error":"nothing to install"}'; return 1; }
+	for id in "$@"; do
+		known "$id" || { printf '{"ok":false,"error":"unknown component %s"}\n' "$(printf '%s' "$id" | tr -cd 'A-Za-z0-9_.-')"; return 1; }
+	done
+}
+
+# The lock names the start that took it. Another start takes it over only from an owner that is gone (or, with no
+# owner written yet, from a lock over a minute old), and by a rename only one can win: CI 2026-10-20 had two starts
+# both run — the second removed the first's fresh lock in the moment before any pid was written.
+take_lock() {
+	local o
+	if mkdir "$RUN/lock" 2>/dev/null; then echo $$ > "$RUN/lock/owner"; return 0; fi
+	running && return 1
+	o=$(cat "$RUN/lock/owner" 2>/dev/null)
+	if [ -z "$o" ]; then
+		[ -n "$(find "$RUN/lock" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+	elif kill -0 "$o" 2>/dev/null; then
+		return 1
+	fi
+	mv "$RUN/lock" "$RUN/lock.stale.$$" 2>/dev/null || return 1
+	rm -rf "$RUN/lock.stale.$$"
+	mkdir "$RUN/lock" 2>/dev/null || return 1
+	echo $$ > "$RUN/lock/owner"
+}
+
+start() {
+	check_ids "$@" || exit 1
+	[ -n "$PM" ] || { echo '{"ok":false,"error":"no package manager"}'; exit 1; }
+	[ -L "$RUN" ] && { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
+	mkdir -p "$RUN" || { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
+	# one run at a time, taken atomically: two buttons pressed together passed a pid check and ran apk side by
+	# side (review 2026-10-17). A lock left by a run that died is taken over.
+	take_lock || { echo '{"ok":false,"error":"running"}'; exit 1; }
+	running && { rm -rf "$RUN/lock"; echo '{"ok":false,"error":"running"}'; exit 1; }
+	# the lock is owned at once: until the run below writes its own pid, this process stands for it, so a
+	# start in between does not take the lock for a dead one (review 2026-10-17)
+	put_pid $$
+	rm -f "$RUN/result"
+	echo "$*" > "$RUN/target"
+	: > "$LOG"
+	put_lang "$LANG_ARG"
+	# detached from rpcd's exec: it answers now, the log tells the rest
+	( "$0" run "$@" </dev/null >/dev/null 2>&1 & put_pid $! )
+	echo '{"ok":true,"started":true}'
+}
+
+say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+finish() {
+	printf '%s\n%s\n' "$1" "$2" > "$RUN/result"
+	rm -f "$RUN/pid"
+	rm -rf "$RUN/lock"
+	logger -t medvemodem "components install: $1: $2" 2>/dev/null
+	exit 0
+}
+
+fail() { say "$(T ERROR ОШИБКА): $1"; say "$(T "Nothing is installed." "Ничего не установлено.")"; finish failed "$1"; }
+
+pm_do() { "$@" 2>&1 | sed 's/^/    /'; }
+
+# $PM update; when the feeds do not answer straight (a firmware server closed to the router), once more through each
+# local tunnel proxy that speaks HTTP (local-proxy http: a mixed port of podkop, forkop, clash/mihomo). The one that
+# works stays in http_proxy/https_proxy for the dry run and the installation. The log names the proxy, never its login.
+pm_update() {
+	local out rc proxy src hp
+	out=$("$PM" update 2>&1); rc=$?
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] && return 0
+	[ -x "$PROXY" ] || return 1
+	while read -r proxy src; do
+		[ -n "$proxy" ] || continue
+		hp=${proxy#http://}; hp=${hp#*@}
+		say "$(T "The feeds do not answer straight: again through the local proxy" "Репозитории недоступны напрямую: повторная попытка через локальный прокси") http://$hp ($src)"
+		out=$(http_proxy=$proxy https_proxy=$proxy "$PM" update 2>&1); rc=$?
+		printf '%s\n' "$out" | sed 's/^/    /'
+		if [ "$rc" -eq 0 ]; then export http_proxy="$proxy" https_proxy="$proxy"; return 0; fi
+	done <<EOF
+$("$PROXY" http 2>/dev/null)
+EOF
+	return 1
+}
+
+run() {
+	local id pkgs= drivers= ours= out rc
+	mkdir -p "$RUN"
+	put_pid $$
+	exec >>"$LOG" 2>&1
+	check_ids "$@" >/dev/null || fail "$(T "unknown component" "неизвестный компонент")"
+	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
+	say "$(T "Router: OpenWrt ${REL:-?}, packages: $PM" "Роутер: OpenWrt ${REL:-?}, пакеты: $PM")"
+	for id in "$@"; do
+		[ "$(field "$id" 3)" = ours ] && { ours="$ours $id"; continue; }
+		pkgs="$pkgs $(packages "$id")"
+		[ "$(field "$id" 3)" = driver ] && drivers="$drivers $id"
+	done
+	# MedveModem's own packages come from its release, checked by SHA256 (self-update addon)
+	for id in $ours; do
+		say "$(T "$id: MedveModem's own build, from its release" "$id: собственная сборка MedveModem, из её выпуска")"
+		"$SELFUP" addon "$id" "--lang=$(cat "$LANG_FILE" 2>/dev/null || echo en)" ||
+			{ say "$(T "ERROR: $id was not installed (see above)" "ОШИБКА: $id не установлен (см. выше)")"; finish failed "install failed: $id"; }
+	done
+	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || { say "$(T "Done." "Готово.")"; finish done "installed: $*"; }
+	say "$(T "Installing:$pkgs" "Устанавливается:$pkgs")"
+	say "$(T "Updating the package lists ($PM update)" "Обновление списков пакетов ($PM update)")"
+	pm_update || say "$(T "WARNING: the package lists were not updated (see above); the dry run tells what is missing" "ВНИМАНИЕ: списки пакетов не обновились (см. выше); проверка покажет, каких пакетов нет")"
+	say "$(T "Dry run: is everything in the router's feeds" "Проверка: есть ли все пакеты в репозиториях роутера")"
+	case "$PM" in
+		opkg) out=$(opkg install --noaction $pkgs 2>&1); rc=$? ;;
+		apk) out=$(apk add --simulate $pkgs 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	if [ "$rc" -ne 0 ]; then
+		[ -z "$drivers" ] || say "$(T "Kernel modules are missing from the feeds when the firmware is not a release build (a snapshot or your own build): they fit only their own kernel." "Для нерелизной прошивки (SNAPSHOT или собственной сборки) совместимые модули ядра могут быть недоступны в репозиториях: они должны соответствовать её ядру.")"
+		fail "$(T "the dry run failed: something is missing from the router's feeds (see above)" "проверка не пройдена: части пакетов нет в репозиториях роутера (см. выше)")"
+	fi
+	say "$(T "Installing" "Установка")"
+	case "$PM" in
+		opkg) out=$(opkg install $pkgs 2>&1); rc=$? ;;
+		apk) out=$(apk add $pkgs 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; finish failed "install failed"; }
+	for id in $drivers; do
+		[ -d "$DRIVERS/$id" ] || pm_do modprobe "$id"
+		if [ -d "$DRIVERS/$id" ]; then say "$(T "Driver $id is loaded: it takes the modem interfaces that waited for it by itself." "Драйвер $id загружен и сам подключит ожидавшие его интерфейсы модема.")"
+		else say "$(T "WARNING: the package of driver $id is installed, but the driver did not load; a router restart helps." "ВНИМАНИЕ: пакет драйвера $id установлен, но драйвер не загрузился; поможет перезагрузка роутера.")"
+		fi
+	done
+	for id in "$@"; do
+		case "$id" in
+		modemmanager)
+			if mm_running; then
+				say "$(T "ModemManager is already running; it is not restarted." "ModemManager уже работает; он не перезапускается.")"
+			else
+				pm_do "$MM_INIT" enable
+				pm_do "$MM_INIT" start
+				say "$(T "ModemManager is enabled and started; it finds the modems in about a minute." "ModemManager включён и запущен; модемы он найдёт примерно за минуту.")"
+			fi ;;
+		# netifd reads its protocol handlers when it starts; MedveModem never restarts the network itself
+		umbim|uqmi|comgt-ncm) say "$(T "netifd learns the new connection protocol when it starts: restart the router once, then the modem connects." "netifd узнаёт новый протокол подключения при своём запуске: перезагрузите роутер один раз, после этого модем подключится.")" ;;
+		usb-modeswitch) say "$(T "The USB mode switcher takes effect when the modem is plugged in next (or after “Reset the USB power”)." "Переключатель режимов USB подействует при следующем подключении модема (или после «Сбросить питание USB»).")" ;;
+		esac
+	done
+	say "$(T "Done." "Готово.")"
+	finish done "installed: $*"
+}
+
+case "${1:-status}" in
+	status) status ;;
+	start) shift; case "$1" in --lang=*) LANG_ARG=$1; shift ;; esac; start "$@" ;;
+	run) shift; run "$@" ;;
+	*) echo '{"ok":false,"error":"usage: pkg-install status|start <id>...|run <id>..."}'; exit 1 ;;
+esac

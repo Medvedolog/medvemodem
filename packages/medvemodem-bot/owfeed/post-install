@@ -1,0 +1,11 @@
+#!/bin/sh
+# After default_postinst (owfeed wraps this as OpenWrt's package-pack.mk does; /lib/functions.sh is loaded).
+[ -n "${IPKG_INSTROOT:-}" ] && exit 0
+/usr/libexec/medvemodem-bot/init-secrets || exit 1
+# the bot runs as root since r127: no ubusd ACL and never a signal to ubusd (r124: its reload took the bus from rpcd and
+# LuCI, only a reboot helped). A user left from an older version stays, unused
+rm -f /etc/medvemodem-bot/acl.sha256
+/etc/init.d/rpcd reload >/dev/null 2>&1 || true
+# the new config file's reload trigger starts the bot while the package is still being unpacked: started again here
+/etc/init.d/medvemodem-bot enabled 2>/dev/null && /etc/init.d/medvemodem-bot restart >/dev/null 2>&1
+exit 0

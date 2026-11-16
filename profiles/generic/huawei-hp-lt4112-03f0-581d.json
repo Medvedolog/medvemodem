@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "huawei-hp-lt4112-03f0-581d",
+  "extends": "huawei",
+  "description": "HP lt4112 LTE/HSPA+ Gobi 4G: a Huawei ME906E under HP's VID 03f0:581d, so the generic huawei profile (VID 12d1) does not see it. Linux 6.12 binds it as a Gobi module: qcserial with the Huawei interface layout (DEVICE_HWI) and qmi_wwan on the vendor-class function (subclass 01, protocol 07), so its data path is QMI, not Huawei NCM. ModemManager's Huawei plugin only takes VID 12d1: the generic plugin owns it over QMI. Radio over AT is still the Huawei dialect. another modem manager 3.5.8 reads it with its Huawei E3272/E3372 metrics (AT^HCSQ). Reference only, no bench of ours; profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "03f0",
+    "pid": "581d"
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi"
+    ]
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi"
+    ]
+  },
+  "radio": {
+    "dialect": "huawei",
+    "status": "reference",
+    "source": "Linux 6.12 qcserial.c (DEVICE_HWI 03f0:581d, HP lt4112 = Huawei ME906E) and qmi_wwan.c; another modem manager 3.5.8 modem/usb/03f0581d (AT^HCSQ)"
+  }
+}

@@ -1,0 +1,78 @@
+#!/bin/sh
+# ModemManager's FCC unlock hook for the Foxconn T77W968 family (Dell DW5821e
+# and its other IDs). Nothing links it by itself: the operator's button
+# (medvemodem fcc-unlock <id> on, the modem page in LuCI) makes
+# /etc/ModemManager/fcc-unlock.d/<vid:pid> a link to it, "off" removes the link,
+# and removing the package removes it too (HANDOFF 176).
+#
+# ModemManager runs it as <hook> <modem object path> <port>... only after the
+# modem refused to turn its radio on, once per attempt, and gives it 5 seconds.
+# The firmware waits for Foxconn's QMI "FCC authentication" before it enables
+# the radio (observation H6: radio off, a USB reset about every 5 minutes on
+# 413c:81e0). ModemManager's own Foxconn hook looks for an MBIM port and the
+# QMI composition has none, so it sent nothing there (field
+# reports). One command through the QMI proxy ModemManager
+# holds, over MBIM where the port is a cdc_mbim one. A modem that is not
+# locked confirms it or answers an error; it does not restart. The modem's
+# identity is never logged.
+#
+# Part of medvemodem; GPL-3.0-only.
+
+QMICLI=${MEDVEMODEM_QMICLI:-qmicli}
+SYS=${MEDVEMODEM_SYS:-/sys}
+DEV=${MEDVEMODEM_DEV:-/dev}
+
+say() { logger -t medvemodem "FCC unlock: $*"; }
+
+[ $# -ge 2 ] || exit 1
+shift
+port=
+for p in "$@"; do
+	case "$p" in
+	cdc-wdm*|wdm*) port=$p; break ;;
+	esac
+done
+if [ -z "$port" ]; then
+	say "ModemManager named no QMI/MBIM control port; nothing sent"
+	exit 2
+fi
+if ! command -v "$QMICLI" >/dev/null 2>&1; then
+	say "qmicli is not installed (package qmi-utils); nothing sent to $port"
+	exit 2
+fi
+mbim=
+case "$(readlink -f "$SYS/class/usbmisc/$port/device/driver" 2>/dev/null)" in
+*/cdc_mbim) mbim=--device-open-mbim ;;
+esac
+
+out=$(mktemp) || exit 1
+"$QMICLI" -p $mbim -d "$DEV/$port" --dms-foxconn-set-fcc-authentication=0 >"$out" 2>&1 &
+pid=$!
+# qmicli can hang on a busy channel: four seconds, inside ModemManager's five
+n=0
+while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 4 ]; do
+	sleep 1
+	n=$((n + 1))
+done
+kill -9 "$pid" 2>/dev/null
+wait "$pid" 2>/dev/null
+text=$(tr '\n' ' ' <"$out")
+rm -f "$out"
+
+case "$text" in
+*[Ss]uccessfully*)
+	say "authentication sent on $port"
+	exit 0
+	;;
+*InvalidQmiCommand*|*NotSupported*|*[Nn]ot\ supported*|*InvalidOperation*)
+	# the firmware does not know the command or needs no unlock: retrying cannot help
+	say "$port: the modem does not take it or needs none"
+	exit 0
+	;;
+esac
+if [ "$n" -ge 4 ]; then
+	say "no answer on $port within 4 s"
+else
+	say "not taken on $port"
+fi
+exit 1

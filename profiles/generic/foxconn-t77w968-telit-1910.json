@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968-telit-1910",
+  "extends": "foxconn-t77w968",
+  "description": "T77W968 as Telit LN960 (AT^CUSTOMER 0 or 2), QMI: not in the kernel table; a field hotplug script binds qmi_wwan by new_id and gives interfaces 2-4 to option (3 ttys, AT ttyUSB2, SMS ttyUSB1); one report saw cdc_mbim instead",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1910"
+  },
+  "bind": {
+    "status": "field-reported",
+    "net": {
+      "driver": "qmi_wwan",
+      "interfaces": [
+        "00"
+      ]
+    },
+    "serial": {
+      "driver": "option",
+      "usb_serial_driver": "option1",
+      "interfaces": [
+        "02",
+        "03",
+        "04"
+      ]
+    },
+    "source": "field hotplug scripts: qmi_wwan new_id, interfaces 2-4 back to option1 (AT ttyUSB2, SMS ttyUSB1); the working notes"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      3,
+      4
+    ],
+    "at_source": "a router vendor's port map for 1bc7:1910/1911: AT ttyUSB2, SMS ttyUSB1; option on 02-04 = ttyUSB0..2. Not seen on our bench yet; ModemManager ignores this modem's ttys (mm_ports control); field 2026-11-03 (a tester's LN960A16, FW T77W968.F1.0.0.5.2.GC.013, 25.12.6 filogic): interface 03 answered ATI, 04 stayed silent to ATI and AT+CGMI (5 s each) after a replug; 03 first since then (the profile's order decides between two equal ports); r141 with 03 chosen: ATI answers, AT+CGMI/CGMM/CGMR stay silent 5 s each, AT#USBCFG? ERROR (the Foxconn firmware, not Telit's AT set)"
+  }
+}

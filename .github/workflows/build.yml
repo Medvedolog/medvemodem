@@ -1,0 +1,30 @@
+# The public repository's build (tools/public_export.py puts it in .github/workflows/): the packages of every
+# architecture and OpenWrt release line in the official SDK, kept as the run's artifacts.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64_cortex-a53, aarch64_generic, x86_64]
+        release: ["25.12.6", "24.10.8"]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build in the OpenWrt SDK
+        run: tools/build.sh "${{ matrix.arch }}" "${{ matrix.release }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: medvemodem-${{ matrix.arch }}-${{ matrix.release }}
+          path: dist/${{ matrix.arch }}-${{ matrix.release }}/

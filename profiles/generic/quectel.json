@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "id": "quectel",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "Quectel modules (USB 2c7c): QModem is preferred where installed — it is built around Quectel's AT set and connection manager; ModemManager otherwise (user decision 2026-10-08)",
+  "match": {
+    "bus": "usb",
+    "vid": "2c7c"
+  },
+  "policy": {
+    "owner_priority": [
+      "qmodem",
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ]
+  },
+  "radio": {
+    "dialect": "quectel",
+    "status": "field-reported",
+    "source": "QModem 3.3.0 vendor/quectel.sh; another modem manager quectel profile (QNWPREFCFG, QCAINFO)"
+  }
+}

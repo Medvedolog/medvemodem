@@ -1,0 +1,55 @@
+{
+  "luci-app-medvemodem-bot": {
+    "description": "Read-only Telegram bot panel and restricted local setup",
+    "read": {
+      "ubus": {
+        "medvemodem.bot": [
+          "status",
+          "transport_status",
+          "queue_status",
+          "audit_tail",
+          "routes"
+        ],
+        "medvemodem.bot.config": [
+          "status",
+          "transport_probe"
+        ]
+      },
+      "uci": [
+        "medvemodem-bot"
+      ]
+    },
+    "write": {
+      "ubus": {
+        "medvemodem.bot.config": [
+          "validate",
+          "token_set",
+          "token_clear",
+          "restart",
+          "pair_begin",
+          "pair_status",
+          "pair_confirm",
+          "proxy_password_set",
+          "proxy_password_clear",
+          "token_check",
+          "proxy_check",
+          "why"
+        ],
+        "medvemodem.bot": [
+          "chat_test",
+          "probe"
+        ],
+        "uci": [
+          "get",
+          "add",
+          "set",
+          "commit",
+          "revert"
+        ]
+      },
+      "uci": [
+        "medvemodem-bot"
+      ]
+    }
+  }
+}

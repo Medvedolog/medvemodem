@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx-1199-9078",
+  "extends": "sierra-em74xx",
+  "description": "Sierra Wireless EM74xx, composition 1199:9078 (the kernel's qcserial DEVICE_SWI layout: 0 DM, 2 NMEA, 3 AT; the QDL identity of this family is 907a, not 9078). another modem manager 3.5.8 reads it with its 1199:9071 profile. Reference only, no bench of ours; profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "1199",
+    "pid": "9078"
+  }
+}

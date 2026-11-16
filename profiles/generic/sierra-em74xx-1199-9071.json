@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx-1199-9071",
+  "extends": "sierra-em74xx",
+  "description": "Sierra Wireless MC7455 / MC74xx (mini PCIe), QMI composition (qcserial DEVICE_SWI, qmi_wwan on 8 and 10 with the DTR quirk)",
+  "match": {
+    "bus": "usb",
+    "vid": "1199",
+    "pid": "9071"
+  }
+}

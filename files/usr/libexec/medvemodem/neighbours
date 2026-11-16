@@ -1,0 +1,135 @@
+#!/bin/sh
+# Other modem helpers on this router (the owner, 2026-10-28: testers install MedveModem over routers already set up
+# with other packages and their own scripts). Read only: nothing is stopped, disabled or edited here.
+#   neighbours
+# prints one JSON object:
+#   {"packages": [{"id", "files": [...], "running": bool, "cron": bool}],
+#    "holders":  [{"pid", "comm", "node"}],      a process other than ours holding a modem node open
+#    "scripts":  [{"path", "words": [...]}]}      a hotplug, init or cron script of the operator's that touches modems
+# The packages are known by their own files (2026-10-28): luci-app-5gmodem,
+# the USB re-init helpers (fix-usb-reinit, fix-modem-reinit), modeminfo, smstools3, sms-tool and luci-app-sms-tool-js (its call log
+# daemon keeps the AT port open), 3ginfo and 3ginfo-lite, modemband, luci-app-modemdata, luci-app-lite-watchdog,
+# easyconfig, ROOter, luci-app-modem. Any other package's hotplug or init script that talks to modems is found as a
+# script (its path, the words it uses). QModem and ModemManager are not here: the engine works with them.
+
+# rpcd's file exec hands the caller's environment over and this runs as root: installed, nothing from it is taken
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+ROOT=${MEDVEMODEM_NEIGHBOURS_ROOT:-}
+PROC=${MEDVEMODEM_NEIGHBOURS_PROC:-/proc}
+
+# id|files (the first that is there names the package; any listed may be)|init scripts|process names|cron word
+KNOWN='5gmodem|/etc/hotplug.d/usb/21-5gmodem-usbmode-extra /etc/hotplug.d/usb/62-5gmodem-fastboot-rescue /etc/hotplug.d/usb/55-5gmodem-usbports /etc/hotplug.d/iface/60-5gmodem-health /etc/hotplug.d/tty/26-5gmodem-mmreserve /etc/config/5gmodem|5gmodem-sessionwatch 5gmodem-mm-inhibit 5gmodem-sms-notify 5gmodem-usbports 5gmodem-antenna||5gmodem
+usb-reinit|/etc/hotplug.d/usb/99-modems /etc/init.d/fix-modem-reinit /etc/init.d/fix-usb-reinit /usr/bin/modem-init|fix-modem-reinit fix-usb-reinit||
+modeminfo|/etc/config/modeminfo /usr/share/modeminfo|||modeminfo
+smstools3|/etc/init.d/smstools3 /usr/sbin/smsd|smstools3|smsd|
+sms-tool-js|/etc/config/sms_tool_js /etc/init.d/sms_tool_calllogd /etc/init.d/my_new_sms|sms_tool_calllogd my_new_sms|sms_tool_calllog sms_led.sh|
+sms-tool|/usr/bin/sms_tool|||sms_tool
+3ginfo-lite|/usr/share/3ginfo-lite/3ginfo.sh /etc/config/3ginfo|||3ginfo
+3ginfo|/usr/share/3ginfo/html/cgi-bin/info.sh /etc/init.d/3ginfo|3ginfo||
+modemband|/usr/bin/modemband.sh /etc/config/modemband|||modemband
+modemdata|/etc/config/modemdata /usr/bin/md_serial_ecm /usr/bin/md_uqmi|||md_
+lite-watchdog|/usr/bin/lite_watchdog.sh /etc/config/watchdog|||lite_watchdog
+easyconfig|/etc/init.d/easyconfig_modemdetect /usr/bin/easyconfig_watchdog.sh /etc/config/easyconfig|easyconfig_modemdetect||easyconfig_watchdog
+rooter|/usr/lib/rooter /etc/init.d/rooter|rooter||rooter
+luci-app-modem|/usr/share/modem/fibocom.sh /etc/init.d/modem|modem||'
+
+# a modem node: the serial, control and WWAN ports
+MODEM_NODE='^/dev/(ttyUSB[0-9]+|ttyACM[0-9]+|cdc-wdm[0-9]+|wwan[0-9]+(at|mbim|qmi|qcdm|xmmrpc|firehose)[0-9]+|mhi_[A-Za-z0-9_]+)$'
+# processes that may hold them: the engine and the stack it works with
+OURS='medvemodemd ModemManager mbim-proxy qmi-proxy uqmi umbim qmicli mbimcli netifd medvemodem-at lpac'
+# what a script of the operator's does to a modem
+WORDS='modem authorized usb_modeswitch usbmode qmicli uqmi mbimcli umbim ttyUSB cdc-wdm new_id unbind AT+ atinout sms_tool comgt gcom mmcli'
+
+esc() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-120; }
+crontab_text() { cat "$ROOT"/etc/crontabs/* 2>/dev/null; }
+ours_file() {
+	case "$1" in
+	*medvemodem*|*modemmanager*|*usb_mode_switch*|*usbmode*|*qmodem*|*20-modem-usb|*20-modem-net) return 0 ;;
+	# OpenWrt's own (the owner, 2026-10-28: listed as helpers): usb-modeswitch's 20-usb_mode, the wwan package's
+	# 00_wwan.sh that uqmi and umbim read, and the system's init scripts (dropbear's authorized_keys is no USB port)
+	*/20-usb_mode|*/00_wwan.sh|/etc/init.d/dropbear|/etc/init.d/network|/etc/init.d/boot|/etc/init.d/sysfixtime) return 0 ;;
+	esac
+	return 1
+}
+
+echo "$KNOWN" | while IFS='|' read -r id files inits procs cron; do
+	found=
+	for f in $files; do [ -e "$ROOT$f" ] && found="$found $f"; done
+	[ -n "$found" ] || continue
+	run=false
+	for i in $inits; do ls "$ROOT"/etc/rc.d/S[0-9][0-9]"$i" >/dev/null 2>&1 && run=true; done
+	# by the command line: a shell script's comm is «sh» or its name cut to 15 letters
+	for p in $procs; do
+		for c in "$PROC"/[0-9]*/cmdline; do tr '\000' ' ' < "$c" 2>/dev/null | grep -qF -- "$p" && run=true && break; done
+	done
+	cr=false
+	[ -n "$cron" ] && crontab_text | grep -v '^[[:space:]]*#' | grep -q -- "$cron" && cr=true
+	printf '{"id":"%s","files":[' "$id"
+	s=
+	for f in $found; do printf '%s"%s"' "$s" "$(esc "$f")"; s=,; done
+	printf '],"running":%s,"cron":%s}\n' "$run" "$cr"
+done > "${TMPDIR:-/tmp}/neighbours.$$.pk"
+
+# the holders: every process's open files, a modem node not of ours
+for fd in "$PROC"/[0-9]*/fd/*; do
+	n=$(readlink "$fd" 2>/dev/null) || continue
+	printf '%s' "$n" | grep -Eq "$MODEM_NODE" || continue
+	pid=${fd#"$PROC"/}; pid=${pid%%/*}
+	comm=$(cat "$PROC/$pid/comm" 2>/dev/null)
+	case " $OURS " in *" $comm "*) continue ;; esac
+	printf '%s %s %s\n' "$pid" "$comm" "$n"
+done | sort -u | head -32 > "${TMPDIR:-/tmp}/neighbours.$$.ho"
+
+# the operator's scripts: hotplug, rc.local, cron lines that touch modems, not of a package above or ours
+known_files=$(echo "$KNOWN" | cut -d'|' -f2)
+for f in "$ROOT"/etc/hotplug.d/usb/* "$ROOT"/etc/hotplug.d/net/* "$ROOT"/etc/hotplug.d/tty/* "$ROOT"/etc/hotplug.d/usbmisc/* \
+	 "$ROOT"/etc/hotplug.d/iface/* "$ROOT"/etc/rc.local $(ls "$ROOT"/etc/rc.d/S* 2>/dev/null); do
+	[ -f "$f" ] || continue
+	p=${f#"$ROOT"}
+	# an enabled init script: named by its file in init.d
+	case "$p" in /etc/rc.d/S*) p=/etc/init.d/$(basename "$(readlink "$f")") ;; esac
+	ours_file "$p" && continue
+	case " $known_files " in *" $p "*) continue ;; esac
+	case "$p" in */*5gmodem*|*/99-modems) continue ;; esac
+	w=
+	for x in $WORDS; do
+		# «authorized» is a USB port's switch, not authorized_keys
+		if [ "$x" = authorized ]; then grep -Eq 'authorized([^_[:alnum:]]|$)' "$f" 2>/dev/null && w="$w $x"
+		else grep -qF -- "$x" "$f" 2>/dev/null && w="$w $x"; fi
+	done
+	# «modem» alone in an init script is a word, not a hand on a modem (the owner, 2026-10-28: the OPi Zero 3's Wi-Fi
+	# driver helper sprdwl-delay says it): another of the words is wanted too; a USB hotplug script naming one stays
+	case "$p" in /etc/hotplug.d/usb/*|/etc/hotplug.d/tty/*|/etc/hotplug.d/usbmisc/*) ;; *) [ "$w" = " modem" ] && continue ;; esac
+	[ -n "$w" ] && printf '%s|%s\n' "$p" "$w"
+done > "${TMPDIR:-/tmp}/neighbours.$$.sc"
+crontab_text | grep -v '^[[:space:]]*#' | grep -v medvemodem | while read -r line; do
+	w=
+	for x in $WORDS; do case "$line" in *"$x"*) w="$w $x" ;; esac; done
+	[ -n "$w" ] && printf 'cron|%s\n' "$w"
+done | sort -u >> "${TMPDIR:-/tmp}/neighbours.$$.sc"
+
+printf '{"packages":['
+s=
+while read -r l; do printf '%s%s' "$s" "$l"; s=,; done < "${TMPDIR:-/tmp}/neighbours.$$.pk"
+printf '],"holders":['
+s=
+while read -r pid comm node; do
+	printf '%s{"pid":%d,"comm":"%s","node":"%s"}' "$s" "$pid" "$(esc "$comm")" "$(esc "$node")"; s=,
+done < "${TMPDIR:-/tmp}/neighbours.$$.ho"
+printf '],"scripts":['
+s=
+while IFS='|' read -r p w; do
+	printf '%s{"path":"%s","words":[' "$s" "$(esc "$p")"
+	t=
+	for x in $w; do printf '%s"%s"' "$t" "$(esc "$x")"; t=,; done
+	printf ']}'; s=,
+done < "${TMPDIR:-/tmp}/neighbours.$$.sc"
+printf ']}\n'
+rm -f "${TMPDIR:-/tmp}/neighbours.$$".*

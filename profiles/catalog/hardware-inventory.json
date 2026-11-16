@@ -1,0 +1,2040 @@
+{
+  "schema": 1,
+  "status": "imported-unvalidated",
+  "records": [
+    {
+      "id": "pci-03f009c8",
+      "bus": "pci",
+      "match": {
+        "vendor": "03f0",
+        "device": "09c8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-03f00a6c",
+      "bus": "pci",
+      "match": {
+        "vendor": "03f0",
+        "device": "0a6c"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0ab",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0ab"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0b0",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0b0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0b1",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0b1"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0bf",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0bf"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0c3",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0c3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0d8",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0d8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0d9",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0d9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0f5",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0f5"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be0f9",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e0f9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be118",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e118"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be11d",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e11d"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-105be11e",
+      "bus": "pci",
+      "match": {
+        "vendor": "105b",
+        "device": "e11e"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-126900b3",
+      "bus": "pci",
+      "match": {
+        "vendor": "1269",
+        "device": "00b3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-126900b4",
+      "bus": "pci",
+      "match": {
+        "vendor": "1269",
+        "device": "00b4"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-126900ba",
+      "bus": "pci",
+      "match": {
+        "vendor": "1269",
+        "device": "00ba"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-126900bb",
+      "bus": "pci",
+      "match": {
+        "vendor": "1269",
+        "device": "00bb"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-14c04d75",
+      "bus": "pci",
+      "match": {
+        "vendor": "14c0",
+        "device": "4d75"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-14c34d75",
+      "bus": "pci",
+      "match": {
+        "vendor": "14c3",
+        "device": "4d75"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-17cb0308",
+      "bus": "pci",
+      "match": {
+        "vendor": "17cb",
+        "device": "0308"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac1001",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "1001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac1002",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "1002"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac1004",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "1004"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac1007",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "1007"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac100d",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "100d"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "pci-1eac2001",
+      "bus": "pci",
+      "match": {
+        "vendor": "1eac",
+        "device": "2001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-03f00857",
+      "bus": "usb",
+      "match": {
+        "vid": "03f0",
+        "pid": "0857"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-03f00a57",
+      "bus": "usb",
+      "match": {
+        "vid": "03f0",
+        "pid": "0a57"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-03f0581d",
+      "bus": "usb",
+      "match": {
+        "vid": "03f0",
+        "pid": "581d"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-03f09d1d",
+      "bus": "usb",
+      "match": {
+        "vid": "03f0",
+        "pid": "9d1d"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-03f0a31d",
+      "bus": "usb",
+      "match": {
+        "vid": "03f0",
+        "pid": "a31d"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0489e0b4",
+      "bus": "usb",
+      "match": {
+        "vid": "0489",
+        "pid": "e0b4"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0489e0b5",
+      "bus": "usb",
+      "match": {
+        "vid": "0489",
+        "pid": "e0b5"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0489e0ee",
+      "bus": "usb",
+      "match": {
+        "vid": "0489",
+        "pid": "e0ee"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0489e0f0",
+      "bus": "usb",
+      "match": {
+        "vid": "0489",
+        "pid": "e0f0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c66000",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "6000"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c69025",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "9025"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c69063",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "9063"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c690d5",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "90d5"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c690d6",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "90d6"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c69215",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "9215"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c69625",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "9625"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-05c6f601",
+      "bus": "usb",
+      "match": {
+        "vid": "05c6",
+        "pid": "f601"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0e8d7126",
+      "bus": "usb",
+      "match": {
+        "vid": "0e8d",
+        "pid": "7126"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0e8d7127",
+      "bus": "usb",
+      "match": {
+        "vid": "0e8d",
+        "pid": "7127"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0f3d68a2",
+      "bus": "usb",
+      "match": {
+        "vid": "0f3d",
+        "pid": "68a2"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-0f3d68aa",
+      "bus": "usb",
+      "match": {
+        "vid": "0f3d",
+        "pid": "68aa"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-119968a2",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "68a2"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-119968c0",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "68c0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1199901c",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "901c"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1199901f",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "901f"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999041",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9041"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999051",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9051"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999054",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9054"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999055",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9055"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999056",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9056"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999063",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9063"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999071",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9071"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999078",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9078"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999079",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9079"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1199907b",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "907b"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-11999091",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "9091"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-119990d3",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "90d3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-119990e3",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "90e3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1199a001",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "a001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1199c081",
+      "bus": "usb",
+      "match": {
+        "vid": "1199",
+        "pid": "c081"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12864e28",
+      "bus": "usb",
+      "match": {
+        "vid": "1286",
+        "pid": "4e28"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d11506",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "1506"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d1155a",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "155a"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d1155e",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "155e"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d11566",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "1566"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d1156c",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "156c"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d11573",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "1573"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d115bb",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "15bb"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d115c1",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "15c1"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d115c3",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "15c3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-12d11f1a",
+      "bus": "usb",
+      "match": {
+        "vid": "12d1",
+        "pid": "1f1a"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-15081001",
+      "bus": "usb",
+      "match": {
+        "vid": "1508",
+        "pid": "1001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-16907588",
+      "bus": "usb",
+      "match": {
+        "vid": "1690",
+        "pid": "7588"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d20167",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "0167"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d20189",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "0189"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d21275",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "1275"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d21432",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "1432"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d21485",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "1485"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-19d21489",
+      "bus": "usb",
+      "match": {
+        "vid": "19d2",
+        "pid": "1489"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bbb0196",
+      "bus": "usb",
+      "match": {
+        "vid": "1bbb",
+        "pid": "0196"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71040",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1040"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71041",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1041"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71050",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1050"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71051",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1051"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71052",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1052"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71053",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1053"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71057",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1057"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71060",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1060"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71061",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1061"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71062",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1062"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71063",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1063"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71070",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1070"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71071",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1071"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71072",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1072"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71073",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1073"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71074",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1074"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71075",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1075"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71077",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1077"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71078",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1078"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71079",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1079"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71080",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1080"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71081",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1081"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71082",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1082"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71083",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1083"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71201",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1201"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71900",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1900"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71901",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1901"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71910",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1910"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1bc71911",
+      "bus": "usb",
+      "match": {
+        "vid": "1bc7",
+        "pid": "1911"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9000",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9000"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9001",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9002",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9002"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9003",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9003"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9004",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9004"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9005",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9005"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9006",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9006"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9007",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9007"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9011",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9011"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9016",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9016"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9018",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9018"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e9019",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "9019"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e0e901e",
+      "bus": "usb",
+      "match": {
+        "vid": "1e0e",
+        "pid": "901e"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00b3",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00b3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00b7",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00b7"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00b8",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00b8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00b9",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00b9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00f1",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00f1"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00f2",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00f2"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00f3",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00f3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-1e2d00f4",
+      "bus": "usb",
+      "match": {
+        "vid": "1e2d",
+        "pid": "00f4"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-20202033",
+      "bus": "usb",
+      "match": {
+        "vid": "2020",
+        "pid": "2033"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-216f0041",
+      "bus": "usb",
+      "match": {
+        "vid": "216f",
+        "pid": "0041"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-216f0043",
+      "bus": "usb",
+      "match": {
+        "vid": "216f",
+        "pid": "0043"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-216f0044",
+      "bus": "usb",
+      "match": {
+        "vid": "216f",
+        "pid": "0044"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-216f0047",
+      "bus": "usb",
+      "match": {
+        "vid": "216f",
+        "pid": "0047"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0121",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0121"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0122",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0122"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0123",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0123"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0124",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0124"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0125",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0125"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0128",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0128"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0129",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0129"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c012a",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "012a"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c012b",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "012b"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c012c",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "012c"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0133",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0133"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0191",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0191"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0195",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0195"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0203",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0203"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0296",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0296"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0306",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0306"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c030a",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "030a"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c030b",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "030b"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c030c",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "030c"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c030e",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "030e"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0310",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0310"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0311",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0311"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0312",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0312"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0313",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0313"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0314",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0314"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0512",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0512"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0620",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0620"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0700",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0700"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0800",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0800"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0801",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0801"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0900",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0900"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c0901",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "0901"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6001",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6002",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6002"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6004",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6004"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6005",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6005"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6008",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6008"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6009",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6009"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2c7c6026",
+      "bus": "usb",
+      "match": {
+        "vid": "2c7c",
+        "pid": "6026"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70007",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0007"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb7000b",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "000b"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70104",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0104"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70105",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0105"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70106",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0106"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb7010a",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "010a"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb7010b",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "010b"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70110",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0110"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70111",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0111"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb701a0",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "01a0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70a04",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0a04"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70a05",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0a05"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70a06",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0a06"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cb70a07",
+      "bus": "usb",
+      "match": {
+        "vid": "2cb7",
+        "pid": "0a07"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cd20001",
+      "bus": "usb",
+      "match": {
+        "vid": "2cd2",
+        "pid": "0001"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2cd20004",
+      "bus": "usb",
+      "match": {
+        "vid": "2cd2",
+        "pid": "0004"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d22",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d22"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d23",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d23"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d38",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d38"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d49",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d49"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d57",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d57"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d58",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d58"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d59",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d59"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d63",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d63"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-2dee4d64",
+      "bus": "usb",
+      "match": {
+        "vid": "2dee",
+        "pid": "4d64"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-33f80802",
+      "bus": "usb",
+      "match": {
+        "vid": "33f8",
+        "pid": "0802"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81a8",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81a8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81a9",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81a9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81b1",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81b1"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81b3",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81b3"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81b6",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81b6"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81b8",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81b8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81c2",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81c2"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81cc",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81cc"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81cf",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81cf"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81d0",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81d0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81d2",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81d2"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81d7",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81d7"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81d8",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81d8"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81d9",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81d9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81e0",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81e0"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81e4",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81e4"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-413c81e6",
+      "bus": "usb",
+      "match": {
+        "vid": "413c",
+        "pid": "81e6"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-808707f9",
+      "bus": "usb",
+      "match": {
+        "vid": "8087",
+        "pid": "07f9"
+      },
+      "status": "imported-unvalidated"
+    },
+    {
+      "id": "usb-8087095a",
+      "bus": "usb",
+      "match": {
+        "vid": "8087",
+        "pid": "095a"
+      },
+      "status": "imported-unvalidated"
+    }
+  ]
+}

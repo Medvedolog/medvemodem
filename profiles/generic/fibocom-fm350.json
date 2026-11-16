@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "id": "fibocom-fm350",
+  "description": "Fibocom FM350-GL (MediaTek T700), RNDIS + AT composition 0e8d:7127 (AT+GTUSBMODE? 41; 7126 is mode 40, also RNDIS). Not NCM: the Modem Zoo, another modem manager 3.5.8 and QModem all read 40/41 as RNDIS. ModemManager has no dial path for it (HANDOFF 174). The engine's own AT dial first, QModem by the operator's choice (the owner's bench 2026-10-21: stable under the engine, a storm under QModem, whose dial guesses the gateway as x.y.z.1 that the modem does not answer). AT on interface 6 (bench 2026-10-19; 7 ttys, the number of the tty depends on the other modems)",
+  "match": {
+    "bus": "usb",
+    "vid": "0e8d",
+    "pid": "7127"
+  },
+  "policy": {
+    "owner_priority": [
+      "native",
+      "qmodem",
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "rndis"
+    ],
+    "at_interface_numbers": [
+      6
+    ],
+    "at_source": "bench 2026-10-19 (OPi Zero 3, 25.12, firmware 81600.0000.00.29.24.02, GTUSBMODE 41): RNDIS 00/01, option on 02/03/04/06/07/08/09, ADB 05 unbound; the probe answered AT on ttyUSB7 = 4-1.3:1.6 only (02 not AT, the others silent)",
+    "ussd": "unsupported",
+    "ussd_source": "another modem manager quirks.sh (AT+CUSD=1 answers neither OK, ERROR nor +CUSD on any port, every DCS and charset); field reports (Modem Zoo TELEGRAM-FIELD-NOTES); our bench 2026-10-26 (OPi Zero 3, 81600.0000.00.29.24.02): *110*10# no answer in 40 s"
+  },
+  "dial": {
+    "transport": "at",
+    "status": "field-reported",
+    "cid": 1,
+    "setup": [
+      "AT+CGDCONT={cid},\"{pdp}\",\"{apn}\"",
+      "AT+CGACT=1,{cid}"
+    ],
+    "address": {
+      "command": "AT+CGPADDR={cid}",
+      "prefix": "+CGPADDR:"
+    },
+    "dns": {
+      "command": "AT+GTDNS={cid}",
+      "prefix": "+GTDNS:"
+    },
+    "addressing": {
+      "mode": "static",
+      "prefix_len": 24,
+      "gateway": "on-link"
+    },
+    "teardown": [
+      "AT+CGACT=0,{cid}"
+    ],
+    "timeout_ms": 120000,
+    "flow": "3gpp"
+  },
+  "recovery": {
+    "status": "field-reported",
+    "session_restart": true,
+    "radio_cycle": false,
+    "soft_reset": false,
+    "driver_rebind": false,
+    "usb_reauthorize": true,
+    "source": "IP without traffic is cured by a new session; CFUN=1,1 left AT alive and the radio dead (F28); a warm reboot needed a replug (4PDA 1057776-4745); another modem manager 3.5.8 restarts the session, then the USB port"
+  },
+  "radio": {
+    "dialect": "fibocom-mtk",
+    "status": "field-reported",
+    "source": "QModem 3.3.0 vendor/fibocom.sh (GTACT, MediaTek NR); another modem manager fm350 profile"
+  }
+}

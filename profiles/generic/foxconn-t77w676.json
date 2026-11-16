@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w676",
+  "abstract": true,
+  "description": "Foxconn T77W676 (Snapdragon X12 LTE-A, Cat.9/12): family base, never matched itself; sold as Telit LN940 (1bc7:1900 QMI / 1901 MBIM) and HP lt4220 (03f0:0857 / 03f0:0a57). Not the T77W968 (that twin is the LN960): never apply T77W968 or LN960 procedures here. QMI/MBIM is chosen by an AT command on this module (AT^SETMODE, a persistent composition change: operator-only). ModemManager owns it: the Telit identity gets ModemManager's Telit plugin, the HP identity only the generic one (no plugin lists VID 03f0). Linux 6.12 and master know the Telit IDs (option + qmi_wwan on interface 1 for 1900) but not the HP IDs, so on 03f0 only the MBIM class driver binds by itself; QMI and the ttys need a new_id, which we do not do automatically. AT port numbers are not documented: probed, not hinted. Radio over AT is left undeclared: bands answer AT^SLBAND? / AT^SLBAND=LTE,<list> like the T77W968, but its AT^SLMODE codes are not established, so the T77W968 dialect is not reused. Telemetry seen in the field: AT^CA_INFO?, AT^RFSTS?, AT+TEMP. Field: long USB cables (2-3 m) failed to enumerate it, a USB hub power loss left the ports dead until another power cycle",
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ]
+  },
+  "recovery": {
+    "status": "field-reported",
+    "power_cycle": true,
+    "source": "4PDA topic 994474 post 7485 (other scripts router: after a USB hub power loss the ports did not come up until another power cycle); docs/modem-zoo/4PDA-FIELD-NOTES.md"
+  }
+}

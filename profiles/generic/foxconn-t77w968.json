@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968",
+  "abstract": true,
+  "description": "Foxconn T77W968 / Dell DW5821e family (Snapdragon X20, LTE Cat.16): family base, never matched itself; one firmware and AT set under Dell, Foxconn and Telit LN960 identities; ModemManager gets the control and net ports only, the ttys stay with the engine",
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager"
+    ],
+    "usb_configurations": {
+      "1": "QMI (RMNET)",
+      "2": "MBIM"
+    }
+  },
+  "recovery": {
+    "status": "field-reported",
+    "radio_cycle": true,
+    "soft_reset": false,
+    "driver_rebind": false,
+    "usb_reauthorize": true,
+    "settle_ms": 90000,
+    "source": "another modem manager 3.2.2: MM-only in QMI and MBIM (umbim/uqmi: address without traffic); AT beside MM drops the session (issue #13); field: AT^RESET left no netdev (tg 2026-07-20)"
+  },
+  "radio": {
+    "dialect": "foxconn-t77",
+    "status": "field-reported",
+    "source": "another modem manager 3.4.0 _foxconn_t77w968 / _foxconn_common1: AT^SLMODE codes 4 auto, 14 WCDMA, 30 LTE, 35 WCDMA+LTE (not the T99W175 mask); AT^SLBAND? / =? / =LTE,2,<list>; firmware forms from 4pda fixtures",
+    "ussd_at_on_lte": {
+      "source": "the owner's T77W968 on MegaFon, 2026-11-02: ModemManager's USSD on LTE ended after 41 s each time, the same code over the engine's AT port was answered"
+    },
+    "ussd_cs_fallback": {
+      "source": "bench 2026-10-26 (DW5821e/T77W968, MBIM under ModemManager, MegaFon): USSD *100# on LTE detached packet service 1 s after the request, ModemManager answered 'USSD terminated by network' after 39 s, the bearer dropped and netifd reconnected 1.5 min later"
+    }
+  }
+}

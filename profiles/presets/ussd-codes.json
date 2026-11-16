@@ -1,0 +1,124 @@
+{
+  "schema": "medvemodem.ussd-codes/1",
+  "note": "USSD codes by the SIM's operator (MCC+MNC, spec 38). Operators change codes: each code names where it comes from and whether it was checked on a live SIM ('checked': true) — none is yet. The operator's own codes (UCI config ussd) are shown next to these.",
+  "operators": [
+    {
+      "name": "MTS",
+      "plmn": [
+        "25001"
+      ],
+      "codes": [
+        {
+          "title": "Balance",
+          "code": "*100#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots); hi-tech.mail.ru",
+          "checked": false
+        },
+        {
+          "title": "Bundle balance",
+          "code": "*100*2#",
+          "source": "hi-tech.mail.ru",
+          "checked": false
+        },
+        {
+          "title": "My number",
+          "code": "*111*0887#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots)",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "name": "MegaFon",
+      "plmn": [
+        "25002"
+      ],
+      "codes": [
+        {
+          "title": "Balance",
+          "code": "*100#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots); 4g-faq.ru",
+          "checked": false
+        },
+        {
+          "title": "Bundle balance",
+          "code": "*558#",
+          "source": "4g-faq.ru",
+          "checked": false
+        },
+        {
+          "title": "My number",
+          "code": "*205#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots); 4g-faq.ru",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "name": "Beeline",
+      "plmn": [
+        "25099"
+      ],
+      "codes": [
+        {
+          "title": "Balance",
+          "code": "*102#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots); hi-tech.mail.ru",
+          "checked": false
+        },
+        {
+          "title": "My number",
+          "code": "*110*10#",
+          "source": "brobank.ru",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "name": "T2 (Tele2)",
+      "plmn": [
+        "25020"
+      ],
+      "codes": [
+        {
+          "title": "Balance",
+          "code": "*105#",
+          "source": "reference snapshot (ussdcodes.user, dev/reference-snapshots)",
+          "checked": false
+        },
+        {
+          "title": "My number",
+          "code": "*201#",
+          "source": "brobank.ru",
+          "checked": false
+        }
+      ]
+    },
+    {
+      "name": "Yota",
+      "plmn": [
+        "25011"
+      ],
+      "codes": [
+        {
+          "title": "Balance",
+          "code": "*100#",
+          "source": "help.yota.ru/ussd_commands",
+          "checked": false
+        },
+        {
+          "title": "Bundle balance",
+          "code": "*101#",
+          "source": "help.yota.ru/ussd_commands",
+          "checked": false
+        },
+        {
+          "title": "My number",
+          "code": "*103#",
+          "source": "help.yota.ru/ussd_commands",
+          "checked": false
+        }
+      ]
+    }
+  ]
+}

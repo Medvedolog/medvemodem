@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w676-telit-1901",
+  "extends": "foxconn-t77w676",
+  "description": "Telit LN940, MBIM composition: cdc_mbim by class, option on the vendor-class interfaces (Linux 6.12 drivers/usb/serial/option.c)",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1901"
+  }
+}

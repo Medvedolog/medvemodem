@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "huawei-e171-12d1-1506",
+  "extends": "huawei",
+  "description": "Huawei E171 (12d1:1506 «Mobile Connect» after the mode switch, firmware 21.157): NCM with AT over cdc-wdm, PCUI and modem ttys. ModemManager gets the control (cdc-wdm, AT^NDISDUP over NCM) and net ports only; the ttys stay with the engine for SMS storage (5 slots on the SIM, the parts of a long SMS fill it unseen) and the CNMI check (the owner's bench 2026-10-30: under ModemManager on every port the sent SMS went out, no reply ever showed)",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "1506",
+    "mm_model_contains": "E171",
+    "drivers_any": [
+      "huawei_cdc_ncm",
+      "option"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "ncm"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "ncm"
+    ],
+    "at_interface_numbers": [
+      3,
+      0
+    ],
+    "at_source": "the owner's report 2026-10-30 (R3S, 25.12.6, ModemManager 1.24): if00 ff/02/61 ttyUSB0 (modem), if01 ff/02/76 huawei_cdc_ncm wwan0 + cdc-wdm0 (MM's primary AT), if02 ff/02/63 ttyUSB1 (diag), if03 ff/02/62 ttyUSB2 (PCUI), if04/05 storage; MM took cdc-wdm0, ttyUSB0 and ttyUSB2 as AT"
+  },
+  "radio": {
+    "dialect": "huawei",
+    "status": "reference",
+    "source": "older Huawei: AT^SYSCFG for the mode (HANDOFF 136); AT^SYSCFGEX/HCSQ on newer firmware"
+  }
+}

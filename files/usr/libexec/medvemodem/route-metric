@@ -1,0 +1,137 @@
+#!/bin/sh
+# Failover's route mover (spec 20.8), run by medvemodemd:
+#   route-metric [-4|-6] <dev> <from> <to> [[-4|-6] <dev> <from> <to> ...]
+#   route-metric --add <dev> <metric> [<gateway>]   (a lost IPv4 default route back, see below)
+# moves the IPv4 (after -6 the IPv6, after -4 IPv4 again) default route of <dev> in the main table
+# from metric <from> to metric <to>: the route as the kernel has it (gateway,
+# proto, src, onlink) is added again with the new metric, then the old one is
+# deleted, so the device never loses its default route. IPv6 source-specific
+# routes ("default from <prefix>") are netifd's and stay. Runtime only:
+# netifd's configuration is not touched, and an ifup puts netifd's own metric
+# back.
+
+# Two passes (bench 2026-10-22, r82: «Сделать основным» left the routes as they were): the kernel refuses a second IPv4
+# default route with a metric another device's default route has (`ip route add` is create-exclusive: «File
+# exists»), so swapping two metrics in place always failed. Every route moves first to a free temporary metric
+# (40000 + its place in the list), then to its target.
+status=0
+
+# route-metric --add <dev> <metric> [<gateway>]: the device has lost its IPv4 default route (another interface's ifup took
+# it: netifd adds routes with NLM_F_REPLACE, and a metric moved at runtime is not netifd's own), and it is added back as
+# netifd keeps it. Nothing is done when the device has one again.
+if [ "$1" = --add ]; then
+	dev=$2 metric=$3 gw=$4
+	case "$dev" in ''|*[!A-Za-z0-9._@-]*) echo "route-metric: bad device name" >&2; exit 2 ;; esac
+	case "$metric" in ''|*[!0-9]*) echo "route-metric: bad metric" >&2; exit 2 ;; esac
+	case "$gw" in *[!0-9.]*) echo "route-metric: bad gateway" >&2; exit 2 ;; esac
+	[ -n "$(ip -4 route show default dev "$dev" table main 2>/dev/null)" ] && exit 0
+	if [ -n "$gw" ] && [ "$gw" != 0.0.0.0 ]; then
+		ip -4 route add default via "$gw" dev "$dev" metric "$metric" table main ||
+			ip -4 route add default via "$gw" dev "$dev" onlink metric "$metric" table main
+	else
+		ip -4 route add default dev "$dev" metric "$metric" table main
+	fi
+	exit $?
+fi
+
+# move_one <fam> <dev> <from> <to>: the device's default route with metric <from> is added again with <to>, then deleted
+move_one() {
+	local fam=$1 dev=$2 from=$3 to=$4 route spec skip w
+	# the default routes of the device, "metric N" in each line unless it is 0
+	route=$(ip $fam route show default dev "$dev" table main 2>/dev/null | while read -r line; do
+		case "$line" in "default from "*) continue ;; esac
+		m=$(printf '%s\n' "$line" | sed -n 's/.* metric \([0-9]*\).*/\1/p')
+		[ "${m:-0}" = "$from" ] && { printf '%s\n' "$line"; break; }
+	done)
+	if [ -z "$route" ]; then
+		echo "route-metric: $dev has no default route with metric $from" >&2
+		return 1
+	fi
+	# without its metric, its lifetime and the kernel's state flags; the device is in the filter, so not in the line
+	spec= skip=
+	for w in $route; do
+		if [ -n "$skip" ]; then skip=; continue; fi
+		case "$w" in
+			metric|expires) skip=1 ;;
+			linkdown|dead|offload|trap|rt_offload|rt_trap|rt_offload_failed) ;;
+			*) spec="$spec $w" ;;
+		esac
+	done
+	# shellcheck disable=SC2086 # the route's own words, split on purpose
+	ip $fam route add $spec dev "$dev" metric "$to" table main || return 1
+	if [ "$from" = 0 ]; then
+		ip $fam route del default dev "$dev" metric 0 table main || ip $fam route del default dev "$dev" table main || return 1
+	else
+		ip $fam route del default dev "$dev" metric "$from" table main || return 1
+	fi
+	move_subnets "$fam" "$dev" "$from" "$to"
+}
+
+# move_subnets <fam> <dev> <from> <to>: the device's other routes in the main table with metric <from> (its subnet
+# routes: netifd gives them the interface's metric) follow its default route (a field report: they kept
+# the old metric until the interface restarted, and with overlapping subnets or policy routing the path changed).
+# Added again first, then deleted, so the subnet is never unreachable. A metric 0 is not netifd's: nothing follows.
+move_subnets() {
+	local fam=$1 dev=$2 from=$3 to=$4 line spec skip dst w
+	[ "$from" = 0 ] && return 0
+	ip $fam route show dev "$dev" table main 2>/dev/null | while read -r line; do
+		case "$line" in default*|fe80:*|ff00:*|multicast*|unreachable*|blackhole*|prohibit*|local*|broadcast*) continue ;; esac
+		case " $line " in *" metric $from "*) ;; *) continue ;; esac
+		dst=${line%% *} spec= skip=
+		for w in $line; do
+			if [ -n "$skip" ]; then skip=; continue; fi
+			case "$w" in
+				metric|expires) skip=1 ;;
+				linkdown|dead|offload|trap|rt_offload|rt_trap|rt_offload_failed) ;;
+				*) spec="$spec $w" ;;
+			esac
+		done
+		# shellcheck disable=SC2086 # the route's own words, split on purpose
+		if ip $fam route add $spec dev "$dev" metric "$to" table main; then
+			ip $fam route del "$dst" dev "$dev" metric "$from" table main
+		else
+			echo "route-metric: $dev: $dst kept at metric $from" >&2
+		fi
+	done
+	return 0
+}
+
+# the moves, checked, as "fam dev from to" lines
+fam=-4 moves= n=0
+while [ $# -ge 3 ]; do
+	case "$1" in -4|-6) fam=$1; shift; continue ;; esac
+	dev=$1 from=$2 to=$3
+	shift 3
+	case "$dev" in ''|*[!A-Za-z0-9._@-]*) echo "route-metric: bad device name" >&2; status=2; continue ;; esac
+	case "$from$to" in *[!0-9]*) echo "route-metric: bad metric" >&2; status=2; continue ;; esac
+	[ "$from" = "$to" ] && continue
+	moves="$moves$fam $dev $from $to
+"
+done
+
+# first pass: out of the way, each to its own temporary metric; second: to the target
+printf '%s' "$moves" | {
+	k=0
+	while read -r fam dev from to; do
+		[ -n "$dev" ] || continue
+		k=$((k + 1))
+		tmp=$((40000 + k))
+		if move_one "$fam" "$dev" "$from" "$tmp"; then
+			echo "$fam $dev $tmp $to"
+		else
+			echo "fail" >&3
+		fi
+	done 3>"${TMPDIR:-/tmp}/.route-metric.$$"
+} > "${TMPDIR:-/tmp}/.route-metric-p.$$"
+[ -s "${TMPDIR:-/tmp}/.route-metric.$$" ] && status=1
+while read -r fam dev tmp to; do
+	[ -n "$dev" ] || continue
+	if ! move_one "$fam" "$dev" "$tmp" "$to"; then
+		status=1
+		# not left on the temporary metric: back where it was asked from is not known here, so the target's
+		# neighbour stays; the engine reads the routes again and tries once more
+		echo "route-metric: $dev left at metric $tmp" >&2
+	fi
+done < "${TMPDIR:-/tmp}/.route-metric-p.$$"
+rm -f "${TMPDIR:-/tmp}/.route-metric.$$" "${TMPDIR:-/tmp}/.route-metric-p.$$"
+exit $status

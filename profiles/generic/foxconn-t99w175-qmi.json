@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "id": "foxconn-t99w175-qmi",
+  "extends": "generic-qmi",
+  "description": "Foxconn T99W175 / Dell Snapdragon X55 in QMI composition",
+  "match": {
+    "bus": "usb",
+    "vid": "05c6",
+    "pid": "9025",
+    "drivers_any": ["qmi_wwan"],
+    "mm_manufacturer_contains": "DELL",
+    "mm_model_contains": "Snapdragon X55"
+  },
+  "policy": {
+    "owner_priority": ["modemmanager", "netifd-qmi"],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
+  },
+  "hints": {
+    "protocols": ["modemmanager", "qmi"],
+    "at_interface_numbers": [2],
+    "at_source": "05c6:9025 composition DIAG(0) ADB(1) MODEM(2) NMEA(3) QMI(4) (Modem Zoo foxconn-t99w175, 4PDA); field UART 2026-10-12: ttyUSB2 = 1-1.4:1.2. ModemManager ignores this modem's ttys (mm_ports control), so the engine needs the number"
+  },
+  "bind": {
+    "status": "bench-validated",
+    "serial": { "driver": "option", "usb_serial_driver": "option1", "interfaces": ["00", "02", "03"] },
+    "source": "bench 2026-10-02 (OPi Zero 3, 25.12): option on 00/02/03, qmi_wwan on 04, ADB 01 unbound; automatic by the user's decision (one unit, spec 32.11 exception, F8)"
+  },
+  "recovery": {
+    "status": "field-reported",
+    "radio_cycle": true,
+    "soft_reset": true,
+    "driver_rebind": false,
+    "usb_reauthorize": true,
+    "source": "Modem Zoo foxconn-t99w175: restart in operator presets; radio and reset go through ModemManager; not yet bench-validated"
+  },
+  "radio": {
+    "dialect": "foxconn-sdx",
+    "status": "field-reported",
+    "source": "another modem manager 3.4.0 _qualcomm_sdx55_common (AT^SLMODE mask 1 WCDMA, 2 LTE, 4 NR5G, 0 auto; AT^BAND_PREF=<tech>,2,<list> unquoted, never the bare reset); QModem vendor/foxconn.sh (the same SLMODE table, NR5G_NSA/NR5G_SA lines)",
+    "ussd_cs_fallback": {
+      "source": "bench 2026-10-16 (T99W175, Tele2): USSD on LTE fell back to a 3G cell, was rejected (SupsFailureCase) and the data session dropped; ModemManager showed cs 'searching' while eps was 'home'"
+    }
+  }
+}

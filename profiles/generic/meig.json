@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "meig",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "MeiG Smart modules (USB 2dee): SLM750, SLM828, SRM815, SRM825, SRM821; serial ports on option, data over QMI, ECM, RNDIS, NCM or MBIM by composition. ModemManager owns them where its generic or MeiG support knows them. Reference only, not on our bench. Sources: ModemManager 1.24 77-mm-*-port-types rules for 2dee, the imported catalog (9 IDs), another modem manager modem/usb list 3.9.43; the owner, 2026-11-13",
+  "match": {
+    "bus": "usb",
+    "vid": "2dee",
+    "drivers_any": [
+      "option",
+      "qmi_wwan",
+      "cdc_mbim",
+      "cdc_ncm",
+      "cdc_ether",
+      "rndis_host"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim",
+      "ecm",
+      "rndis"
+    ]
+  }
+}

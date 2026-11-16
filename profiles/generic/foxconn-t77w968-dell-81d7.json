@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w968-dell-81d7",
+  "extends": "foxconn-t77w968",
+  "description": "Dell DW5821e (T77W968), QMI or MBIM; qmi_wwan interface 0 and option in the kernel table",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81d7"
+  },
+  "policy": {
+    "fcc_unlock": "foxconn-qmi"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      3,
+      2
+    ],
+    "at_source": "option on interfaces 02-05 = ttyUSB0..3: 02 and 03 answer AT (a router vendor's port map for 413c:81d7/81e0: AT ttyUSB1, SMS ttyUSB0; the working notes), 04 NMEA (silent to AT, bench 2026-10-27), 05 diag. ModemManager ignores this modem's ttys (mm_ports control), so the engine needs the number"
+  }
+}

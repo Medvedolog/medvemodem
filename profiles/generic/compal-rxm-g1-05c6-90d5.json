@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "compal-rxm-g1-05c6-90d5",
+  "extends": "generic-mbim",
+  "description": "Compal RXM-G1 (module SG500M2-X, also sold as VOS 5G) in its MBIM composition 05c6:90d5, the same USB ID as the Foxconn T99W175 in MBIM, whose AT recipes it does not share (no Foxconn radio dialect). Told apart by ModemManager's model, which wins over the Foxconn profile's ID-only match (as compal-rxm-g1-1e2d-00b7). ModemManager only, no reset levels declared until a bench. Reference only, no bench of ours: docs/modem-zoo/modems/compal-rxm-g1.md (05c6:90d5 among its IDs), another modem manager's Compal identity check (VOS_5G, RXM-G1, SG500M2 in the product or the model)",
+  "match": {
+    "bus": "usb",
+    "vid": "05c6",
+    "pid": "90d5",
+    "drivers_any": [
+      "cdc_mbim"
+    ],
+    "mm_model_contains": [
+      "SG500M2",
+      "RXM-G1",
+      "RXMG1",
+      "VOS"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "mbim"
+    ]
+  },
+  "recovery": {
+    "status": "field-reported",
+    "radio_cycle": true,
+    "soft_reset": false,
+    "driver_rebind": false,
+    "usb_reauthorize": false,
+    "source": "radio through ModemManager only; a power-starved hub (ttys, no data function) is not cured by resets (Modem Zoo compal-rxm-g1)"
+  }
+}

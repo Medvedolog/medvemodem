@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "yota-lu150-1076-8002",
+  "extends": "generic-hilink",
+  "description": "Yota LU150 LTE stick, GCT GDM7240 (1076:8002). A router inside the stick: cdc_ether and a DHCP address from it, no AT port; signal, cell and operator over its plain GET /status («Key=Value» lines: InterfaceType, DeviceName, 3GPP.RSRP/RSRQ/SINR/RSSI, 3GPP.MCC/MNC, 3GPP.CI, 3GPP.LAC, 3GPP.SPN, State), no login; its address the stick's gateway (10.0.0.1 on most). The IMSI is read only for the SIM's operator code. Reference only, not on our bench. Sources: another modem manager hilink.sh yota_metrics_json and its vendor list (15a9:*, 1076:8002), the working notes (status theirs: F), docs/HANDOFF.md 131; a router maker's firmware's list of supported USB modems (CDC Ethernet).",
+  "match": {
+    "bus": "usb",
+    "vid": "1076",
+    "pid": "8002"
+  },
+  "hints": {
+    "title": "Yota LU150 (GCT GDM7240)"
+  }
+}

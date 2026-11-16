@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "foxconn-t77w676-telit-1900",
+  "extends": "foxconn-t77w676",
+  "description": "Telit LN940, QMI composition: in the kernel table (option with interface 0 without control lines and 1 reserved; qmi_wwan on interface 1 with the DTR quirk; Linux 6.12 drivers/usb/serial/option.c, drivers/net/usb/qmi_wwan.c)",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1900"
+  }
+}

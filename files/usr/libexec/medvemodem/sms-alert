@@ -1,0 +1,52 @@
+#!/bin/sh
+# SMS alerts (spec 38.6; the owner, 2026-10-29): one alert of medvemodemd's mgr_alert.c to every recipient chosen
+# from the address book, each through the first modem that takes it.
+#
+#   sms-alert <job.json>    {"ids": [device_id, ...], "numbers": ["+7...", ...], "text": "..."}, written by the engine
+#
+# Exit 0: every recipient got it; 2: some did; 1: none (the engine tries again later). A modem that refused or failed
+# is not tried again for the next recipient of this job. The numbers and the text are not logged.
+
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+UBUS=${MEDVEMODEM_UBUS_BIN:-ubus}
+JF=${MEDVEMODEM_JSONFILTER:-jsonfilter}
+JOB=$1
+[ -r "$JOB" ] || exit 1
+
+TEXT=$($JF -i "$JOB" -e '@.text')
+[ -n "$TEXT" ] || exit 1
+IDS=$($JF -i "$JOB" -e '@.ids[*]')
+NUMS=$($JF -i "$JOB" -e '@.numbers[*]')
+
+# a JSON string of $1: backslash and quote escaped, control characters dropped (the engine's text has none)
+quote() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\000-\037'; }
+T=$(quote "$TEXT")
+
+dead=""
+sent=0
+total=0
+for num in $NUMS; do
+	case "$num" in *[!0-9+]*|'') continue ;; esac
+	total=$((total + 1))
+	for id in $IDS; do
+		case " $dead " in *" $id "*) continue ;; esac
+		r=$($UBUS -t 150 call medvemodem sms_send "{\"id\":\"$(quote "$id")\",\"number\":\"$num\",\"text\":\"$T\"}" 2>/dev/null)
+		if [ "$(printf '%s' "$r" | $JF -e '@.ok' 2>/dev/null)" = true ]; then
+			sent=$((sent + 1))
+			continue 2
+		fi
+		dead="$dead $id"
+	done
+done
+logger -t medvemodem "sms-alert: sent to $sent of $total recipients"
+[ "$sent" -gt 0 ] || exit 1
+[ "$sent" -eq "$total" ] || exit 2
+exit 0

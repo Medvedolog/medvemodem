@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "generic-modemmanager",
+  "fit": "generic",
+  "description": "Generic modem managed by ModemManager",
+  "match": {
+    "bus": "any"
+  },
+  "policy": {
+    "owner_priority": ["modemmanager", "netifd-mbim", "netifd-qmi", "ncm"],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": ["modemmanager", "mbim", "qmi", "ncm"]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "fibocom",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "Fibocom modules (USB 2cb7): the Intel XMM ones (L850-GL, L860-GL, MBIM, with profiles of their own), the Qualcomm ones (FM150, FM160, FG150, NL668; QMI or MBIM beside option) and the ECM/NCM ones. ModemManager owns them (its fibocom plugin). The FM350 is MediaTek (0e8d) with its own profiles. Reference only, not on our bench. Sources: ModemManager src/plugins/fibocom, the imported catalog (12 IDs), another modem manager modem/usb list 3.9.43; the owner, 2026-11-13",
+  "match": {
+    "bus": "usb",
+    "vid": "2cb7",
+    "drivers_any": [
+      "option",
+      "qmi_wwan",
+      "cdc_mbim",
+      "cdc_ncm",
+      "cdc_ether",
+      "cdc_acm"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim",
+      "ncm",
+      "ecm"
+    ]
+  }
+}

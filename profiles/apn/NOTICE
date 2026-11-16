@@ -1,0 +1,21 @@
+APN data shipped with MedveModem (usr/share/medvemodem/apn/)
+
+providers.tsv — the provider database of the apn-autoconfig project
+(https://github.com/DarthAnwalt/openwrt-apn-autoconfig), generated from two
+public sources and included under their licenses:
+  * GNOME mobile-broadband-provider-info (MBPI): Creative Commons Public
+    Domain Dedication and Certification (CC-PDDC), licenses/MBPI-CC-PDDC.txt;
+  * the AOSP sample APN database: Copyright 2006, The Android Open Source
+    Project; Apache License 2.0, licenses/Apache-2.0.txt.
+The data is filtered, normalized, deduplicated, merged and converted to TSV
+by apn-autoconfig; MedveModem ships it unchanged (header names its version).
+A newer copy fetched with apn-update goes to /etc/medvemodem/providers.tsv.
+
+overrides.list — APN overrides from luci-app-5gmodem 3.2.2 by Fil Dunsky
+(https://github.com/fildunsky/luci-app-5gmodem), GNU GPL v3.0; the entries
+are unchanged, the header comment is translated. MedveModem's own lines follow
+them under «MedveModem additions» (2026-10-17: 250-03).
+
+The way an APN is picked (overrides by the SIM's network, the database scored
+by how specific a row matches the SIM, then names) follows the description in
+luci-app-5gmodem and apn-autoconfig; the code is MedveModem's own (src/apn.c).

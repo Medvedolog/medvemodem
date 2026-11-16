@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "ufi-05c6-f00e",
+  "extends": "generic-hilink",
+  "description": "A Chinese 4G USB stick with Wi-Fi of the «UFI» kind on a Qualcomm board (05c6:f00e, manufacturer and product strings «Android»): a router inside the stick, RNDIS (rndis_host) and a DHCP address from the stick, no AT port and no cdc-wdm in this composition. Not a phone, though the strings say Android. Its web UI is at the stick's gateway (192.168.100.1 on the owner's unit, login admin/admin); signal, operator and SMS stay inside the stick until its web is read. Router mode is this stick's only mode: no problem to report. Field report 2026-10-19 (the owner's bench, OpenWrt 25.12.5 on sunxi, diag report usb_1.2): rndis_host on interfaces 00 and 01, gateway 192.168.100.1, DNS from the stick. Imported catalog composition 05c6:f00e (generic-hilink)",
+  "match": {
+    "bus": "usb",
+    "vid": "05c6",
+    "pid": "f00e",
+    "drivers_any": [
+      "rndis_host",
+      "cdc_ether"
+    ]
+  },
+  "hints": {
+    "protocols": [
+      "rndis",
+      "hilink"
+    ],
+    "title": "4G USB-модем UFI",
+    "router_mode": "only"
+  }
+}

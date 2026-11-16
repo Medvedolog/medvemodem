@@ -1,0 +1,49 @@
+#!/bin/sh
+# A long check for LuCI, in the background: rpcd gives a page's call about 20 s and the page showed «XHR request
+# timed out» while the check went on (the service tester, the DNS check, the network check, a diagnostic report).
+#   bg start <key> <command> [args...]   start it, answer at once (LuCI makes each key unique per start)
+#   bg get <key>                         "running", or "done <exit code> <stderr bytes>", then the output and the
+#                                        error output after it
+# Only the commands below run (the speed test too: it was refused and ran as a plain call, «XHR request timed out»,
+# the owner 2026-11-16); the rpcd ACL names each of them per access level as well.
+D=${MEDVEMODEM_BG_DIR:-/tmp/medvemodem/bg}
+
+case "$2" in ''|*[!a-z0-9-]*) echo "bg: bad key" >&2; exit 2 ;; esac
+[ "${#2}" -le 32 ] || { echo "bg: bad key" >&2; exit 2; }
+key=$2
+
+case "$1" in
+start)
+	shift 2
+	case "$1 $2" in
+		"/usr/sbin/medvemodem channels"|"/usr/sbin/medvemodem dns-check"|"/usr/sbin/medvemodem diag"|\
+		"/usr/libexec/medvemodem/apn-update update") ;;
+		*) case "$1" in /usr/libexec/medvemodem/netcheck|/usr/libexec/medvemodem/speedtest) ;; *) echo "bg: not allowed" >&2; exit 2 ;; esac ;;
+	esac
+	mkdir -p "$D" && chmod 0700 "$D" || exit 1
+	# each start has a key of its own now: what a closed page never asked for goes after an hour (a day where find
+	# has no -mmin)
+	find "$D" -type f -mmin +60 -exec rm -f {} + 2>/dev/null || find "$D" -type f -mtime +0 -exec rm -f {} + 2>/dev/null
+	rm -f "$D/$key.out" "$D/$key.err" "$D/$key.rc"
+	# the output file before the answer: a page's first get reads «running», not «none» (HANDOFF 200 item 12)
+	: >"$D/$key.out" || exit 1
+	# its own session and no descriptor of rpcd's: the call returns now
+	( "$@" >"$D/$key.out" 2>"$D/$key.err"; echo $? >"$D/$key.rc" ) </dev/null >/dev/null 2>&1 &
+	echo started
+	;;
+get)
+	if [ -f "$D/$key.rc" ]; then
+		echo "done $(cat "$D/$key.rc") $(wc -c <"$D/$key.err" 2>/dev/null || echo 0)"
+		cat "$D/$key.out" "$D/$key.err" 2>/dev/null
+		rm -f "$D/$key.out" "$D/$key.err" "$D/$key.rc"
+	elif [ -f "$D/$key.out" ]; then
+		echo running
+	else
+		echo none
+	fi
+	;;
+*)
+	echo "usage: bg start <key> <command> [args...] | bg get <key>" >&2
+	exit 2
+	;;
+esac

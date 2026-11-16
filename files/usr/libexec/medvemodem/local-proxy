@@ -1,0 +1,244 @@
+#!/bin/sh
+# Downloads through the router's own tunnel when the direct way fails (the owner, 2026-11-12: «скачивание через прокси
+# подкоп форкоп и прочих, у нас уже есть детектор»; a field report the same week: GitHub unreachable straight from the
+# router, reachable through its tunnel):
+#   local-proxy list                 the local proxies found, one per line: <url> <source> [login]
+#   local-proxy fetch <url> <file>   download <url> to <file> through each in turn; exit 0 on the first that works
+#   local-proxy http                 the ones that also speak HTTP (a mixed port), as http_proxy wants them:
+#                                    http://[login@]host:port <source>; for apk and opkg, which have no SOCKS
+#   local-proxy show                 the list for LuCI, one JSON array: url, type, source, login (no password), section
+#   local-proxy check <url>          one proxy of the list: does GitHub and OpenWrt's download server answer through it
+# The router's owner corrects or adds proxies in MedveModem's own config (the owner, 2026-11-13: «с возможностью
+# откорректировать адрес и порт и логин и пароль прокси»): sections «proxy» of /etc/config/medvemodem with type
+# (mixed, socks or http), host, port, username, password and replaces (the url of a found proxy this one stands for; its
+# login is kept when none is given). Those come first; a found proxy one replaces is left out. Another program's
+# configuration is never written.
+# Read only, as the bot's route finder: sections of podkop, podkop-plus, forkop and netshift with their mixed proxy on
+# (port 2080 by default; 127.0.0.1, then the manager's LAN address), forkop 2's «mixed» servers, JustClash's mixed port
+# (its UCI, with its login), and the mixed, SOCKS
+# or HTTP port of a clash/mihomo (SSClash, nikki, OpenClash). Nothing is started, changed or restarted. fetch says on
+# stderr which proxy it tried and how it ended; a login goes to curl on its standard input, never on its command line.
+# Exit 2: no proxy found, or no curl (uclient-fetch has no proxy of its own here).
+
+# installed, nothing from the caller's environment is taken (as apn-update); the source tree's copy keeps the test overrides
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+PKGS=${MEDVEMODEM_PROXY_PKGS:-podkop podkop-plus forkop netshift}
+CLASH=${MEDVEMODEM_PROXY_CONFIGS:-/etc/nikki/run/config.yaml /opt/clash/config.yaml /etc/clash/config.yaml /etc/mihomo/config.yaml /etc/openclash/config.yaml}
+
+get() { uci -q get "$1" 2>/dev/null; }
+port_ok() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
+private() {
+	case "$1" in 127.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*) case "$1" in *[!0-9.]*) return 1 ;; esac; return 0 ;; esac
+	return 1
+}
+login_ok() {
+	case "$1" in ''|*[!A-Za-z0-9_.@-]*) return 1 ;; esac
+	[ -n "$2" ] && [ "${#1}" -le 80 ] && [ "${#2}" -le 256 ] && case "$2" in *'"'*|*'\'*) return 1 ;; esac
+}
+lan_ip() {
+	local ip
+	ip=$(get "$1.settings.service_listen_address")
+	[ -n "$ip" ] || ip=$(get network.lan.ipaddr)
+	ip=${ip%%/*}; ip=${ip%% *}
+	private "$ip" && echo "$ip"
+}
+sections() { uci -q show "$1" 2>/dev/null | sed -n "s/^$1\.\([A-Za-z0-9_]*\)=$2\$/\1/p"; }
+host_ok() {
+	case "$1" in '') return 1 ;; \[*\]) case "$1" in *[!0-9A-Fa-f:.\[\]]*) return 1 ;; esac ;; *[!A-Za-z0-9.-]*) return 1 ;; esac
+	[ "${#1}" -le 253 ]
+}
+
+found() {
+	local pkg s port lan user pass act ip c
+	for pkg in $PKGS; do
+		for s in $(sections "$pkg" section); do
+			[ "$(get "$pkg.$s.enabled")" = 0 ] && continue
+			[ "$(get "$pkg.$s.mixed_proxy_enabled")" = 1 ] || continue
+			act=$(get "$pkg.$s.connection_type"); [ -n "$act" ] || act=$(get "$pkg.$s.action")
+			case "$act" in block|exclusion) continue ;; esac
+			port=$(get "$pkg.$s.mixed_proxy_port"); [ -n "$port" ] || port=2080
+			port_ok "$port" || continue
+			user=; pass=
+			if [ "$(get "$pkg.$s.mixed_proxy_auth_enabled")" = 1 ]; then
+				user=$(get "$pkg.$s.mixed_proxy_username"); pass=$(get "$pkg.$s.mixed_proxy_password")
+				login_ok "$user" "$pass" || continue	# a login asked and not readable: a proxy that would only fail
+			fi
+			echo "socks5h://127.0.0.1:$port $pkg${user:+ $user:$pass}"
+			lan=$(lan_ip "$pkg")
+			[ -n "$lan" ] && [ "$lan" != 127.0.0.1 ] && echo "socks5h://$lan:$port $pkg${user:+ $user:$pass}"
+		done
+		[ "$pkg" = forkop ] || continue
+		# forkop 2: a server of protocol mixed, its login a server_client of it (on unless mixed_auth_enabled is 0)
+		for s in $(sections forkop server); do
+			[ "$(get "forkop.$s.protocol")" = mixed ] || continue
+			[ "$(get "forkop.$s.enabled")" = 0 ] && continue
+			port=$(get "forkop.$s.listen_port"); port_ok "$port" || continue
+			ip=$(get "forkop.$s.listen")
+			case "$ip" in ''|::|0.0.0.0|::1) ip=127.0.0.1 ;; esac
+			private "$ip" || continue
+			user=; pass=
+			if [ "$(get "forkop.$s.mixed_auth_enabled")" != 0 ]; then
+				for c in $(sections forkop server_client); do
+					[ "$(get "forkop.$c.server")" = "$s" ] || continue
+					user=$(get "forkop.$c.label"); [ -n "$user" ] || user=$c
+					pass=$(get "forkop.$c.password")
+					break
+				done
+				login_ok "$user" "$pass" || continue
+			fi
+			echo "socks5h://$ip:$port forkop${user:+ $user:$pass}"
+		done
+	done
+	# JustClash (mihomo; the owner, 2026-11-13): its UCI, not its generated /tmp/justclash/config.yaml. The mixed port is
+	# off by default (use_mixed_port), 1080, bound to the address of an interface (lan by default, «-» every address) and
+	# always behind a login (list proxy_authentication 'user:password', the first one; 127.0.0.1 alone skips it, and the
+	# port is not there when bound to the LAN address)
+	if [ "$(get justclash.proxy.use_mixed_port)" = 1 ]; then
+		port=$(get justclash.proxy.mixed_port); [ -n "$port" ] || port=1080
+		c=$(get justclash.proxy.mixed_port_bind_interface); [ -n "$c" ] || c=lan
+		if [ "$c" = - ]; then ip=127.0.0.1; else
+			ip=$(get "network.$c.ipaddr"); ip=${ip%%/*}; ip=${ip%% *}
+			private "$ip" || ip=
+		fi
+		line=$(uci -q get justclash.proxy.proxy_authentication 2>/dev/null | awk '{ print $1; exit }')
+		line=${line#\'}; line=${line%\'}
+		user=${line%%:*}; pass=${line#*:}
+		if [ -n "$ip" ] && port_ok "$port" && login_ok "$user" "$pass"; then
+			echo "socks5h://$ip:$port justclash $user:$pass"
+		fi
+	fi
+	# clash/mihomo: its mixed port speaks SOCKS and HTTP; a config with a login (authentication) is left out
+	for c in $CLASH; do
+		[ -s "$c" ] || continue
+		grep -q '^authentication *:' "$c" && continue
+		port=$(sed -n 's/^mixed-port *: *\([0-9][0-9]*\).*/\1/p' "$c" | head -n 1)
+		if port_ok "$port"; then echo "socks5h://127.0.0.1:$port clash"; continue; fi
+		port=$(sed -n 's/^socks-port *: *\([0-9][0-9]*\).*/\1/p' "$c" | head -n 1)
+		if port_ok "$port"; then echo "socks5h://127.0.0.1:$port clash-socks"; continue; fi
+		port=$(sed -n 's/^port *: *\([0-9][0-9]*\).*/\1/p' "$c" | head -n 1)
+		port_ok "$port" && echo "http://127.0.0.1:$port clash"
+	done
+}
+
+# a login in a URL: every byte but the unreserved ones as %XX (busybox 25.12 has no od, hence awk's own table)
+urlenc() {
+	printf '%s' "$1" | awk 'BEGIN { for (i = 1; i < 256; i++) hex[sprintf("%c", i)] = sprintf("%%%02X", i) }
+		{ for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); printf "%s", c ~ /[A-Za-z0-9_.~-]/ ? c : hex[c] } }'
+}
+
+# the owner's own entries (source own:<type>, section name after a slash), then the found ones they do not replace
+list() {
+	local f s t h p u w r line
+	f=$(found | awk '!seen[$1]++')
+	for s in $(sections medvemodem proxy); do
+		[ "$(get "medvemodem.$s.enabled")" = 0 ] && continue
+		t=$(get "medvemodem.$s.type"); h=$(get "medvemodem.$s.host"); p=$(get "medvemodem.$s.port")
+		case "$t" in mixed|socks|http) ;; *) continue ;; esac
+		host_ok "$h" && port_ok "$p" || continue
+		u=$(get "medvemodem.$s.username"); w=$(get "medvemodem.$s.password"); r=$(get "medvemodem.$s.replaces")
+		# a correction without a login keeps the found proxy's (its user, or its password when only the user changed)
+		if [ -n "$r" ] && [ -z "$w" ]; then
+			line=$(printf '%s\n' "$f" | awk -v u="$r" '$1 == u { print $3; exit }')
+			if [ -n "$line" ]; then [ -n "$u" ] || u=${line%%:*}; w=${line#*:}; fi
+		fi
+		[ -z "$u" ] || login_ok "$u" "$w" || continue
+		if [ "$t" = http ]; then echo "http://$h:$p own:http/$s${u:+ $u:$w}"; else echo "socks5h://$h:$p own:$t/$s${u:+ $u:$w}"; fi
+	done
+	printf '%s\n' "$f" | while read -r line; do
+		[ -n "$line" ] || continue
+		for s in $(sections medvemodem proxy); do
+			[ "$(get "medvemodem.$s.enabled")" = 0 ] && continue
+			[ "$(get "medvemodem.$s.replaces")" = "${line%% *}" ] && continue 2
+		done
+		echo "$line"
+	done
+}
+
+# speaks HTTP: a mixed port (the sing-box managers', clash's mixed-port, an own «mixed»), an HTTP one
+http_ok() { case "$1" in clash-socks|own:socks/*) return 1 ;; esac; return 0; }
+
+case "$1" in
+list)
+	list | awk '!seen[$1]++'
+	;;
+show)
+	printf '['
+	n=0
+	list | awk '!seen[$1]++' | while read -r proxy src auth; do
+		t=mixed; sec=; rep=
+		case "$src" in
+		own:*) sec=${src#*/}; t=${src#own:}; t=${t%%/*}; src=own; rep=$(get "medvemodem.$sec.replaces") ;;
+		clash-socks) t=socks; src=clash ;;
+		*) case "$proxy" in http://*) t=http ;; esac ;;
+		esac
+		hp=${proxy#*://}
+		[ "$n" -gt 0 ] && printf ','
+		n=$((n + 1))
+		printf '{"url":"%s","type":"%s","host":"%s","port":%s,"source":"%s","login":%s,"user":"%s","section":"%s","replaces":"%s"}' \
+			"$proxy" "$t" "${hp%:*}" "${hp##*:}" "$src" "$([ -n "$auth" ] && echo true || echo false)" "${auth%%:*}" "$sec" \
+			"$(printf '%s' "$rep" | tr -cd 'A-Za-z0-9.:/[]_-')"
+	done
+	printf ']\n'
+	;;
+check)
+	[ -n "$2" ] || { echo '{"ok":false,"error":"usage"}'; exit 2; }
+	command -v curl >/dev/null 2>&1 || { echo '{"ok":false,"error":"no curl"}'; exit 2; }
+	line=$(list | awk -v u="$2" '$1 == u { print; exit }')
+	[ -n "$line" ] || { echo '{"ok":false,"error":"not found"}'; exit 1; }
+	set -- $line
+	proxy=$1 auth=$3
+	printf '{"ok":true,"url":"%s"' "$proxy"
+	for t in github:https://github.com/ openwrt:https://downloads.openwrt.org/; do
+		if [ -n "$auth" ]; then
+			r=$(printf 'proxy-user = "%s"\n' "$auth" | curl -K - -s -o /dev/null -m 10 --proxy "$proxy" -w '%{http_code} %{time_total}' "${t#*:}" 2>/dev/null)
+		else
+			r=$(curl -s -o /dev/null -m 10 --proxy "$proxy" -w '%{http_code} %{time_total}' "${t#*:}" 2>/dev/null)
+		fi
+		code=${r%% *}; ms=$(printf '%s' "${r#* }" | awk '{ printf "%d", $1 * 1000 }')
+		case "$code" in ''|000|*[!0-9]*) printf ',"%s":{"ok":false}' "${t%%:*}" ;;
+		*) printf ',"%s":{"ok":true,"code":%s,"ms":%s}' "${t%%:*}" "$code" "${ms:-0}" ;; esac
+	done
+	printf '}\n'
+	;;
+http)
+	list | awk '!seen[$1]++' | while read -r proxy src auth; do
+		http_ok "$src" || continue
+		hp=${proxy#*://}
+		[ -n "$auth" ] && hp="$(urlenc "${auth%%:*}"):$(urlenc "${auth#*:}")@$hp"
+		echo "http://$hp $src"
+	done
+	;;
+fetch)
+	[ -n "$2" ] && [ -n "$3" ] || { echo "usage: local-proxy fetch <url> <file>" >&2; exit 2; }
+	command -v curl >/dev/null 2>&1 || { echo "no curl: a download through a proxy needs it" >&2; exit 2; }
+	found=$(list | awk '!seen[$1]++')
+	[ -n "$found" ] || exit 2
+	rc=1
+	while read -r proxy src auth; do
+		[ -n "$proxy" ] || continue
+		if [ -n "$auth" ]; then
+			out=$(printf 'proxy-user = "%s"\n' "$auth" | curl -K - -fsSL --max-time 120 --proxy "$proxy" -o "$3" "$2" 2>&1); r=$?
+		else
+			out=$(curl -fsSL --max-time 120 --proxy "$proxy" -o "$3" "$2" 2>&1); r=$?
+		fi
+		if [ "$r" -eq 0 ]; then echo "proxy $proxy ($src): ok" >&2; rc=0; break; fi
+		echo "proxy $proxy ($src): curl code $r: $(printf '%s' "${out:-no answer}" | tr '\n' ' ')" >&2
+		rm -f "$3"
+	done <<EOF
+$found
+EOF
+	exit $rc
+	;;
+*)
+	sed -n '5,10p' "$0" | sed 's/^# *//' >&2
+	exit 2
+	;;
+esac

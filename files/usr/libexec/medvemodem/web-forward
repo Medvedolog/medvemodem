@@ -1,0 +1,89 @@
+#!/bin/sh
+# The web pages of modems in router mode (HiLink, UFI) through the router's own address (the owner, 2026-10-20:
+# a PC with a proxy client in TUN mode sends 192.168.8.1 into its tunnel, the router's LAN address it does not).
+#
+#   web-forward apply <spec-file>   lines "<port> <host> <netdev>": this router's LAN address on <port> shows
+#                                    <host>:80 (through <netdev>); nothing else
+#   web-forward clear                nothing is shown any more
+#
+# Not a NAT rule (bench 2026-10-26): a HiLink answers a request whose Host is not its own with 307 to its own
+# address, which the PC's proxy client sent into a tunnel. medvemodem-webproxy relays each request with Host,
+# Origin and Referer naming the modem and turns a Location to it back into the router's address. It listens on
+# the LAN address only: from the WAN side nothing is shown. The nftables table of earlier versions is removed.
+
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+PROXY=${MEDVEMODEM_WEBPROXY:-/usr/sbin/medvemodem-webproxy}
+NFT=${MEDVEMODEM_NFT:-nft}
+TABLE=medvemodem_web
+PIDFILE=${MEDVEMODEM_RUN_DIR:-/var/run/medvemodem}/webproxy.pid
+
+# the LAN's IPv4 address: netifd's lan interface
+lan_addr() {
+	ubus call network.interface.lan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null
+}
+
+valid_port() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; [ "$1" -ge 1024 ] && [ "$1" -le 65535 ]; }
+valid_host() { printf '%s\n' "$1" | grep -Eqx '([0-9]{1,3}\.){3}[0-9]{1,3}'; }
+valid_dev() { printf '%s\n' "$1" | grep -Eqx '[A-Za-z0-9_.@-]{1,15}'; }
+
+# the pid file's process, only when it is still the proxy (audit r108, R108-03: a pid reused after a crash)
+proxy_pid() {
+	local pid
+	pid=$(cat "$PIDFILE" 2>/dev/null)
+	case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+	tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "${PROXY##*/}" || return 1
+	echo "$pid"
+}
+
+stop_proxy() {
+	local pid
+	pid=$(proxy_pid) && kill "$pid" 2>/dev/null
+	rm -f "$PIDFILE"
+	# the NAT table of r87..r104
+	"$NFT" delete table inet "$TABLE" 2>/dev/null
+}
+
+case "$1" in
+clear)
+	stop_proxy
+	exit 0
+	;;
+apply)
+	spec=$2
+	[ -r "$spec" ] || { echo "web-forward: no spec" >&2; exit 1; }
+	# the new set is checked first; the old proxy stays until there is one to start (audit r108, R108-02)
+	set --
+	n=0
+	while read -r port host dev; do
+		valid_port "$port" && valid_host "$host" && valid_dev "$dev" || continue
+		set -- "$@" "$port" "$host" "$dev"
+		n=$((n + 1))
+	done < "$spec"
+	[ "$n" -gt 0 ] || { stop_proxy; exit 0; }
+	lan=$(lan_addr)
+	valid_host "$lan" || { echo "web-forward: no LAN address" >&2; exit 1; }
+	[ -x "$PROXY" ] || { echo "web-forward: no $PROXY" >&2; exit 1; }
+	mkdir -p "${PIDFILE%/*}"
+	# the same ports: the old one goes just before the new one starts, and the new one must still run a moment later
+	stop_proxy
+	"$PROXY" "$lan" "$@" </dev/null >/dev/null 2>&1 &
+	pid=$!
+	echo "$pid" > "$PIDFILE.tmp" && mv "$PIDFILE.tmp" "$PIDFILE"
+	sleep "${MEDVEMODEM_WEBPROXY_SETTLE:-1}"
+	kill -0 "$pid" 2>/dev/null || { rm -f "$PIDFILE"; echo "web-forward: the proxy did not start" >&2; exit 1; }
+	logger -t medvemodem "modem web pages through the router: $n" 2>/dev/null
+	exit 0
+	;;
+*)
+	echo "usage: web-forward apply <spec-file> | clear" >&2
+	exit 1
+	;;
+esac

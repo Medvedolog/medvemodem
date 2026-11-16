@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "fibocom-xmm-413c-81d9",
+  "extends": "fibocom-xmm",
+  "description": "Dell DW5820e: a Fibocom L850-GL under Dell's VID (the same firmware line 18500.5001 field-reported on 413c:81d9 and 2cb7:0007), MBIM over cdc_mbim with cdc_acm ttys: AT on interfaces 2 and 6, 4 a debug port that is not AT",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81d9"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      2,
+      6
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/dell/77-mm-dell-port-types.rules (Dell DW5820e: 02 AT, 04 debug ignored, 06 AT); 4PDA topic 1066668 post 13285 (DW5820e 413c:81d9 beside an L850-GL 2cb7:0007 on one firmware); another modem manager 3.5.5 reads 413c:81d9 with its L850 profile"
+  }
+}

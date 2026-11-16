@@ -1,0 +1,29 @@
+# Services the «Проверка сервисов» button asks through one modem (no keys, no
+# speed test).
+# id|name|group|url|extra codes that mean «works»
+# group: open — the open internet that works in Russia without a tunnel and goes under «белые списки»; known — blocked
+# in Russia already (by the regulator, or the service refuses Russia itself): shown, never a sign of a whitelist (the
+# owner, 2026-11-15: «это не признак белых списков, ведь и ркн и сам чатгпт блокирует»); list — expected to stay
+# reachable under «белые списки».
+# Any 2xx/3xx answer works; 403 and 451 are «blocked»; the extra codes are answers a service
+# gives without credentials (401 of an API) and still prove it is reachable.
+google|Google|open|https://www.google.com/generate_204|
+github|GitHub|open|https://github.com/|
+wikipedia|Wikipedia|open|https://ru.wikipedia.org/|
+cloudflare|Cloudflare|open|https://www.cloudflare.com/cdn-cgi/trace|
+microsoft|Microsoft|open|https://www.microsoft.com/|
+telegram|Telegram|known|https://api.telegram.org/|404
+youtube|YouTube|known|https://www.youtube.com/generate_204|
+whatsapp|WhatsApp|known|https://web.whatsapp.com/|
+discord|Discord|known|https://discord.com/api/v9/experiments|
+claude|Claude|known|https://api.anthropic.com/v1/models|401
+chatgpt|ChatGPT|known|https://api.openai.com/v1/models|401
+yandex|Yandex|list|https://ya.ru/|
+vk|VK|list|https://vk.com/|
+wildberries|Wildberries|list|https://www.wildberries.ru/|498
+# the mobile operators' own sites (the owner, 2026-10-31): they stay reachable under «белые списки»; their anti-bot
+# front answers a script 403 or 429, still the site itself
+mts|MTS|list|https://mts.ru/|403 429
+t2|T2 (Tele2)|list|https://t2.ru/|403 429
+megafon|MegaFon|list|https://megafon.ru/|403 429
+beeline|Beeline|list|https://beeline.ru/|403 429

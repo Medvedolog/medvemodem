@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "id": "sierra",
+  "fit": "family",
+  "extends": "generic-modemmanager",
+  "description": "Sierra Wireless modules (USB 1199): MC73xx/MC74xx, EM73xx/EM74xx/EM75xx, EM91xx; Qualcomm based, serial ports on qcserial (older ones on the sierra driver, data on sierra_net), data over QMI or MBIM. ModemManager owns them. Their firmware loaders (1199:907a, 1199:9090) are a service mode, never a modem; the EM74xx compositions with a profile of their own win over this family. Reference only, not on our bench. Sources: ModemManager src/plugins/sierra, the imported catalog (14 IDs), another modem manager modem/usb list 3.9.43; the owner, 2026-11-13",
+  "match": {
+    "bus": "usb",
+    "vid": "1199",
+    "drivers_any": [
+      "qcserial",
+      "qmi_wwan",
+      "cdc_mbim",
+      "sierra",
+      "sierra_net"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "netifd-mbim"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "modemmanager",
+      "qmi",
+      "mbim"
+    ]
+  },
+  "radio": {
+    "dialect": "sierra",
+    "status": "reference",
+    "source": "the family's AT set as the model profile sierra-em74xx documents it (its sources there); under ModemManager the radio is read and set through ModemManager's own plugin, the dialect is for an AT port the engine holds itself"
+  }
+}

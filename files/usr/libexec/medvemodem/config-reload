@@ -1,0 +1,127 @@
+#!/bin/sh
+# Called by medvemodemd after a configuration transaction (spec 17) with the
+# names of the committed UCI packages. Tells their services, nothing else:
+# no module reload, no ModemManager restart (spec 22.1, H16).
+#
+# fw-check <netdev>: the modem's interface is in a firewall zone, yet fw4's
+# compiled rules may not name its device (it appeared or was renamed after
+# the last firewall load): the router is online, the LAN clients are not.
+# Exit 0 when the rules name it or there is nothing to check; exit 3 after
+# reloading the firewall (recovery study R24).
+if [ "$1" = fw-check ]; then
+	[ -n "$2" ] && command -v nft >/dev/null 2>&1 || exit 0
+	rules=$(nft list chain inet fw4 input 2>/dev/null) || exit 0
+	[ -n "$rules" ] || exit 0
+	case "$rules" in *"\"$2\""*) exit 0 ;; esac
+	[ -x /etc/init.d/firewall ] || exit 0
+	/etc/init.d/firewall reload >/dev/null 2>&1
+	exit 3
+fi
+UCI="uci${MEDVEMODEM_UCI_CONFDIR:+ -c $MEDVEMODEM_UCI_CONFDIR}"
+INITD=${MEDVEMODEM_INITD:-/etc/init.d}
+# qmodem-stale <section>... -- <interface>...: QModem modem-device sections of
+# modems the engine no longer hands to QModem (gone, or at another USB path
+# after a reboot): off, so QModem stops dialling through their old AT nodes
+# (field 2026-10-13); and QModem's network interfaces left behind (their
+# section gone or off, their modem gone, or an old name of a modem handed to
+# QModem under ours): removed with their dhcp section and firewall zone entry
+# (field 2026-10-15: 1_1_3, 3_1_3, 6_1_3 for one FM350, a v6 loop on eth1).
+# A section given as +<section> is the opposite: a modem handed to QModem whose section QModem's own USB-remove
+# switched off when the stick came back (a USB reset, a replug; its add is off under block_auto_probe): on again
+# (the owner's FM350, 2026-10-21: «Исправить» turned it on, the next reset turned it off, nobody dialled).
+if [ "$1" = qmodem-stale ]; then
+	shift
+	while [ $# -gt 0 ] && [ "$1" != -- ]; do
+		case "$1" in
+		+*) $UCI -q set "qmodem.${1#+}.state=enabled" ;;
+		*) $UCI -q set "qmodem.$1.state=disabled" ;;
+		esac
+		shift
+	done
+	[ "$1" = -- ] && shift
+	$UCI -q commit qmodem || exit 1
+	if [ $# -gt 0 ]; then
+		zones=$($UCI -q show firewall | sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p')
+		for i in "$@"; do
+			[ "$($UCI -q get "network.$i.modem_config")" ] || continue	# QModem's only
+			ifdown "$i" >/dev/null 2>&1
+			$UCI -q delete "network.$i"
+			$UCI -q delete "dhcp.$i"
+			for z in $zones; do
+				$UCI -q del_list "firewall.$z.network=$i"
+			done
+		done
+		$UCI -q commit network
+		$UCI -q commit dhcp
+		$UCI -q commit firewall
+		ubus call network reload >/dev/null 2>&1
+		[ -x "$INITD/firewall" ] && "$INITD/firewall" reload >/dev/null 2>&1
+	fi
+	[ -x "$INITD/qmodem_network" ] && "$INITD/qmodem_network" reload >/dev/null 2>&1
+	exit 0
+fi
+# qmodem-port <section> <node>: the modem's own AT port into QModem's section (it named
+# another modem's port after the sticks were moved, field 2026-10-20; QModem's boot scan,
+# which would rewrite it, is off under block_auto_probe), then QModem's service reloaded: a
+# section without a dial gets one, a dial running is left to run (bench 2026-10-20: a restart,
+# or dropping a dialling instance, made QModem hang up and take the whole network down with
+# it, LAN included). The new port serves the next dial.
+if [ "$1" = qmodem-port ]; then
+	case "$2" in ''|*[!A-Za-z0-9_]*) exit 2 ;; esac
+	case "$3" in /dev/tty[A-Za-z]*) ;; *) exit 2 ;; esac
+	case "$3" in *[!A-Za-z0-9/_.-]*|*..*) exit 2 ;; esac
+	[ "$($UCI -q get "qmodem.$2")" = modem-device ] || exit 2
+	$UCI -q set "qmodem.$2.at_port=$3" && $UCI -q commit qmodem || exit 1
+	[ -x "$INITD/qmodem_network" ] && "$INITD/qmodem_network" reload >/dev/null 2>&1
+	exit 0
+fi
+# one modem's QModem settings applied: its own `reconfigure <section>` where QModem has it (its stable line since
+# 2026-10-16: that modem's dial hung up and started again by enable_dial, the others untouched), else the service's
+# reload; never a restart.
+qm_reconfigure() { grep -q 'extra_command "reconfigure"' "$INITD/qmodem_network" 2>/dev/null; }
+qm_apply() {
+	[ -x "$INITD/qmodem_network" ] || return 0
+	if qm_reconfigure; then "$INITD/qmodem_network" reconfigure "$1" >/dev/null 2>&1
+	else "$INITD/qmodem_network" reload >/dev/null 2>&1
+	fi
+}
+# qmodem-dial <section> [0|1]: QModem's dial of one modem.
+#   no switch: started when it has none (the operator's «Исправить» on a modem QModem drives; field 2026-10-20:
+#   qmodem_network had no instance, nobody dialled)
+#   0 / 1: off or on again (the engine's «Заморозить», the owner 2026-10-19: QModem must leave a frozen modem alone
+#   too); off stops its instance at once. Until 2026-10-21 the two were separate blocks and the first answered both:
+#   a frozen modem's dial was never switched off (the owner: «qmodem продолжает трогать»).
+# Always a reload, never a restart (one tears the whole network down, see qmodem-port).
+if [ "$1" = qmodem-dial ]; then
+	case "$2" in ''|*[!A-Za-z0-9_]*) exit 2 ;; esac
+	case "$3" in ''|0|1) ;; *) exit 2 ;; esac
+	[ "$($UCI -q get "qmodem.$2")" = modem-device ] || exit 2
+	if [ -n "$3" ]; then
+		$UCI -q set "qmodem.$2.enable_dial=$3" && $UCI -q commit qmodem || exit 1
+		[ "$3" = 0 ] && ! qm_reconfigure && ubus call service delete "{\"name\":\"qmodem_network\",\"instance\":\"modem_$2\"}" >/dev/null 2>&1
+	fi
+	qm_apply "$2"
+	exit 0
+fi
+# qmodem-alias <section> <name>: QModem names the modem's interfaces after the
+# alias (<name>, <name>v6) instead of the USB path; its dial starts again under
+# it (the instance only: no network restart). The old interfaces go with the
+# next qmodem-stale.
+if [ "$1" = qmodem-alias ]; then
+	[ -n "$2" ] && [ -n "$3" ] || exit 2
+	# a section name and an interface name, nothing uci would read as more (HANDOFF 200 item 17)
+	case "$2$3" in *[!A-Za-z0-9_]*) exit 2 ;; esac
+	[ "${#3}" -le 15 ] || exit 2
+	$UCI -q set "qmodem.$2.alias=$3" && $UCI -q commit qmodem || exit 1
+	qm_reconfigure || ubus call service delete "{\"name\":\"qmodem_network\",\"instance\":\"modem_$2\"}" >/dev/null 2>&1
+	qm_apply "$2"
+	exit 0
+fi
+rc=0
+for pkg in "$@"; do
+	case "$pkg" in
+	network) ubus call network reload || rc=1 ;;
+	firewall) [ -x /etc/init.d/firewall ] && { /etc/init.d/firewall reload || rc=1; } ;;
+	esac
+done
+exit $rc

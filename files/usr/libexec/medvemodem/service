@@ -1,0 +1,157 @@
+#!/bin/sh
+# The operator's switch of the MedveModem service (the owner, 2026-10-19: «тумблер отключения службы
+# MedveModem глобально с гашением остальных модемных служб (и без, галочка)»), from LuCI's settings.
+#
+#   service status          one line of JSON: MedveModem and the other modem services
+#   service off [others]    MedveModem stops and stays off at boot (core.enabled 0); with «others»
+#                           ModemManager and QModem's services stop and are disabled too
+#   service on [others]     MedveModem on again; with «others» the services «off others» stopped
+#   service stop|start|restart  MedveModem only, now; whether it starts at boot stays as it is
+#   service qmodem start|reload  QModem's dial (qmodem_network) only, now (field 2026-10-20: it had no
+#                           instance, nobody dialled the FM350, and «restart» restarted MedveModem alone):
+#                           reload adds the instances missing and leaves a dial running alone
+#   service qmodem enable <section>  the dashboard's «Исправить» on a modem QModem drives (the owner, 2026-10-21: «не
+#                           чинится qmodem автоматом»; QModem ran with nothing to dial): its section on (state enabled,
+#                           enable_dial 1), then the reload above
+#   service qmodem hard-restart  the emergency one: QModem hangs every dial up and takes the whole
+#                           network down with it, LAN included (bench 2026-10-20); the page warns first
+#
+# Without «others» the other services keep running and take the modems over as they would without
+# MedveModem (its inhibitions end with it). Nothing is ever restarted: a service that runs is left
+# running, one that is off is only started on the operator's «on others». The services stopped are
+# kept in core.stopped_services, so «on others» starts exactly those.
+
+# rpcd's file exec hands the caller's environment over; installed, nothing from it is taken (pkg-install)
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+INIT=${MEDVEMODEM_INIT_DIR:-/etc/init.d}
+UCI=${MEDVEMODEM_UCI_BIN:-uci}
+SELF=medvemodemd
+# the modem services of other packages: ModemManager, QModem's dial (qmodem_network), scanner, monitor and SIM health check
+OTHERS="modemmanager qmodem_network qmodem_init qmodem_monitor qmodem_hc_sim"
+
+b() { if "$@" >/dev/null 2>&1; then printf true; else printf false; fi; }
+
+state() {
+	if [ ! -x "$INIT/$1" ]; then
+		printf '"%s":{"installed":false}' "$1"
+		return
+	fi
+	printf '"%s":{"installed":true,"enabled":%s,"running":%s}' "$1" "$(b "$INIT/$1" enabled)" "$(b "$INIT/$1" running)"
+}
+
+status() {
+	local on stopped s first=1
+
+	on=$($UCI -q get medvemodem.core.enabled)
+	stopped=$($UCI -q get medvemodem.core.stopped_services)
+	printf '{"enabled":%s,"running":%s,"stopped_services":[' "$([ "$on" = 0 ] && echo false || echo true)" \
+		"$(b "$INIT/$SELF" running)"
+	for s in $stopped; do
+		[ $first = 1 ] || printf ','
+		printf '"%s"' "$s"
+		first=0
+	done
+	printf '],"others":{'
+	first=1
+	for s in $OTHERS; do
+		[ $first = 1 ] || printf ','
+		state "$s"
+		first=0
+	done
+	printf '}}\n'
+}
+
+case "$1" in
+status)
+	status
+	;;
+off)
+	$UCI set medvemodem.core.enabled=0
+	if [ "$2" = others ]; then
+		stopped=
+		for s in $OTHERS; do
+			[ -x "$INIT/$s" ] || continue
+			"$INIT/$s" enabled >/dev/null 2>&1 || "$INIT/$s" running >/dev/null 2>&1 || continue
+			"$INIT/$s" stop >/dev/null 2>&1
+			"$INIT/$s" disable >/dev/null 2>&1
+			stopped="$stopped $s"
+			logger -t medvemodem "service $s stopped and disabled by the operator"
+		done
+		$UCI -q delete medvemodem.core.stopped_services
+		for s in $stopped; do
+			$UCI add_list medvemodem.core.stopped_services="$s"
+		done
+	fi
+	$UCI commit medvemodem
+	logger -t medvemodem "MedveModem turned off by the operator${2:+ ($2 too)}"
+	"$INIT/$SELF" stop >/dev/null 2>&1
+	status
+	;;
+on)
+	$UCI set medvemodem.core.enabled=1
+	if [ "$2" = others ]; then
+		for s in $($UCI -q get medvemodem.core.stopped_services); do
+			case " $OTHERS " in *" $s "*) ;; *) continue ;; esac
+			[ -x "$INIT/$s" ] || continue
+			"$INIT/$s" enable >/dev/null 2>&1
+			"$INIT/$s" start >/dev/null 2>&1
+			logger -t medvemodem "service $s enabled and started by the operator"
+		done
+		$UCI -q delete medvemodem.core.stopped_services
+	fi
+	$UCI commit medvemodem
+	"$INIT/$SELF" enable >/dev/null 2>&1
+	"$INIT/$SELF" start >/dev/null 2>&1
+	logger -t medvemodem "MedveModem turned on by the operator${2:+ ($2 too)}"
+	status
+	;;
+stop|start|restart)
+	# the operator's buttons (the owner, 2026-10-20: «кнопки остановить, запустить»): a switched-off service is not started
+	if [ "$1" != stop ] && [ "$($UCI -q get medvemodem.core.enabled)" = 0 ]; then
+		printf '{"error":"disabled"}\n'
+		exit 0
+	fi
+	"$INIT/$SELF" "$1" >/dev/null 2>&1
+	logger -t medvemodem "MedveModem: $1 by the operator"
+	status
+	;;
+qmodem)
+	case "$2" in start|reload|restart|hard-restart|enable) ;; *) echo "usage: service qmodem start|reload|hard-restart|enable <section>" >&2; exit 1 ;; esac
+	if [ ! -x "$INIT/qmodem_network" ]; then
+		printf '{"error":"not installed"}\n'
+		exit 0
+	fi
+	if [ "$2" = enable ]; then
+		case "$3" in ''|*[!A-Za-z0-9_]*) printf '{"error":"bad section"}\n'; exit 0 ;; esac
+		if [ "$($UCI -q get "qmodem.$3")" != modem-device ]; then
+			printf '{"error":"no such QModem modem"}\n'
+			exit 0
+		fi
+		$UCI -q set "qmodem.$3.state=enabled"
+		$UCI -q set "qmodem.$3.enable_dial=1"
+		$UCI -q commit qmodem
+		logger -t medvemodem "QModem modem $3 enabled with its dial by the operator"
+	fi
+	# «restart» from an older page is the gentle one too: only «hard-restart» stops the dials
+	case "$2" in
+	hard-restart) how=restart ;;
+	start) if "$INIT/qmodem_network" running >/dev/null 2>&1; then how=reload; else how=start; fi ;;
+	*) if "$INIT/qmodem_network" running >/dev/null 2>&1; then how=reload; else how=start; fi ;;
+	esac
+	"$INIT/qmodem_network" "$how" >/dev/null 2>&1
+	logger -t medvemodem "qmodem_network: $how by the operator${2:+ ($2)}"
+	status
+	;;
+*)
+	echo "usage: service status | off [others] | on [others] | stop | start | restart | qmodem start|reload|hard-restart|enable <section>" >&2
+	exit 1
+	;;
+esac

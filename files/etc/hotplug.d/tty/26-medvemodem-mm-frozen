@@ -1,0 +1,29 @@
+#!/bin/sh
+# Runs after ModemManager's own 25-modemmanager-{tty,net,usbmisc} (one script, three directories). A frozen modem
+# (medvemodemd lists its USB path in mm-frozen) is touched by no service: a port of it that appears again — a USB
+# reset, a replug — is withdrawn inside ModemManager's probe delay, and with it from ModemManager's event cache, so
+# ModemManager never sends it AT (the owner, 2026-10-21: «ModemManager продолжает трогать» a frozen modem).
+[ "$ACTION" = add ] || exit 0
+list=${MEDVEMODEM_RUN_DIR:-/var/run/medvemodem}/mm-frozen
+common=${MM_COMMON_SH:-/usr/share/ModemManager/modemmanager.common}
+[ -s "$list" ] || exit 0
+[ -r "$common" ] || exit 0
+case "$SUBSYSTEM" in
+tty) case "$DEVNAME" in ttyUSB*|ttyACM*) name=$DEVNAME ;; *) exit 0 ;; esac ;;
+usbmisc) name=$DEVNAME ;;
+net) name=$INTERFACE ;;
+*) exit 0 ;;
+esac
+[ -n "$name" ] || exit 0
+while read -r usb; do
+	[ -n "$usb" ] || continue
+	case "$DEVPATH" in
+	*/"$usb":*)
+		. "$common"
+		mm_report_event remove "$name" "$SUBSYSTEM" "/sys$DEVPATH"
+		logger -t medvemodem "$name of USB $usb is kept from ModemManager: the modem is frozen"
+		exit 0
+		;;
+	esac
+done < "$list"
+exit 0

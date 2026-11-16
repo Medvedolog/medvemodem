@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "huawei-e3372-hilink-12d1-1442",
+  "extends": "huawei-e3372-hilink-debug-1566",
+  "description": "Huawei E3372 HiLink, a third composition of the same stick: 12d1:14dc (web only) -> 1566 (debug) -> 1442, one modem across all three (another modem manager 3.5.8 msw/identity.sh; 14dc -> 1566 was seen live there). Linux 6.12 option.c takes its CDC-class serial functions (class 02, protocol ff), so it shows ttys like the debug mode. Kept with the HiLink owner like 1566: when the stick's Ethernet function is present the web API and DHCP stay the data plane; its serial ports stay away from ModemManager (inherited mm_ports control), so without an Ethernet function the stick stays unresolved rather than dialled over its AT ports. Composition details beyond that are not known to us. Reference only, no bench of ours; profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "12d1",
+    "pid": "1442"
+  }
+}

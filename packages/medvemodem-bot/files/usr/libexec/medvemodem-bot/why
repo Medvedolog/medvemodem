@@ -1,0 +1,41 @@
+#!/bin/sh
+# Why the bot would not run: one line "<code><TAB><words>" on stdout and exit 1, or nothing and exit 0.
+# The init script logs the words (English, as the console's); LuCI says the code in its own language and shows the
+# words only for a code it does not know (medvemodem.bot.config why). The owner, 2026-10-20: «дал ему
+# токен, прокси, но все равно не стартует», and the log said a bare code or, when switched off, nothing.
+# No secret and no Telegram id is ever printed.
+LIB=${MEDVEMODEM_BOT_UCODE_LIB:-/usr/lib/ucode}
+CA=${MEDVEMODEM_BOT_CA_FILE:-/etc/ssl/certs/ca-certificates.crt}
+no() { printf '%s\t%s\n' "$1" "$2"; exit 1; }
+
+[ "$(uci -q get medvemodem-bot.main.enabled 2>/dev/null)" = 1 ] ||
+	no disabled 'the bot is switched off in its settings: “Enable and start the bot” on its page'
+[ -x /usr/bin/ucode ] || no ucode_missing 'no ucode: install the ucode package'
+for m in fs uloop ubus uci log digest; do
+	[ -e "$LIB/$m.so" ] || no module_missing "no module ucode-mod-$m: install the ucode-mod-$m package"
+done
+[ -s "$CA" ] || no ca_bundle_missing 'no TLS certificates: install the ca-bundle package'
+token=$(uci -q get medvemodem-bot-secret.main.token 2>/dev/null || true)
+printf '%s' "$token" | grep -Eq '^[0-9]{6,12}:[A-Za-z0-9_-]{30,}$' ||
+	no token_missing "the token is not set or incomplete: step 1 on the bot's page"
+user_id=$(uci -q get medvemodem-bot.primary.user_id 2>/dev/null || true)
+chat_id=$(uci -q get medvemodem-bot.primary.chat_id 2>/dev/null || true)
+# a private chat's id is the user's id: an empty chat id is that one (the owner, 2026-10-20: only the user id
+# was filled in, and the bot said «administrator missing» with the administrator on the page)
+[ -n "$chat_id" ] || chat_id=$user_id
+if ! printf '%s' "$user_id:$chat_id" | grep -Eq '^[0-9]{3,20}:[0-9]{3,20}$'; then
+	# the LuCI pairing window is the only way to run without an administrator
+	now=$(date +%s)
+	until=$(jsonfilter -i /tmp/medvemodem-bot/pairing.json -e '@.until' 2>/dev/null || echo 0)
+	case "$until" in ''|*[!0-9]*) until=0;; esac
+	[ "$until" -ge "$now" ] && [ "$until" -le "$((now + 600))" ] ||
+		no administrator_missing 'no administrator assigned: step 2, “Get a one-time code” and send it to the bot'
+fi
+if ! /usr/libexec/medvemodem-bot/init-secrets --check 2>/dev/null; then
+	# root repairs the owner and the mode (a hand edit or a restore from a backup loses them), then looks again
+	[ "$(id -u)" = 0 ] && /usr/libexec/medvemodem-bot/init-secrets 2>/dev/null &&
+		/usr/libexec/medvemodem-bot/init-secrets --check 2>/dev/null ||
+		no secret_permissions 'wrong permissions on /etc/config/medvemodem-bot-secret or /etc/medvemodem-bot/salt: run /usr/libexec/medvemodem-bot/init-secrets'
+	logger -t medvemodem-bot 'secret_permissions_repaired: the token file permissions are restored' 2>/dev/null || true
+fi
+exit 0

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "sierra-em74xx-dell-81c2",
+  "extends": "sierra-em74xx",
+  "description": "Dell DW5811e under a second Dell ID 413c:81c2 (an EM7455 like 413c:81b6): qcserial DEVICE_SWI layout, qmi_wwan on 8 (Linux 6.12). another modem manager 3.5.8 reads it with its 1199:9071 profile. Reference only, no bench of ours; profiles audit 2026-10-19",
+  "match": {
+    "bus": "usb",
+    "vid": "413c",
+    "pid": "81c2"
+  }
+}

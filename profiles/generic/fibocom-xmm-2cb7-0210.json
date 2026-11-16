@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "fibocom-xmm-2cb7-0210",
+  "extends": "fibocom-xmm",
+  "fit": "family",
+  "description": "Fibocom L830-EB (Intel XMM 7262, the laptops' M.2 LTE card) in its USB MBIM composition with CDC-ACM ports: ModemManager owns it as the rest of the family (MBIM), AT on ttyACM0 in the historical observation (the imported catalog: AT and SMS on ttyACM0). The family's XMM dialect is assumed for its radio, not confirmed on this older chip: an AT+XACT or AT+XLEC the modem refuses only hides that view. No field report in our sources (ALPHA1.md 0.1, HANDOFF 236)",
+  "match": {
+    "bus": "usb",
+    "vid": "2cb7",
+    "pid": "0210"
+  },
+  "radio": {
+    "dialect": "xmm",
+    "status": "reference",
+    "source": "the family profile, not confirmed on this chip; the imported catalog composition-2cb7-0210-31"
+  }
+}

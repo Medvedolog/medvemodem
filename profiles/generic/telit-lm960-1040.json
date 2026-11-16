@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "id": "telit-lm960-1040",
+  "extends": "telit-lm960",
+  "description": "Telit LM940/LM960 (LE922A) QMI composition: DIAG 0, QMI 2 (qmi_wwan with the DTR quirk), AT 4 primary and 5 secondary, 3 and 6 not AT",
+  "match": {
+    "bus": "usb",
+    "vid": "1bc7",
+    "pid": "1040"
+  },
+  "hints": {
+    "at_interface_numbers": [
+      4,
+      5
+    ],
+    "at_source": "ModemManager 1.25.95 src/plugins/telit/77-mm-telit-port-types.rules (LE922, LM9x0: 00 QCDM, 03 ignore, 04 AT primary, 05 AT secondary, 06 ignore); Linux 6.12 qmi_wwan.c QMI on interface 2",
+    "protocols": [
+      "modemmanager",
+      "qmi"
+    ],
+    "ussd": "3g-only",
+    "ussd_source": "LM960A18: USSD only after a switch to 3G (AT+WS46=22); in LTE +CME ERROR: 30 or a timeout; another modem manager field notes via the owner's digest 2026-11-02"
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager"
+    ]
+  }
+}

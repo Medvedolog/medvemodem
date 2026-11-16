@@ -1,0 +1,142 @@
+#!/bin/sh
+# The speed of one modem's link, on the admin's press only (the owner, 2026-11-03, after
+# a WH3000 Pro owner's report: «спидтест с предсказанием шейпа и советами»):
+#   speedtest <netdev> [down_s] [up_s]
+# A download and then an upload straight through <netdev> (curl --interface if!<netdev>: never another route), each
+# measured by the device's own byte counters once a second, so the page can see the shape of the speed: a flat shelf at
+# a round number is an operator's cap, a fast start cut down after a few megabytes a tethering or quota cap, a speed
+# that wanders with the signal the radio. Prints one line:
+#   {"device","server","down":{"kbps":[...],"bytes":N,"error"?},"up":{...},"error"?}
+# A direction whose transfer failed (DNS, connection, TLS, an HTTP error: curl's own exit) says so: its counters then
+# measure other traffic, not the link (the audit of r162: a curl that could not resolve gave zeros as a speed). The time
+# running out or the file ending is a measurement. The traffic it uses is the admin's: 30–100 MB on a good LTE link.
+# Exit 0 measured, 1 not (or a direction failed), 2 bad arguments.
+case "$0" in
+/usr/libexec/medvemodem/*)
+	for _v in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+		case "$_v" in PATH|HOME|PWD|SHLVL) ;; *) unset "$_v" 2>/dev/null ;; esac
+	done
+	unset _v
+	export PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root ;;
+esac
+
+DEV=$1 DOWN_S=${2:-12} UP_S=${3:-8}
+SYS=${MEDVEMODEM_SYS_NET:-/sys/class/net}
+# the servers, the first that answers (the owner, 2026-11-12: «нужен резервный сервак для замера, лучше два»): the two
+# backups are LibreSpeed servers of reference/speedtest/servers.json, in Moscow and St Petersburg; a direction moves to
+# the next one only when its transfer failed before a byte went (DNS, connection, TLS, an HTTP error)
+DOWN_URLS=${MEDVEMODEM_SPEED_DOWN:-https://speedtest.selectel.ru/1GB https://speedtest.mysputnik.ru/backend/garbage.php?ckSize=1024 https://speedtest.info-lan.ru/backend/garbage.php?ckSize=1024}
+# the upload without speedtest.rt.ru: it answers 403 to every post from a router (the owner's bench, 2026-11-12: 1 MB taken,
+# then «HTTP 403», chunked or not); the Moscow and St Petersburg ones answered 200, and Penza the fastest of the third
+# ones tried (2026-11-12: Obninsk failed its TLS, Perm 404, Voronezh 405, Ufa plain HTTP)
+UP_URLS=${MEDVEMODEM_SPEED_UP:-https://speedtest.mysputnik.ru/backend/empty.php https://speedtest.info-lan.ru/backend/empty.php https://test.ppcom.ru/backend/empty.php}
+# Yandex's own speed test first (the owner, 2026-11-12: «а яндекс спидтест не работает? он по идее и под белыми будет»):
+# its probe list, asked through the same device, names the nearest CDN's 50 MB file and its upload address; on the
+# owner's bench both answered 200 through a modem. Without an answer (or jsonfilter) the servers above are the only ones
+YANDEX=${MEDVEMODEM_SPEED_YANDEX-https://yandex.ru/internet/api/v0/get-probes}
+BLOB=/tmp/medvemodem-speed.$$
+trap 'rm -f "$BLOB"' EXIT
+SLEEP=${MEDVEMODEM_SPEED_TICK:-1}
+
+printf '%s' "$DEV" | grep -Eqx '[A-Za-z0-9_.@-]{1,15}' || { echo '{"error":"bad device"}'; exit 2; }
+case "$DOWN_S$UP_S" in *[!0-9]*) echo '{"error":"bad duration"}'; exit 2 ;; esac
+[ -r "$SYS/$DEV/statistics/rx_bytes" ] || { echo "{\"device\":\"$DEV\",\"error\":\"no such network device\"}"; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo "{\"device\":\"$DEV\",\"error\":\"curl is not installed\"}"; exit 1; }
+
+counter() { cat "$SYS/$DEV/statistics/$1" 2>/dev/null || echo 0; }
+
+# curl's exit in words; nothing for a measurement (0 the file ended, 28 the time ran out)
+curl_error() {
+	case "$1" in
+	0|28) ;;
+	6) echo "could not resolve the server" ;;
+	7) echo "could not connect to the server" ;;
+	22) echo "the server answered with an HTTP error" ;;
+	35|51|53|58|59|60|77|80|83|90|91) echo "the TLS connection failed" ;;
+	52|55|56) echo "the connection broke" ;;
+	*) echo "curl failed (exit $1)" ;;
+	esac
+}
+
+# the upload as a browser's speed test sends it: the same 1 MB posted again and again until the time is up, each post
+# with its length (a field report, r183: one endless chunked stream of zeros got an HTTP error from the server, and the
+# card said «скорость не измерена»). An HTTP error after a post went through is the server's limit, not a failure
+upload() {	# <secs> <url>
+	_end=$(( $(date +%s) + $1 )) _ok='' _rc=0
+	[ -s "$BLOB" ] || dd if=/dev/zero of="$BLOB" bs=65536 count=16 2>/dev/null || return 23
+	while :; do
+		_left=$(( _end - $(date +%s) ))
+		[ "$_left" -gt 0 ] || break
+		curl -s -f -m "$_left" --interface "if!$DEV" -X POST -H 'Content-Type: application/octet-stream' \
+			--data-binary @"$BLOB" -o /dev/null "$2"
+		_rc=$?
+		case "$_rc" in
+		0) _ok=1; continue ;;
+		28) _rc=0 ;;
+		*) [ -z "$_ok" ] || _rc=0 ;;
+		esac
+		break
+	done
+	return "$_rc"
+}
+
+# one direction: the transfer in the background for <secs>, the counter read every tick; the per-second rates in kbit/s
+measure() {	# <rx_bytes|tx_bytes> <secs> <command...>
+	_c=$1 _s=$2
+	shift 2
+	_first=$(counter "$_c") _prev=$_first _rates='' _done=''
+	"$@" </dev/null >/dev/null 2>&1 &
+	_pid=$!
+	_i=0
+	while [ "$_i" -lt "$_s" ]; do
+		sleep "$SLEEP"
+		_now=$(counter "$_c")
+		_rates="$_rates${_rates:+,}$(( (_now - _prev) * 8 / 1000 / SLEEP ))"
+		_prev=$_now
+		_i=$((_i + 1))
+		kill -0 "$_pid" 2>/dev/null || { _done=1; break; }
+	done
+	if [ -n "$_done" ]; then
+		# curl ended by itself: its exit says whether that was the file's end or a failure
+		wait "$_pid" 2>/dev/null; _rc=$?
+	else
+		kill "$_pid" 2>/dev/null; wait "$_pid" 2>/dev/null; _rc=28	# our time ran out: a measurement
+	fi
+	_err=$(curl_error "$_rc")
+	printf '{"kbps":[%s],"bytes":%s%s}' "$_rates" "$(( _prev - _first ))" "${_err:+,\"error\":\"$_err\"}"
+}
+
+if [ -n "$YANDEX" ] && command -v jsonfilter >/dev/null 2>&1; then
+	_probes=$(curl -s -f -m 8 --interface "if!$DEV" -A 'Mozilla/5.0' "$YANDEX" 2>/dev/null)
+	_yd=$(printf '%s' "$_probes" | jsonfilter -e '@.download.probes[0].url' 2>/dev/null)
+	_yu=$(printf '%s' "$_probes" | jsonfilter -e '@.upload.probes[0].postUrl' 2>/dev/null)
+	[ -n "$_yu" ] || _yu=$(printf '%s' "$_probes" | jsonfilter -e '@.upload.probes[0].url' 2>/dev/null)
+	case "$_yd" in https://*) DOWN_URLS="$_yd $DOWN_URLS" ;; esac
+	case "$_yu" in https://*) UP_URLS="$_yu $UP_URLS" ;; esac
+fi
+
+# a failure before a byte went: the next server; a failure later is the link's, measured as it is
+failed_early() {
+	case "$1" in *'"error"'*) ;; *) return 1 ;; esac
+	_b=$(printf '%s' "$1" | sed 's/.*"bytes":\([0-9]*\).*/\1/')
+	[ "${_b:-0}" -lt 200000 ]
+}
+for url in $DOWN_URLS; do
+	down=$(measure rx_bytes "$DOWN_S" curl -s -f -m "$DOWN_S" --interface "if!$DEV" -o /dev/null "$url")
+	DOWN_URL=$url
+	failed_early "$down" || break
+done
+# an upload error means no post went through (upload() forgives one after a success): the server refused, whatever the
+# counter says (rt.ru took 1 MB before its 403), so the next one is tried
+for url in $UP_URLS; do
+	up=$(measure tx_bytes "$UP_S" upload "$UP_S" "$url")
+	UP_URL=$url
+	case "$up" in *'"error"'*) ;; *) break ;; esac
+done
+host=$(printf '%s' "$DOWN_URL" | sed -e 's#^[a-z]*://##' -e 's#/.*##')
+uphost=$(printf '%s' "$UP_URL" | sed -e 's#^[a-z]*://##' -e 's#/.*##')
+err=''
+case "$down" in *'"error"'*) err="the download failed: $(printf '%s' "$down" | sed 's/.*"error":"\([^"]*\)".*/\1/')" ;; esac
+case "$up" in *'"error"'*) err="${err:+$err; }the upload failed: $(printf '%s' "$up" | sed 's/.*"error":"\([^"]*\)".*/\1/')" ;; esac
+printf '{"device":"%s","server":"%s","up_server":"%s","down":%s,"up":%s%s}\n' "$DEV" "$host" "$uphost" "$down" "$up" "${err:+,\"error\":\"$err\"}"
+[ -z "$err" ]

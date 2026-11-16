@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "brovi-e3372-325-hilink",
+  "description": "Brovi E3372-325 (sold as Huawei E3372h-325; VID 3566, not Huawei's 12d1) in its HiLink build: router inside the stick, RNDIS/Ethernet function with a web UI at 192.168.8.1, so the HiLink owner. Neither Linux 6.12 nor master lists VID 3566 in option or qmi_wwan, OpenWrt's usb-modeswitch data has no entry for it, and ModemManager's Huawei plugin takes VID 12d1 only. Field reports on OpenWrt: the stick comes up as rndis_host, gets an address, then resets into a mass-storage (CD-ROM) only identity; a manual usb_modeswitch on 3566:2001 plus an option new_id gave three ttys and a cdc_ncm function (that stick mode is left to generic-ncm here; no automatic switch or new_id). Not the older E3372h-153/-320 (12d1:1f01 -> 14db/14dc HiLink, 1506 stick). Reference only, no field report of ours. Sources: OpenWrt forum topic 153556 'Huawei e3372h-325 ... stuck in CDROM only mode' and Armbian forum topic 28692 (read through a web search summary, not in full); Linux 6.12 and master option.c / qmi_wwan.c; OpenWrt usb-mode.json; ModemManager 1.25.95 src/plugins/huawei/mm-plugin-huawei.c",
+  "match": {
+    "bus": "usb",
+    "vid": "3566",
+    "pid": "2001",
+    "drivers_any": [
+      "rndis_host",
+      "cdc_ether"
+    ]
+  },
+  "policy": {
+    "owner_priority": [
+      "hilink"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false
+  },
+  "hints": {
+    "protocols": [
+      "hilink",
+      "rndis",
+      "ecm"
+    ],
+    "router_mode": "only"
+  }
+}

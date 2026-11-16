@@ -1,0 +1,136 @@
+#!/bin/sh
+# What the bot's «🌍 Сеть» page shows (the owner, 2026-10-28):
+#   netinfo addr                the default route's device and source address, every device's IPv4
+#   netinfo public <dev|->...   the public IPv4 seen through each device ('-': the default route)
+#   netinfo tunnel              podkop, podkop-plus, forkop, netshift: installed, version, enabled, running;
+#                               whether the router's DNS goes through its sing-box (FakeIP) and the tunnel's exit address;
+#                               podkop 0.8 (sing-box inside it) answers by its own checks, «builtin»
+# One JSON object on stdout. Read only: nothing is configured, started or stopped.
+# The public addresses come from api.ipify.org, then icanhazip.com, then ifconfig.me,
+# the tunnel's checks from podkop's own (fakeip.podkop.fyi, ip.podkop.fyi: podkop routes them through its outbound).
+case "$0" in
+/usr/libexec/medvemodem-bot/*) export PATH=/usr/sbin:/usr/bin:/sbin:/bin ;;
+esac
+INITD=${MEDVEMODEM_BOT_INITD:-/etc/init.d}
+RCD=${MEDVEMODEM_BOT_RCD:-/etc/rc.d}
+OPKG=${MEDVEMODEM_BOT_OPKG_INFO:-/usr/lib/opkg/info}
+APKDB=${MEDVEMODEM_BOT_APK_DB:-/lib/apk/db/installed}
+PROC=${MEDVEMODEM_BOT_PROC:-/proc}
+IP_URLS=${MEDVEMODEM_BOT_IP_URLS:-https://api.ipify.org https://ipv4.icanhazip.com https://ifconfig.me}
+PODKOP_CHECK=${MEDVEMODEM_BOT_PODKOP_CHECK:-https://fakeip.podkop.fyi/check}
+PODKOP_IP=${MEDVEMODEM_BOT_PODKOP_IP:-https://ip.podkop.fyi/check}
+PODKOP=${MEDVEMODEM_BOT_PODKOP:-/usr/bin/podkop}
+
+ipv4() { printf '%s' "$1" | grep -Eqx '([0-9]{1,3}\.){3}[0-9]{1,3}'; }
+okdev() { case "$1" in ''|*[!A-Za-z0-9._@-]*) return 1 ;; esac; [ ${#1} -le 15 ]; }
+jstr() { printf '"%s"' "$(printf '%s' "$1" | tr -d '\000-\037"\\' | cut -c1-64)"; }
+
+# the public address through a device, the first service that answers with an address
+public() {
+	for u in $IP_URLS; do
+		# no proxy from the environment; a modem's own address through its own device, never a name curl may take for
+		# an address or a host (if!), audit r117 B03
+		if [ "$1" = - ]; then a=$(curl -4 -s --noproxy '*' --connect-timeout 4 --max-time 6 "$u" 2>/dev/null)
+		else a=$(curl -4 -s --noproxy '*' --interface "if!$1" --connect-timeout 4 --max-time 6 "$u" 2>/dev/null); fi
+		a=$(printf '%s' "$a" | tr -d ' \r\n\t')
+		ipv4 "$a" && { printf '%s' "$a"; return 0; }
+	done
+	return 1
+}
+
+# a package's version: opkg's control file or apk's database
+version() {
+	v=
+	[ -r "$OPKG/$1.control" ] && v=$(sed -n 's/^Version: *//p' "$OPKG/$1.control" | head -1)
+	[ -z "$v" ] && [ -r "$APKDB" ] && v=$(awk -v p="$1" '$0 == "P:" p { f = 1; next } f && /^V:/ { print substr($0, 3); exit } /^$/ { f = 0 }' "$APKDB")
+	printf '%s' "$v" | tr -cd 'A-Za-z0-9.~_+-' | cut -c1-32
+}
+
+# a process of that name runs (sing-box: the tunnel of podkop and its kin)
+running() {
+	for c in "$PROC"/[0-9]*/comm; do
+		[ "$(cat "$c" 2>/dev/null)" = "$1" ] && return 0
+	done
+	return 1
+}
+
+# podkop 0.8 runs sing-box inside its own program (`/usr/bin/podkop daemon`): no process named sing-box, and no rule
+# for podkop.fyi's check names (the owner's bench 2026-11-14: «sing-box: не запущен» on a working podkop 0.8)
+backend08() {
+	for c in "$PROC"/[0-9]*/cmdline; do
+		case "$(tr '\000' ' ' < "$c" 2>/dev/null)" in "$PODKOP daemon"*|"podkop daemon"*) return 0 ;; esac
+	done
+	return 1
+}
+# one of podkop 0.8's own checks, bounded
+ask08() {
+	if command -v timeout >/dev/null 2>&1; then timeout 10 "$PODKOP" "$1" 2>/dev/null; else "$PODKOP" "$1" 2>/dev/null; fi | tr -d ' \n\t'
+}
+
+case "$1" in
+addr)
+	r=$(ip -4 route get 1.1.1.1 2>/dev/null | head -1)
+	dev=$(printf '%s' "$r" | awk '{ for (i = 1; i < NF; i++) if ($i == "dev") print $(i + 1) }')
+	src=$(printf '%s' "$r" | awk '{ for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1) }')
+	printf '{"default":{"device":%s,"src":%s},"addrs":{' "$(jstr "$dev")" "$(jstr "$src")"
+	ip -4 -o addr show 2>/dev/null | awk '{ sub(/@.*/, "", $2); split($4, a, "/"); print $2, a[1] }' | {
+		sep=
+		while read -r d a; do
+			okdev "$d" && ipv4 "$a" || continue
+			[ "$d" = lo ] && continue
+			printf '%s"%s":"%s"' "$sep" "$d" "$a"; sep=,
+		done
+	}
+	echo '}}'
+	;;
+public)
+	shift
+	command -v curl >/dev/null 2>&1 || { echo '{"error":"no curl"}'; exit 3; }
+	n=0 dir=$(mktemp -d /tmp/medvemodem-bot/netinfo.XXXXXX 2>/dev/null || mktemp -d) || exit 1
+	trap 'rm -rf "$dir"' EXIT
+	for d in "$@"; do
+		[ "$d" = - ] || okdev "$d" || continue
+		n=$((n + 1)); [ $n -le 6 ] || break
+		( public "$d" > "$dir/$n" ) &
+		echo "$d" > "$dir/$n.dev"
+	done
+	wait
+	printf '{"public":{'
+	sep= i=1
+	while [ $i -le $n ] && [ $i -le 6 ]; do
+		printf '%s%s:%s' "$sep" "$(jstr "$(cat "$dir/$i.dev")")" "$(a=$(cat "$dir/$i" 2>/dev/null); ipv4 "$a" && jstr "$a" || echo null)"
+		sep=, i=$((i + 1))
+	done
+	echo '}}'
+	;;
+tunnel)
+	printf '{"managers":['
+	sep=
+	for m in podkop podkop-plus forkop netshift; do
+		[ -x "$INITD/$m" ] || continue
+		en=false; ls "$RCD"/S*"$m" >/dev/null 2>&1 && en=true
+		printf '%s{"name":"%s","version":%s,"enabled":%s}' "$sep" "$m" "$(jstr "$(version "$m")")" "$en"; sep=,
+	done
+	if [ "$sep" ] && [ -x "$PODKOP" ] && backend08; then
+		# sing-box inside podkop: its own checks; the exit address is not known without an outside server it routes
+		sb=$(ask08 check_sing_box); f=$(ask08 check_fakeip)
+		case "$sb" in *'"sing_box_process_running":0'*) sb=false ;; *) sb=true ;; esac
+		printf '],"sing_box":%s,"builtin":true' "$sb"
+		case "$f" in *'"fakeip":true'*) printf ',"fakeip":true' ;; *'"fakeip":false'*) printf ',"fakeip":false' ;; esac
+		echo '}'
+		exit 0
+	fi
+	sb=false; running sing-box && sb=true
+	printf '],"sing_box":%s' "$sb"
+	if [ "$sep" ] && command -v curl >/dev/null 2>&1; then
+		f=$(curl -4 -s --connect-timeout 4 --max-time 6 "$PODKOP_CHECK" 2>/dev/null)
+		case "$f" in *'"fakeip":true'*|*'"fakeip": true'*) printf ',"fakeip":true' ;;
+			*'"fakeip"'*) printf ',"fakeip":false' ;; esac
+		x=$(curl -4 -s --connect-timeout 4 --max-time 6 "$PODKOP_IP" 2>/dev/null | sed -n 's/.*"IP" *: *"\([0-9.]*\)".*/\1/p')
+		ipv4 "$x" && printf ',"exit_ip":"%s"' "$x"
+	fi
+	echo '}'
+	;;
+*)
+	echo '{"error":"usage: netinfo addr | public <dev|->... | tunnel"}'; exit 2 ;;
+esac
