@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r30**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r15**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -1542,6 +1542,137 @@ Bench build: `bench-v0.15.0-r30-6b91dec`.
 - **Hide identifiers** for safe screenshots.
 - **External manager installer status** no longer flashes Not running immediately after Start.
 - **GPL-3.0 license and code provenance** documented; bench artifacts carry external-manager license/source/commit metadata.
+
+## 0.15.0-r29 — 2026-10-13
+
+No standalone bench release.
+
+- **Layered diagnostic chain:** modem header shows Device → SIM and network → Session → Internet → DNS, identifying the first failing link and its cause. Visible only on failures in Basic and always in Advanced; `medvemodem top` has a Chain row. Unchecked links show “?” rather than a failure.
+- **One-click modem report:** Service → Modem report → Collect support report generates JSON with hardware inventory, engine decisions/diagnosis, session, event history, kernel and last 300 modem-related syslog lines (MM/netifd/uqmi/umbim/external manager). Redact IMEI/IMSI/ICCID, phone numbers, PIN/passwords and SMS content; hash USB serial.
+- **External-manager installer PID race:** replace the PID file atomically to avoid a momentary “not running” status after launch.
+
+## 0.15.0-r28 — 2026-10-13
+
+Bench build: `bench-v0.15.0-r28-e184a96`. **Important fix:** r26/r27 LuCI homepage and signal icon failed for MM-owned devices because a shared frontend module invoked a missing function; use r28 instead.
+
+- **One signal quality scale:** labels, color, bar fill and icon use identical thresholds. 5G RSRP thresholds −115/−105/−95 dBm, LTE −110/−100/−90. Quarter-step fill never rates Good higher than Excellent.
+- **Four-bar signal icon:** interference with SINR below 0 dB reduces to one bar and warns about interference. SINR exactly zero with good RSRQ is treated as unmeasured rather than bad interference.
+- **Build/test:** test the shared JS module independently under LuCI; a package that succeeds on a serial retry is marked built even if parallel build failed.
+
+## 0.15.0-r27 — 2026-10-13
+
+No standalone bench release.
+
+- **Per-carrier signal timeline:** Radio → Signal history in Advanced mode has parallel rows for LTE, 5G and each active carrier (B3/B7/n78), colored by RSRP quality. Empty cell means no measurement; hover shows time, value and quality; carrier levels also appear in Values table.
+- **Engine per-carrier RSRP history:** while page open update every 30 s, in background every five minutes fetch only cell data (not location), for MM-owned modems only.
+
+## 0.15.0-r26 — 2026-10-13
+
+Bench build: `bench-v0.15.0-r26-2f27b0b`.
+
+- **Immediate high-visibility critical warnings:** destructive usb-modeswitch rule or stuck MM is highlighted red above tabs with a Fix link rather than buried in Service.
+- **Connect/Disconnect through engine** with audit attribution “manually (LuCI)”.
+- **External manager unavailable:** selecting it under Connection shows a missing package and direct installation link.
+- **Service → Why this owner:** explain manual selection, an external-manager configuration section or the Auto policy.
+- **Basic Settings:** toggles only; check targets, manual channels, failback and APN database available from Advanced. A single modem's homepage card starts expanded.
+- **Localization:** correct plurals and standardize “firewall”; README updated to match current engine.
+
+## 0.15.0-r25 — 2026-10-13
+
+Bench build: `bench-v0.15.0-r25-fbc9bdd`.
+
+- **Foxconn T99W175/T77W968 native radio settings without MM:** via leased AT, read `AT^SLMODE?` and `AT^BAND_PREF?` on T99 or `AT^SLBAND?` on T77; allow network-mode/band changes with two-minute Internet-dependent rollback. T99 supports 3G/4G/5G and 3G/LTE/NR bands, T77 3G/4G and LTE bands. Write only changed values; never send bare `AT^BAND_PREF` that resets factory masks.
+- **Recognize a T99 profile** when MM previously saw the modem even under shared Qualcomm X55 ID `05c6:9025`.
+- **LuCI integration:** high-priority warnings above tabs, immediate external-manager missing warning, Why this owner, simplified Basic Settings, common detail-level selector and expanded single-modem card.
+- **CI:** shared frontend version/text/format module and RPC failure/multi-modem ownership tests; r25 failed when its version changed in only one location.
+
+## 0.15.0-r24 — 2026-10-13
+
+No standalone bench release.
+
+- **One-day AT history:** collapsible AT tab lists console/CLI commands, responses, ports, times and rejected dangerous commands; click to reuse and Clear. Stored only in RAM and visible to engineer access group.
+- **Native QMI/MBIM/AT status:** show operator, technology and signal from leased AT instead of placeholders, no more than once every 30 s.
+- **Expert Stability card:** management backend, protocol/netdev/driver, session interface and leased AT port.
+- **MM selection works after native QMI:** bring down uqmi, release/modulate ownership and reconnect through MM rather than leaving the modem offline; no unsupported SMS/AT tabs, with explanations under Service → Unavailable.
+
+## 0.15.0-r23 — 2026-10-13
+
+No standalone bench release.
+
+- **Messenger-style SMS:** left conversation list and right bubble thread/reply, New message above the list, mobile one-column view with Back.
+- **AT-sent SMS in conversations:** `AT+CMGS` may not persist sent messages, so hold last 50 per modem in daemon RAM until restart; label failed sends explicitly.
+- **USSD progress:** show elapsed seconds and clear timeout/status-read failures instead of indefinite Waiting for network.
+- **T99 native QMI vs MM race:** Auto previously chose uqmi while MM was still initializing, then both contended for `cdc-wdm0`. Wait for installed MM and hand back inactive native QMI to MM, preserving working sessions and operator-selected Direct QMI.
+- **Settings grouped** into Interface, Modem recovery, Internet redundancy and Components.
+- **Fix SMS-list typo** that broke the page and localize MM handback/quota events.
+
+## 0.15.0-r22 — 2026-10-13
+
+Bench build: `bench-v0.15.0-r22-bd856cf`.
+
+- **Prevent external manager dialing foreign modem ports:** disable external-manager entries not explicitly assigned to it, including unplugged or renumbered FM350 after OPi Zero 3 re-enumeration. Previously stale `tom_modem` could send AT into T99 DIAG and hang the kernel.
+- **Modem event journal:** Basic shows last 24 h; Advanced adds complete history with Copy log and Copy entry actions.
+
+## 0.15.0-r21 — 2026-10-13
+
+Bench build: `bench-v0.15.0-r21-3769168`.
+
+- **Modularize SMS/USSD/eSIM:** reduce core from ~11.3k to 8.6k lines without behavioral changes.
+- **Shutdown ownership correctness:** release modems to MM before tearing down session objects, avoiding freed-data access.
+- **Fix memory leak on MM restart invocation.**
+- **SDK/CI:** share host threads across concurrent builds, retry failed parallel packages serially with clear summary, install-test external manager after project packages.
+
+## 0.15.0-r20 — 2026-10-13
+
+No standalone bench release.
+
+- **Split modules:** radio configuration transactions, SIM quota, SMS seen marks and signal history each own their lifecycle; no user-visible changes.
+- **Fix use-after-free** when loading a saved radio-change journal after daemon restart, introduced in r18 and found with Valgrind.
+
+## 0.15.0-r19 — 2026-10-13
+
+No standalone bench release.
+
+- **Feature freeze** before more hardware validation; only bug fixes, tests and core refactoring.
+- **AT by detail level:** Advanced allows safe preset commands, Expert exposes raw AT input and manual AT port.
+- **Engineer ACL group** `luci-app-medvemodem-engineer` for AT, port probing, MM restart, modeswitch-rule repair and external-manager installation. Root has access; unauthorized users get an explicit denial.
+- **Three build architectures:** `aarch64_cortex-a53`, `aarch64_generic` (Rockchip NanoPi family) and `x86_64`, with external-manager packages for all. Find arch via `. /etc/openwrt_release; echo $DISTRIB_ARCH`.
+- **Installer errors surfaced**, including permission-related start failures.
+
+## 0.15.0-r18 — 2026-10-13
+
+No standalone bench release.
+
+- **DIAG/QDL service ports never used for AT**, whether profile, manual selection or auto-probe; show disabled entries. On T99 sending AT to interface 00 could hang the modem.
+- **SIM quota isolation:** remove quota-based route penalties when modem/SIM disappears or changes.
+- **Radio rollback survives daemon restart:** interrupted mode/band changes resume or roll back correctly.
+- **Clock rollback safety:** NTP adjustments backwards do not reset SIM monthly quota.
+- **Signal history:** duplicate samples in a second do not skew averages, cell change with same PCI is still an event, disabled history holds no timer.
+- **CI main branch** builds and publishes bench artifacts.
+
+## 0.15.0-r17 — 2026-10-13
+
+No standalone bench release.
+
+- **Installer download failure messages:** surface uclient-fetch output, TLS/libustream-mbedtls hints and offline-file steps, fallback to curl; previously install button silently failed.
+- **DIAG/QDL protected regardless of profile/operator AT choice** (expanded r18).
+- **SIM quota only for currently observed channels**, not a device reassigned to a different modem/SIM.
+- **Radio changes recorded and resumed/rolled back** across daemon restart.
+
+## 0.15.0-r16 — 2026-10-13
+
+No standalone bench release.
+
+- **Unread SMS badge** on modem homepage cards opens SMS tab; only opening a message list marks items seen, old stored SMS aren't counted as new.
+- **Simpler Basic card:** role and uptime, qualitative signal, SIM label, today's usage or remaining quota bar.
+- **Show primary fault first**, put details in tooltip/full page; avoid USB paths/address clutter and empty lines.
+
+## 0.15.0-r15 — 2026-10-13
+
+No standalone bench release.
+
+- **Signal history:** Radio → Signal history in Advanced mode, RSRP and SINR over 5 min/1 h/24 h, separate LTE/5G lines and technology/cell-change markers, hover tooltip and table, all RAM; MM devices only.
+- **Reduce active modem queries:** request MM cell/location details only while LuCI or TUI is open rather than every 40 s, and in background poll MM properties once a minute for signal history. Disable with `uci set medvemodem.core.signal_history=0`.
 
 ---
 
