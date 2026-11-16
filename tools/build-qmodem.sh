@@ -31,7 +31,7 @@ git -C qmodem-src checkout -q --detach "$QMODEM_COMMIT"
 # Upstream application Makefiles include ../../version.mk. Feed symlinks change
 # their apparent location, so point them at the checked-out, pinned version.
 sed -i "s/^QMODEM_VERSION:=.*/QMODEM_VERSION:=$QMODEM_VERSION/;s/^QMODEM_RELEASE:=.*/QMODEM_RELEASE:=1/" qmodem-src/version.mk
-find qmodem-src/application -name Makefile -exec sed -i "s@include ../../version.mk@include \\$(TOPDIR)/qmodem-src/version.mk@" {} +
+find qmodem-src/application -name Makefile -exec sed -i "s@include ../../version.mk@include \$(TOPDIR)/qmodem-src/version.mk@" {} +
 printf "src-link qmodem /builder/qmodem-src/application\n" > feeds.conf
 if [ -n "$FEEDS_GITHUB" ]; then
   sed -e "s|https://git.openwrt.org/openwrt/openwrt.git|https://github.com/openwrt/openwrt.git|" \
