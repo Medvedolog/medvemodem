@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r70**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r50**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -1182,6 +1182,172 @@ No standalone bench release.
 - **Make primary works with metric-zero devices:** a modem interface lacking explicit metric defaults to 0 and may outrank configured priorities; explicitly assign a metric when promoting it.
 - **Signal card and qmicli lookup:** remove placeholder dashes; search executable across PATH.
 - **FM350 external-manager connection service:** warn and offer Repair when its dial daemon is stopped; service view distinguishes dial and discovery subsystems.
+
+## 0.15.0-r69 — 2026-10-20
+
+No separate build (failed CI; included in r70).
+
+- **Bot token can be saved:** standard OpenWrt jq lacks regex support and incorrectly rejected valid tokens. Rework the bot setup page as Token → Administrator → Start → Proxy with state lights, Check token/Check proxy actions and one Enable and start button.
+- **LuCI service view:** highlight the active Internet modem in green; one Service panel for MedveModem, MM and external manager shows state, versions, memory and Start/Stop/Restart. Remove a false version-mismatch warning from homepage.
+- **MM handover retry bounded:** after three failed attempts to release an FM350 used by another manager, wait until MM rediscovers it instead of repeating every five minutes.
+- **Suppress repetitive foreign-port log noise** caused by the same external `tom_modem` command changing PID on each run.
+
+## 0.15.0-r68 — 2026-10-20
+
+Bench build: `bench-v0.15.0-r68-6801c62`.
+
+- **Telegram bot can use any connected modem:** if the primary uplink cannot reach Telegram due to whitelist restrictions or outage, test healthy backup modems by binding only bot requests to their interfaces. Try the next path after about three seconds, without moving the router's default route and with normal TLS verification.
+- **Bot routing preference:** show “Telegram: via modem …”, and add the enabled-by-default **Through other modems** option in LuCI. No C engine changes.
+
+## 0.15.0-r67 — 2026-10-20
+
+No standalone bench release.
+
+- **SIM identity in Telegram bot:** show the SIM label and number from LuCI or, if absent, the number reported by MM. Other phone numbers remain hidden; never show IMEI/IMSI/ICCID or log the number. Engine unchanged.
+
+## 0.15.0-r66 — 2026-10-20
+
+Bench build: `bench-v0.15.0-r66-8cf0254`.
+
+- **Bot packaged with every bench build:** separate `medvemodem-bot-…-25.12.tar.gz` APK and `…-24.10.tar.gz` IPK archives, architecture-independent. Merge bot branch into main source.
+- **Bot reports operator whitelist-only access separately** from complete Internet loss and full recovery. Show restricted, not offline, on channel/modem cards.
+- No engine changes since r65.
+
+## 0.15.0-r65 — 2026-10-20
+
+Bench build: `bench-v0.15.0-r65-63701c8`.
+
+- **Valgrind review of whole C service:** eliminate memory leaks and avoid unnecessary loops.
+- **MM release refusal / SIM polling:** stop asking at every refresh; retry failed SIM reads with backoff from one to thirty minutes instead of every 18 seconds, fixing a leak on each attempt.
+- **Lower CPU/memory churn:** avoid rebuilding full modem descriptions during every five-second reachability tick, drop unplugged-device data, and avoid repeatedly writing failed MM rules.
+- **Timeout stuck external-manager restarts,** notice vanished AT ports quickly, start SMS forwarding only when enabled, and continue the queue after individual send failures.
+- **Rate-limit netifd and LuCI retries** when service is unavailable, including hidden browser tabs.
+
+## 0.15.0-r64 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r64-af2088a`. Includes unpublished r63.
+
+- **Read SIM identity without ModemManager:** for externally managed or native modems, query IMSI/ICCID via the external manager's `sim_info`/`send_at` or the engine's own leased AT port, once at connection and every 30 minutes. Enable SIM labels and per-SIM quota accounting. Do not log or persist raw numbers.
+- **Respect foreign port ownership:** never directly access the external manager's control port.
+
+## 0.15.0-r63 — 2026-10-19
+
+Not released separately; included in r64.
+
+- **Assign new modems a safe route metric** immediately after existing channels (+10), avoiding default-route theft by UFI devices with metric 0.
+- **Freeze stops external-manager dialing** and restores its prior setting on unfreeze.
+- **Forward incoming SMS to ntfy or webhook**, with correct escaping for quoted text and no phone number/body in logs.
+- **Temperature:** poll every two minutes, show on homepage and a 12-hour min/max plot; carrier aggregation appears in Expert radio details and backup channels receive numbers/colors.
+- **USB composition labels:** show number, QMI/MBIM function and model database name. Service status reports PID/memory/daily load.
+- **Assisted packages:** qmi-utils/qmicli, ipheth+usbmuxd; uninstall external manager with log and correctly recognize usb-modeswitch already installed.
+- **Devices:** UFI `05c6:f00e` router-mode, Android USB RNDIS and iPhone ipheth; suppress APN/owner settings on phone/HiLink. FM350 external-manager radio metrics through `cell_info`.
+- **Code audit:** fix races/cache invalidation, prevent hung netifd from blocking ubus status, remove histories when device disappears.
+
+## 0.15.0-r62 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r62-7080699`.
+
+- **Large CPU reduction through caching:** MM modem refresh previously reparsed all hardware profiles (~19,000 file opens in ten seconds), consuming ~57% of one CPU core. Cache profile directory/catalog and selected profile until they change; bench measured `medvemodemd` at under 0.7% CPU afterward.
+- **Lower flash writes:** persist SIM traffic counters every 30 minutes, not ten, and on service shutdown.
+- **CI reliability:** retry artifact uploads after runner network interruptions.
+
+## 0.15.0-r61 — 2026-10-19
+
+No standalone bench release.
+
+- **FM350 fixed AT interface:** profile defines interface 6, allowing discovery independent of `ttyUSB` numbering and without probing.
+- **Native non-MM signal reading:** use AT every 30 seconds to show operator, RAT, RSRP/RSRQ/SINR for FM350 and directly managed QMI/MBIM devices.
+
+## 0.15.0-r60 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r60-e5ad80c`.
+
+- **Prevent a foreign manager using another modem's AT port:** stale FM350 manager config pointed at T99 `ttyUSB5`. Before invoking `tom_modem`, verify the AT port physically belongs to that modem; otherwise refuse and show a conflict.
+- **Fast page loads:** respond immediately with MM readings younger than two minutes instead of holding requests for up to two seconds; refresh asynchronously.
+- **USB configurations:** show protocols (QMI/MBIM/RNDIS/NCM), COM-port counts and USB IDs from descriptors.
+- **OpenWrt Overview formatting:** proportional font, aligned badges and 360px fit.
+
+## 0.15.0-r59 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r59-6821155`.
+
+- **Native FM350 takeover really releases the external manager:** Save and connect asks the manager to release the modem before MedveModem owns SMS/AT/recovery. Do not destroy a user-created external-manager section; report that it must be removed through that manager.
+- **Freeze modem:** stop native polling/connect/recovery, release MM, disconnect session, persist state across reboot; CLI `medvemodem freeze <id> on|off`.
+- **Global service switch:** optionally stop/start MM and external manager alongside MedveModem, restoring only those stopped by this action.
+- **Reduce logs:** suppress repetitive “MM runs but no modem object” for phones/routers/unmanaged devices; rate-limit failed inhibit messages to five minutes.
+- **Immediate cached UI:** show last known values first, refresh later, suspend hidden tabs and slow journal polling to 15 s. Avoid flickering signal bars; collapsed cards show concise state.
+
+## 0.15.0-r58 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r58-57ee437`.
+
+- **Installed driver/component versions in LuCI:** read MM, usb-modeswitch and kernel package versions directly from APK/opkg package DB without invoking the manager.
+- **Driver state:** distinguish installed-and-loaded from installed-but-not-loaded.
+- **Homepage modem card:** display actual IPv4 address rather than a generic address-obtained status.
+
+## 0.15.0-r57 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r57-1a8a4db`.
+
+- **OpenWrt Status → Overview IP address:** fix lookup in netifd, show real connected-modem address and respect Hide identifiers; add signal bars beside operator.
+
+## 0.15.0-r56 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r56-e46dba0`.
+
+- **Manual FCC unlock for Dell DW5821e/Foxconn T77W968:** modem may enumerate but refuse radio enable, reconnecting periodically. Enable/Disable hook in Diagnostics tells MM to send the FCC unlock when needed; never enable automatically or alter another MM hook. Requires qmi-utils; CLI `medvemodem fcc-unlock <id> on|off`.
+- **Service actions grouped in Diagnostics:** FCC, usb-modeswitch rule repair, storage-mode switch and USB composition (moved out of Connection with Apply/confirmation), with explanations and rollback guidance.
+- **Action required banner:** show missing driver/MM, bad modeswitch rule, storage mode, SIM PIN/PUK or FCC radio lock, with a link to the exact modem card instead of executing an action from homepage.
+
+## 0.15.0-r55 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r55-52aa578`.
+
+- **Profile audit fixes:** HiLink in debug composition and ZTE router-mode units with extra serial ports remain router-mode DHCP devices rather than being erroneously sent to MM. Covers Huawei `12d1:1566`, `12d1:1442` and ZTE `19d2:1404/0581/1557`.
+- **FM350 APN credentials:** native AT dialing includes `AT+CGAUTH` and hides passwords in UI/logs; only reuse a persistent session when its credentials match.
+- **FM350 recovery:** no unsafe `CFUN=1,1` reboot because radio did not return afterward; use session/USB recovery.
+- **Compal RXM-G1** sharing `1e2d:00b7` with Foxconn T99 is matched by model and avoids Foxconn AT commands. Disable unsupported native-QMI fallbacks for Telit FN990/LM960 and SIMCom 9001.
+- **Additional IDs and profile corrections:** Sierra `1199:9078/907b`, Dell `413c:81c2`, T99 `1e2d:00b8/00b9`, HiLink `12d1:1442`, HP lt4112 `03f0:581d`, SIMCom `1e0e:9011/9003`; fix FM350 RNDIS, Intel XMM NCM and Sierra descriptions.
+
+## 0.15.0-r54 — 2026-10-19
+
+Bench build: `bench-v0.15.0-r54-097fe85`.
+
+- **Native FM350 AT dialing without external manager:** automatic owner priority became external manager if installed → native engine AT dial → MM, because MM alone could not establish FM350 data sessions. Apply only to explicitly profiled FM350 `0e8d:7127/7126`; manual owner preference still overrides. Explain the choice and installation advice in UI.
+- **FM350 bench probe is read-only:** include FCC lock, network mode, SIM, operator and registration queries with commands `AT+GTFCCLOCKMODE?`, `GTFCCLOCKSTATE?`, `GTFCCEFFSTATUS?`, `AT+GTACT?`.
+
+## 0.15.0-r53 — 2026-10-18
+
+Bench build: `bench-v0.15.0-r53-1443420`.
+
+- **Huawei/ZTE profile expansion** from hardware zoo, catalog and community behavior (not bench-verified): Huawei HiLink E3372h/E8372h `12d1:14db/14dc`, E3372h Gateway NCM `12d1:155a` under MM; ZTE modem-mode MF821/MF28D/MF290/P685M/MF286 family/MF289F/MF823 NCM/MF831 MBIM under MM; web-router ZTE `19d2:1405/1403/1404/1244/0557/0558/0581` and Tenda MF6 `1557`.
+- **HiLink model from modem web API:** distinguish E3372h from E8372h sharing a USB ID.
+- **Diagnostics label:** rename to Last connection attempt.
+- **Separate Telegram bot branch prototype:** `/start`/`/menu` dashboard, Status/Modems/Channels/Quota/Events/Help buttons, modem card and Refresh, sanitized IDs in inline callbacks; chronological event log, accurate primary changes/outage durations; fix Cyrillic UTF-8 truncation, mixed engine language, proxy password setup, ubus ACL grant and BusyBox salt/link-code generation.
+- **Bot packaging and tests:** build noarch packages for 24.10 IPK and 25.12 APK, test joint installation, use fake Telegram test endpoints and check token/phone-number redaction.
+
+## 0.15.0-r52 — 2026-10-17–18
+
+Bench build: `bench-v0.15.0-r52-c346e06`.
+
+- **Last AT dial shown in modem Diagnostics:** time, outcome and localized step sequence or failure reason for FM350/native AT-connected modems, without exposing IP addresses.
+- **Package descriptions** rewritten for Alpha.
+- **Huawei HiLink/ZTE profiles and web-model reading** prepared for r53.
+
+## 0.15.0-r51 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r51-0485bc4`.
+
+- **Valgrind/C audit for r44–r50:** fix ~5 KB leak on every native connection/config change due to retained transaction journal; fix use-after-free when an external manager rewrites its configuration while the engine reads old section names, preventing daemon crash or bogus script arguments.
+- **USB composition retry bound** from r50 included; Telegram bot not yet in this bench release.
+
+## 0.15.0-r50 — 2026-10-17
+
+Bench build: `bench-v0.15.0-r50-dfacbd5`.
+
+- **Latest event in homepage modem card:** show `last_event` with timestamp as used in Diagnostics, avoiding an extra ubus call per device.
+- **Stop endless USB composition switching:** after two failures, suspend retries until the administrator changes the requested composition instead of repeating every ten minutes.
+- **Add Telegram bot sources** `medvemodem-bot` and `luci-app-medvemodem-bot` on ucode for OpenWrt 24.10/25.12, without including it in this bench artifact.
 
 ---
 
