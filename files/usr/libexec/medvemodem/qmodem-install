@@ -126,9 +126,9 @@ status() {
 	elif [ -s "$RUN/result" ]; then state=$(sed -n 1p "$RUN/result"); result=$(sed -n 2p "$RUN/result")
 	else state=idle
 	fi
-	printf '{"ok":true,"version":"%s","installed":%s,"installed_version":"%s","update":%s,"supported":%s,"why":"%s","source":%s,"arch":"%s","openwrt":"%s","state":"%s","result":"%s","log":"%s"}\n' \
+	printf '{"ok":true,"version":"%s","installed":%s,"installed_version":"%s","update":%s,"supported":%s,"why":"%s","source":%s,"arch":"%s","openwrt":"%s","archive":"%s","state":"%s","result":"%s","log":"%s"}\n' \
 		"$VERSION" "$inst" "$ver" "$update" "$([ -z "$why" ] && echo true || echo false)" "$why" \
-		"$([ -n "$BASE" ] && echo true || echo false)" "$ARCH" "$REL" "$state" "$result" "$LOG"
+		"$([ -n "$BASE" ] && echo true || echo false)" "$ARCH" "$REL" "qmodem-$VERSION-$ARCH-$LINE.tar.gz" "$state" "$result" "$LOG"
 }
 
 # one run at a time, taken atomically as pkg-install does: two buttons (install in one tab, remove in another) passed
