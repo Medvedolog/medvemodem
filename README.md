@@ -17,7 +17,7 @@
 **[Installation / Установка](docs/INSTALL.md) · [Quick-Start](docs/USER-GUIDE.md) · [Manual / Полное руководство](docs/MANUAL.md)**
 **[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
-[Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
+[Unknown modem / Неизвестный модем — отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report) · [Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
 
 </div>
 
@@ -278,6 +278,19 @@ umbim/uqmi, usb-modeswitch, qmi-utils и QModem, кнопками с журна�
   medvemodem events <device-id>   # журнал событий модема
   medvemodem diag profile <device-id> --stdout > report.json   # отчёт для разбора
   ```
+
+## Если модем неизвестен или не работает / Diagnostic report
+
+Если MedveModem **не распознал модель, определил её только по общему профилю или не может установить соединение**, отправьте диагностический пакет разработчикам — это помогает исправить профиль, обнаружить неподходящий драйвер или разобраться с ошибкой подключения.
+
+1. Откройте LuCI: **«Модем» → «MedveModem» → выберите модем → «Диагностика» → «Отчёт о модеме» → «Собрать отчёт для разбора»**. Сохраните сформированный файл `.json` на телефон или компьютер.
+2. Если LuCI недоступен, по SSH выполните `medvemodem list`, затем `medvemodem diag profile <device-id> --at --stdout > report.json` (замените `<device-id>` идентификатором модема из списка). Если модем вообще не обнаружен, укажите это в Issue и приложите доступные сведения об USB-устройстве и журнал ошибок.
+3. **Откройте [GitHub Issues → «Новый модем»](https://github.com/Medvedolog/medvemodem/issues/new?template=new-modem.yml)**. Укажите модель и прошивку модема, модель роутера, версию OpenWrt и MedveModem, что работает и на каком этапе возникает ошибка.
+4. **Прикрепите файл отчёта в поле «Отчёт»** через скрепку/перетаскивание. Если GitHub не принимает `.json`, упакуйте его в `.zip` и прикрепите архив. Дождитесь загрузки вложения, затем отправьте Issue. При необходимости дополните сообщение выводом `logread -e medvemodem` и `logread -e ModemManager`, предварительно проверив их содержимое.
+
+Отчёт штатно скрывает IMEI, IMSI, ICCID, номера телефонов, пароли, PIN и тексты SMS, а серийный номер заменяет хешем. **Перед публикацией всё равно откройте файл и проверьте его: Issue и вложения публичны.** Не прикладывайте конфигурации с токенами или паролями.
+
+*English:* If your modem is unknown, partially recognized or cannot connect, open **MedveModem → modem → Diagnostics → Modem report**, save the generated JSON, then [create a New modem issue](https://github.com/Medvedolog/medvemodem/issues/new?template=new-modem.yml) and attach the report (ZIP it if JSON attachments are rejected). Include your modem and router models, OpenWrt/MedveModem versions, symptoms and reproduction steps. **Review the report for sensitive data before submitting a public issue.**
 
 ## Если что-то не так
 
