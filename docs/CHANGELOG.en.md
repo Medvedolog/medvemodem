@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r130**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r110**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -591,6 +591,214 @@ Bench build: `bench-v0.15.0-r130-7dc855e`.
 - **iPhone/iPad USB identity:** bind tethered Apple devices by USB port rather than serial, because that serial is their personal UDID and must not be stored. Previously identity changes could orphan a modem interface such as `mm2`. After this upgrade, an iPhone appears as a new device once.
 - **Phone tethering cards:** replace absent cellular metrics with clear “Phone shares Internet over USB” or “Not sharing Internet” and guidance to enable Personal Hotspot/Trust This Computer on iOS or USB tethering on Android.
 - **Broader USB tethering vendor recognition:** add Honor, ASUS, Lenovo, LG and HTC alongside Google, Samsung, Xiaomi, OPPO/Realme/OnePlus, vivo, Motorola and Sony. ASUS/Lenovo require RNDIS evidence because the same vendor IDs occur in laptop modems.
+
+## 0.15.0-r129 — 2026-11-01
+
+Not published separately; included in r130. Router faults, Aurora mobile layout, HiLink E3372 and a ModemMon author report.
+
+- **Bot starts again:** r128's preflight demanded mode 0640 for the token file while r127's installer enforced 0600, causing an endless startup/restart loop on every router. Standardize on 0600 and add a matching test.
+- **Detect faults of the router itself** on any board: dead USB controller (`HC died`), failed voltage regulation, CPU/kernel hangs, kernel errors/panics, overheating, undervoltage, OOM and storage failures. Display a Router fault banner with advice; send important bot alerts even in quiet hours. After reboot show what errors terminated the previous boot.
+- **USB port relocation:** remove a stale disconnected duplicate modem card once its name/settings follow it into a new port.
+- **Mobile layout under Bootstrap/Aurora:** Status → Overview uses one compact card per modem, tabs no longer overlap, the primary uplink is one green block, and signal-graph timestamp labels do not collide.
+- **HiLink:** bind names/settings by salted IMEI read from the modem web page to distinguish identical E3372h sticks without saving raw IMEI; add mixed radio priorities 4G→3G, 4G→2G and 3G→2G; expose band, EARFCN, bandwidth and TAC when modified E3372h firmware supplies them.
+- **ModemMon field report:** repair ModemManager interfaces incorrectly pointing at a USB hub instead of the modem behind it; suppress an empty LTE-device “5G” placeholder without a signal reading.
+
+## 0.15.0-r128 — 2026-10-31
+
+Bench build: `bench-v0.15.0-r128-ccb88f5`. LuCI polish after testing on R3S/EP06.
+
+- **Consistent signal wording:** strong RSRP but poor SINR (e.g. −84 dBm, −7.4 dB) must be described as “strong signal but severe interference” rather than “excellent signal” with one red bar. Match bot interference thresholds.
+- **Dismissible banners:** every top banner has a close button; dismissed ones remain in event history with Show again.
+- **Remove disconnected modem:** a Remove from list action explains that the entry is retained until service restart.
+- **Who controls the modem:** rename Connect through, move it to the top of connection settings and explain which devices benefit from an external manager (FM350, Quectel) versus generic QMI/MBIM, HiLink and tethered phones.
+- **Event history:** Show older action, up to 200 entries per modem instead of 64, with raw engine event under each row in Detailed mode.
+- **Signal history:** explain why no chart is drawn when the modem is missing or the service is unavailable.
+- **Service status:** process table for engine, bot, ModemManager and external manager showing PID, memory, uptime, daily restarts and engine crashes since boot; bot also reports restarts.
+- **Service checks:** add MTS, T2, MegaFon and Beeline sites, reachable during carrier whitelist restrictions.
+
+## 0.15.0-r127 — 2026-10-31
+
+Bench build: `bench-v0.15.0-r127-1c73ef8`. Bot settings in Telegram; no separate Unix user.
+
+- **Bot installs/upgrades no longer signal ubusd:** running under a dedicated user required a permissions reload that unexpectedly restarted ubusd and broke LuCI login in r124. Bot now runs as root, like MedveModem/OpenWrt management services; token/proxy credentials remain root-only.
+- **Telegram Settings menu (`/settings`):** choose smart, important-only, all or disabled alerts; enable separate categories (backup devices, MM/third-party manager restarts, quotas, restart summary, new SMS).
+- **Quiet hours:** silently deliver notifications without losing them; No Internet and exhausted quota can still be audible unless disabled. Configure by a message such as `23:00-07:00`.
+- **Telegram proxy management:** submit `socks5h://user:password@host:port#Name` or a `t.me/socks` link, then enable, disable, test or remove it. Test before use, disable unreachable proxies, delete messages containing credentials immediately and store secrets in protected files. Prevent removal of the bot's last working Telegram route.
+- **Bot code split into modules** from a monolithic ~1900-line file without changing user-visible behavior.
+- **LuCI bot Settings:** matching alert types, quiet hours, proxy labels and the Allow changing settings from Telegram switch.
+
+## 0.15.0-r126 — 2026-10-31
+
+Bench build: `bench-v0.15.0-r126-217a29b`. Bot audit fixes following r124.
+
+- **Authenticated Podkop/Forkop proxies:** discovered local proxy inputs now use their manager's own credentials, and an explicitly configured proxy at the same host/port is not discarded.
+- **Telegram routes in LuCI Overview:** display every actual candidate route including detected proxies; each has a Test action. “Working” means the Telegram Bot API accepted the token, not merely that some HTTP server replied.
+- **Setup wizard validation:** Test without proxy bypasses all proxies; arbitrary HTTP 200 is not success; test at most three proxies by priority and label the others untested.
+- **Failback to primary route:** polling and sending independently return to their preferred routes. A second empty task result no longer overwrites a successful test.
+- **Evidence-based bot status:** report the specific failed proxy and when, or call it a backup route; before a first successful check, label it untested.
+- **Modem control outcomes:** done, in progress, done with warning, failed, with accurate current traffic channel when a modem is made first. Start an action after the Telegram acknowledgement is sent instead of a fixed 1.5-second delay.
+- **24-hour report:** ongoing outages lasting over a day are not reported as zero incidents; bound event-log memory.
+- **Telegram markup:** avoid corrupting long HTML replies midway through a tag or after escaping `&`.
+- **Modem card:** show stale-as-of time and disable actions if the engine is unreachable; add SINR/interference text, reachability latency, session uptime, quota reset date, required operator intervention, unknown-reachability white dot and clear Backup line.
+- **Failover exclusions:** toggles stay bound to the intended channel.
+- **Commands:** `/sms`, `/network`, `/channels`; unify Help/menu metadata and standardize Russian terminology.
+
+## 0.15.0-r125 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r125-d489093`.
+
+- **LuCI login survives bot upgrades:** the bot package's ubusd signal could restart the bus on 25.12 and leave rpcd answering “Object not found” until reboot. Only signal ubusd when its ACL actually changes; explicitly recommend reboot if a restart still occurred.
+- **New modem cannot preempt wired WAN:** assigning metric 100 to a new backup conflicted with a WAN also at 100. Place modem after wired WAN (+10), shifting an existing matching interface when needed.
+- **Editable channel metrics:** click the metric in any table row, including wired WAN, and apply route order immediately without a full network restart.
+- **Huawei E171 incoming SMS:** MM owned all ports and inbound responses disappeared after sending. Reserve the AT port for MedveModem while MM retains control/data, verify CNMI after sends and provide recovery for its small SIM storage (five slots/multipart fragments).
+- **Manufacturer QMI drivers** such as `qmi_wwan_q/f/s` for Quectel/Fibocom/SIMCom are recognized as QMI.
+- **MM/external-manager lifecycle** now appears in each modem's event history.
+- **Bot wording and actions:** Make primary becomes “First among modems” (wired WAN remains above if configured); freeze confirmation warns of connection interruption. Quotas use decimal GB consistently (50 GB no longer displayed as 47).
+- **Bot service memory/status:** show engine, MM, external manager and bot memory usage plus daily restart counters.
+- **Bot manager restart alerts:** poll both MM and external manager every 30 s, distinguish self/manual restarts from MedveModem-initiated MM restarts; alert on stoppages and show daily restarts/stops in the daily summary.
+
+## 0.15.0-r124 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r124-90a48a7`.
+
+- **Two modems sharing a factory subnet:** MF150-4 and UZ801 both default to `192.168.100.x`, leaving the second with Network unreachable and broken modem web UI. Detect modem-to-modem collisions, not just conflicts with router LAN; report them and relocate MF150-4 to a free subnet such as `192.168.101.1`.
+- **HiLink without SIM:** stop displaying stale operator/T2/LTE/signal and a false 2 ms Internet check when E3372 locally answers everything from its No network page. Read SIM state through the web API and disregard unrealistically fast (<4 ms) modem-supplied Internet replies.
+- **MF150-4 web forward:** preserve the router host/port across redirects to `status.megafon.ru` and rewrite login cookies appropriately, avoiding an endless Wait screen.
+- **Event history:** record modem web login outcome (success/password needed/wrong/locked), subnet conflict and relocation.
+- **T77W968/DW5821e receive SMS after sending:** outgoing SMS reset `CNMI` to `0,0`; check after each send and at least every ten minutes while reading, restoring `2,1` via the reserved AT port and journaling the repair.
+- **Bot contact names:** forward SMS as “from Mom (+7…)” using MedveModem address-book entries; display names in Inbox too.
+- **Bot ordering:** active Internet modem first, then priority order; primary indicated by arrow rather than star. An established session without full Internet is yellow, not green.
+- **Proxy diagnostics:** identify by name which Telegram proxy failed and why the bot bypassed it.
+- **Detailed channel table:** avoid global warning when another healthy channel provides Internet; highlight active traffic row; replace opaque metric-based “Why” with priority arrows and show explanations only for problems.
+
+## 0.15.0-r123 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r123-c735fc3`.
+
+- **MegaFon MF150-4 radio details:** operator, signal and cell are now available after logging into the modem web UI (the anonymous API returned empty fields). Use the browser-equivalent admin or modem-provided password flow at most once every five minutes.
+- **Router-mode modem fields:** display band, TAC/CID, cell map and firmware already exposed by Huawei HiLink/MF150-4/UZ801 web backends; show RSSI even when it is the only available UZ801 signal metric.
+
+## 0.15.0-r122 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r122-cd8b850`.
+
+- **MF150-4 under redirected host:** the modem redirects all direct IP requests to `status.megafon.ru`; use that host consistently when fetching data and forwarding the browser, rather than mistaking the device for UZ801.
+- **HiLink status while SMS is being read:** display the most recent cached radio and firmware data rather than an empty “Reading modem…” placeholder while its web interface is busy.
+
+## 0.15.0-r121 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r121-0c0b945`.
+
+- **Avoid engine crash on HiLink USB removal:** a modem unplugged or power-cycled during recovery could crash the daemon and leave USB power off. Restore any port power left off by an interrupted operation on the next start.
+- **Modem subnet conflicts with router LAN:** show a prominent warning and journal event when a modem assigns itself an address overlapping the router LAN (e.g. MF150-4 `192.168.1.10` with router `192.168.1.1`). Relocate MF150-4 automatically to a free `192.168.100.1` subnet and restart its interface.
+- **MegaFon MF150-4 web backend** (`05c6:f00e`): retrieve RSRP/RSRQ/SINR, cell, PCI, TAC, operator, traffic and versions, read/send/delete SMS without marking them read, perform USSD and trigger recovery reboot, all through an unauthenticated web API.
+- **Huawei HiLink recovery:** Radio action reconnects mobile data through the modem web UI without reboot; this can run automatically. Modem web card adds traffic for current day/billing cycle and quota, transmit power, bandwidth/transmission mode, Auto/4G/3G and supported LTE bands, and traffic-counter reset.
+- **UZ801 UFI 4G stick** (`05c6:f00e`): web-based operator/signal/firmware, traffic and recovery reboot through throttled `admin/admin` auth; show Web shortcut even if the SIM has no data and the stick supplies no default gateway.
+- **OpenWrt Status → Overview:** top line shows Internet state and active modem/wired/tunnel route plus ready backups; highlight carrier row and display interface protocol (QMI/MBIM/NCM/RNDIS/ECM/PPP). Dashboard integration is enabled by default but can be disabled under Modem maintenance.
+- **Bot task failure handling:** if router cannot start a send task, log the cause and restart the bot after five minutes instead of remaining indefinitely “task unavailable”.
+
+## 0.15.0-r120 — 2026-10-30
+
+Bench build: `bench-v0.15.0-r120-b7120f5`.
+
+- **Much lower memory usage:** compress signal-history storage; previously the daemon grew by about 1 MB/modem over the first day (five modems 3.9→6.5 MB). Twenty-four hours for five modems now occupy roughly 0.2 MB, without changing charts or UI.
+- **SMS alerts independent of data Internet:** send radio SMS to contact-book recipients after sustained whitelist restriction (15 min), total outage (5 min), or failover to another modem/tunnel/adapter, and send a restoration notice with duration. Configurable hysteresis and at most six alerts per hour prevent spam. If the selected modem cannot send, use another one. Include Send test SMS button.
+- **HiLink reboot in recovery ladder:** Reboot modem now invokes its web API and waits for it to return; remove the redundant standalone reboot button from the web card.
+
+## 0.15.0-r119 — 2026-10-29
+
+Bench build: `bench-v0.15.0-r119-e3a5c83`.
+
+- **Mobile Status → Overview:** replace four-column modem table that broke IP addresses and labels into tiny fragments with one modem block containing name/state followed by network/address.
+- **Mobile home table:** wrap long operator names; keep selection checkbox, number and modem name together.
+- **Mobile tabs:** show a right arrow while more tabs are off-screen and scroll the selected tab into view.
+- **Touch-friendly controls:** enlarge the rename pencil, Back to all modems, Hide identifiers and short AT tab.
+
+## 0.15.0-r118 — 2026-10-29
+
+Bench build: `bench-v0.15.0-r118-bfbb6e0`.
+
+- **No lost Telegram alerts on hanging proxies:** when podkop/sing-box restarts after accepting but before completing a send, detect that the message was not delivered and retry on another route.
+- **Clear red send status promptly:** recover status as soon as Telegram is reachable again, rather than waiting for the next notification or an expanding five-minute retry interval.
+- **Deduplicate quota notifications.**
+- **ModemManager stopped:** warn about unavailable MM control, not necessarily lost data sessions; already established links may continue.
+- **Proxy-only bot mode:** detect newly started proxies every 15 seconds rather than every five minutes.
+- **External IP and service checks:** force per-modem direct routing, avoiding router proxies.
+- **Bot text:** clearer whitelist, traffic, USB reconnect and connection restored wording.
+- **Remove 12 nonfunctional bot settings** such as unused daily/weekly reports and event filters.
+- **T99W175 MBIM composition** (`05c6:90d5`): detect exact T99 profile and bind an AT port despite missing ttyUSB ports; do not touch ADB.
+- **Router helper false-positive:** stop labeling Orange Pi Zero 3 Wi-Fi `sprdwl-delay` as a modem helper.
+
+## 0.15.0-r117 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r117-474b1b7`.
+
+- **Bot daily statistics:** count outages and total downtime, whitelist periods, MedveModem restarts/unavailability and MM stops/restarts. During the first day show “Since HH:MM”, preserve across bot restarts and reset after router reboot.
+- **ModemManager lifecycle alerts:** notify when MM stops and quietly when it restarts or resumes, regardless of who performed the restart.
+- **Huawei HiLink details:** Read modem data provides carrier IP, per-session/month/lifetime traffic and durations, firmware/WebUI versions without requesting IMEI/IMSI/number.
+- **HiLink USSD:** use modem web API for codes such as `*100#` in the shared USSD card.
+- **HiLink reboot:** confirmation-required action interrupting connection for approximately one to two minutes.
+
+## 0.15.0-r116 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r116-02d4835`.
+
+- **Web shortcut on modem cards:** one-click router-forwarded web access for HiLink/UFI.
+- **Telegram path correctly labeled:** when podkop intercepts Telegram, show “through router tunnel (sing-box)” in LuCI rather than “direct (no proxy)”.
+- **No false foreign-helper alerts:** exclude standard OpenWrt `usb-modeswitch`, `wwan` hotplug and dropbear authorized-keys content.
+- **T77W968/DW5821e AT port ownership:** `ttyUSB1` marked “ignored” by MM due to MedveModem's rule is not owned by MM; allow native AT queries, metrics and AT tab.
+- **Main card border:** restore visual primary-modem selection under whitelist-only access; color yellow when restricted, green when fully reachable or tunneled.
+- **T77W968/DW5821e:** the source changelog repeats the AT-port fix in two entries; the semantics are the same.
+
+## 0.15.0-r115 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r115-6ae1d52`.
+
+- **Cell-lock safety guard:** after ten minutes without registration following a MedveModem cell lock, restore the radio settings from before the lock, not unrestricted factory defaults. Configurable to 5/10/15 minutes or never; journal `Cell lock guard`. Frozen modems are untouched.
+- **T77W968/DW5821e cold start:** surface MM's “unusable” timeout/refusal in modem's MM messages, with advice on next steps.
+
+## 0.15.0-r114 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r114-7131216`.
+
+- **Bot layout:** eliminate long separators that look poor in chat previews; split tunnel Internet into “through tunnel” and “Direct: only whitelist”.
+- **Whitelist wording:** avoid redundant `WL`/restricted labels on backup channels.
+- **Detailed bot event journal:** include why a modem was detected, connection interface, recovery step, unrestricted/whitelist/offline state transitions and traffic handoff; avoid duplicates after daemon restart. Put timestamp/modem above each event body.
+- **Bot modem-log export:** `/log` and a button below events produce up to 1000 lines.
+
+## 0.15.0-r113 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r113-3d3cabc`.
+
+- **Event history in LuCI, bot and CLI:** explain device detection causes (service startup, USB hotplug, rescan, disappearance/reappearance, USB port move), reachability transitions and failover decisions.
+- **Whitelist plus functioning tunnel:** when podkop restores real Internet through a restricted modem, label it “Whitelist, Internet through tunnel” rather than simply restricted.
+- **Modem web controls:** explain missing buttons for frozen or disconnected HiLink/UFI devices.
+- **podkop/forkop mixed proxy detection:** find proxies within VPN sections and nonstandard sing-box paths; preserve a temporarily restarting proxy in the candidate list.
+- **Bot direct mode under FakeIP:** when podkop intercepts `api.telegram.org` and routes it through sing-box, correctly label the path as router tunnel rather than direct.
+
+## 0.15.0-r112 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r112-5d4e1a2`.
+
+- **Nearby modem tools diagnostic:** detect installed modem managers, sms-tool, 3ginfo, modemband, lite-watchdog, smstools3, USB reset scripts and port-holding applications; explain possible interference without automatically disabling them. Expose the result on homepage, device page, diagnostic report and bot Network page.
+- **r108 audit fixes:** validate APN/DNS on takeover; keep old HiLink webproxy available until the replacement starts; never terminate an unrelated process based on stale PID; avoid empty IPv4 address in IPv6-only native mode; find correct IPv6 firewall zone under firewall4.
+
+## 0.15.0-r111 — 2026-10-28
+
+Bench build: `bench-v0.15.0-r111-fb2e3ca`.
+
+- **Bot Network view:** main-route and modem IPs, optionally probe external IP through each channel.
+- **podkop/forkop status:** installation/version/enabled state, sing-box status, router DNS tunnel routing and tunnel exit IP.
+- **Service checks:** test monitored destinations through a selected modem or primary route, like LuCI.
+- **Modem cards:** today's Internet downtime, outage count and whitelist-only duration.
+
+## 0.15.0-r110 — 2026-10-28
+
+No standalone bench build; changes included in r111.
+
+- **Bot Status:** display load averages and bot version; a privacy scrubber previously hid three load numbers as if they were a phone number.
+- **Telegram route diagnosis:** if proxies are configured but the bot connects directly, say “proxies not responding”.
+- **Whitelist awareness:** separately list restricted links even if another modem supplies unrestricted Internet.
 
 ---
 
