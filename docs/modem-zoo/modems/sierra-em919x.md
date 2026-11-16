@@ -14,10 +14,10 @@ QMI/MBIM, AT!GSTATUS truncation and eSIM CCHO risk; restrict engineering command
 ## Related reference
 
 - [USB composition and boot mode recipes](../COMPOSITION-AND-BOOT-MODES.md)
-- another modem manager source map
+- archive source map
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -31,4 +31,4 @@ QMI/MBIM, AT!GSTATUS truncation and eSIM CCHO risk; restrict engineering command
 - **Safety:** No automatic eSIM-port probing on Sierra.
 - **Original source:** issue / release / pinned source
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
