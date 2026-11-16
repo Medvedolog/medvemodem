@@ -61,7 +61,7 @@ Sanechips (ZTE's chip arm), likely an ODM build for MTS; the same USB ID as the 
 
 ## ZTE MF192 (19d2:1218), a tester's OPiZ3, 2026-11-09
 
-Field report (rank 1 in SOURCE-HIERARCHY.md); no identifier kept. MTS-branded 3G stick, firmware `BD_MF192V1.0.0B02`
+Field report from a real device; no identifier kept. MTS-branded 3G stick, firmware `BD_MF192V1.0.0B02`
 («Eagle_Raptor_R2.4.1»), USB product string «MF652», ModemManager names it MF192.
 
 - USB: interfaces 1–8 bound by `cdc_acm` (ttyACM0…), 9 `usb-storage` (the MTS installer and, by its description, a
