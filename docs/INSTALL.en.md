@@ -57,7 +57,7 @@ In LuCI navigate to **Modem → MedveModem → Settings → Diagnostics and comp
 
 The interface performs a preliminary availability check. If packages are missing from the feeds, it reports the problem instead of making a partial install. It does not restart a working ModemManager automatically. QModem can be installed from the dedicated build archive or through the components panel.
 
-The optional Telegram bot requires `medvemodem-bot` and `luci-app-medvemodem-bot` at a version compatible with the engine. eSIM support in this revision is **read-only**; install `medvemodem-lpac` and only the required APDU transport packages. Do not blindly replace the system's lpac.
+The optional Telegram bot requires `medvemodem-bot` and `luci-app-medvemodem-bot` at a version compatible with the engine. eSIM supports **detection, reading EID and installed profiles, and switching among profiles already stored on the chip**. On the modem page use **Diagnostics → Check for an eSIM**, then the **eSIM** tab. Until **Alpha 2**, load new profiles onto a built-in eUICC or removable UICC/9eSIM **using a compatible phone** (the card manufacturer's app or EasyEUICC/OpenEUICC on Android), not MedveModem. Install `medvemodem-lpac` and only the required APDU transport packages. Do not blindly replace the system's lpac.
 
 ## 4. Verify and upgrade
 
