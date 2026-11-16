@@ -1423,6 +1423,7 @@ return view.extend({
 	 * (qmodem-install, spec 12.6). The status is read after the page is up: the page never waits for it. */
 	qmodemCard: function() {
 		var self = this, info = E('span', {}, '…'), out = E('p', { 'class': 'mm-faint mm-qm-result', role: 'status' });
+		var target = E('code', { 'class': 'mm-qm-target' }, '');
 		var pre = E('pre', { 'class': 'mm-pre mm-qm-text' }, '');
 		var log = E('details', { 'class': 'mm-qm-log', hidden: '' }, [E('summary', {}, _('Installation log')), pre]);
 		var btn = E('button', { type: 'button', 'class': 'mm-btn mm-qm-install', hidden: '', click: mm.busy(function() {
@@ -1444,9 +1445,10 @@ return view.extend({
 				return self.qmodemRefresh();
 			});
 		}) }, _('Remove QModem'));
-		this.qm = { info: info, out: out, pre: pre, log: log, btn: btn, del: del };
+		this.qm = { info: info, out: out, target: target, pre: pre, log: log, btn: btn, del: del };
 		var card = this.sec('set-qmodem', 'QModem', [
-			E('dl', { 'class': 'mm-kv' }, [E('dt', {}, _('State')), E('dd', {}, info)]),
+			E('dl', { 'class': 'mm-kv' }, [E('dt', {}, _('State')), E('dd', {}, info),
+				E('dt', {}, _('Package for this router')), E('dd', {}, target)]),
 			E('div', { 'class': 'mm-actions' }, [btn, del]), out, log,
 			/* which families it suits (the owner, 2026-10-31: «для каких семейств он может быть лучше, но точно не для просто
 			 * qmi»; HANDOFF 71: QModem preferred for the FM350 and Quectel) */
@@ -1543,6 +1545,7 @@ return view.extend({
 		return fs.exec(QMODEM, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			var running = j.state === 'running';
 			text(q.info, qmWords(j));
+			text(q.target, j.ok && j.supported && j.source ? j.archive : '—');
 			if (self.qmGist) text(self.qmGist, qmWords(j));
 			/* an earlier build installed: the same button updates it (QModem's stable line with our resolvers, 2026-10-22) */
 			q.btn.hidden = !j.ok || (j.installed && !j.update) || !j.supported || !j.source;
