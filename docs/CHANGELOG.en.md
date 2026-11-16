@@ -3,7 +3,7 @@
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!IMPORTANT]
-> **English translation in progress.** This page currently covers the public alpha and source revisions **r197–r1**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
+> **English translation in progress.** This page currently covers the public alpha and source revisions **0.15.0 r197–r1; 0.14.0 r24–r1**. The original [Russian CHANGELOG.md](CHANGELOG.md) contains the complete historical record, including all older revisions. This partial English translation must not be used as a replacement for the original release history.
 
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
@@ -1788,6 +1788,219 @@ Bench build: `bench-v0.15.0-r1-91d9b99`.
 - **Start of 0.15.0:** functional code same as `0.14.0-r24`, aggregating prior 0.14 changes.
 - **AT tab:** Advanced modem page has command entry and 72 model-specific safe presets (T99/T77, Quectel, FM350, etc.); dangerous commands shown as non-executable reference with reason. If MM owns AT port, explain why unavailable.
 - **USSD operator presets:** Balance, My number, Allowance for MTS, MegaFon, Beeline, T2, Yota, plus user shortcuts per SIM; sourced publicly, unverified on physical SIM at this point.
+
+## 0.14.0-r24 — 2026-10-09
+
+Bench build: `bench-v0.14.0-r24-e956da4`.
+
+- **SMS/USSD native AT fallback:** first try ModemManager; if listing, sending or USSD fails, retry through the engine-owned AT port and explain the fallback in LuCI.
+- **Non-MM modems get SMS/USSD through AT**, with background polling only after first opening SMS.
+- **AT storage capacity and multipart assembly:** show e.g. SIM 49/50 and wait for missing parts. Text containing both quote characters now transmits.
+- **CI SDK Docker image caching:** prefer Actions cache before Docker Hub to avoid anonymous pull rate limits seen in r23/r24.
+
+## 0.14.0-r23 — 2026-10-09
+
+No standalone bench build.
+
+- **ModemManager SMS/USSD:** new modem SMS tab with number-based conversations, reply, delete and compose; GSM-7 160 vs UCS-2 70 characters and multipart notice. Advanced USSD card supports request, network reply, interactive response and End session.
+- **Background SMS poll:** every minute by default (`core.sms_poll=0` disables), log counts but no numbers/text; drop multipart fragments stuck for over two minutes.
+- **CLI:** `sms`, `sms send`, `sms delete`, `ussd`, `ussd reply/status/cancel`.
+- **Unsupported modes** without MM or for external-manager devices return a reason (native fallback arrives r24).
+
+## 0.14.0-r22 — 2026-10-09
+
+Bench builds: `bench-v0.14.0-r22-310bb2b`, `…-0793e81`, `…-365cda9`.
+
+- **Keep MM from claiming T99/T77 tty on startup:** generate `/lib/udev/rules.d/78-mm-medvemodem.rules` with `ID_MM_PORT_IGNORE=1` only for matching modem serial/interface, not all devices sharing Qualcomm `05c6:9025`. Effective after MM restart.
+- **USB bus renumbering retry:** interface repair rejected while MM was still acquiring a modem no longer counts as exhausted; retry when MM updates.
+- **Don't rebind ADB on T99:** detaching it while MM probed neighboring ports was suspected of triggering kernel crashes/watchdog resets; preserve ADB binding for `mm_ports=control`.
+- **Dangerous AT composition/storage commands** tagged from r21.
+
+## 0.14.0-r21 — 2026-10-09
+
+Bench build: `bench-v0.14.0-r21-38056a0`.
+
+- **Never race ongoing MM probing:** MM/qmi-proxy/mbim-proxy holding a modem port means no re-reporting ownership or recovery; wait up to five minutes. Previously port handoff every 31 seconds made MM discard an almost initialized FM350 twice. `show.mm_probing=true` reports this state.
+- **Dangerous AT list:** `AT^USBSWITCH=`, `AT+USBSWITCH=`, `AT+SETCONFIG=`, `AT^PCIEMODE=` alter USB mode; `AT^CUSTOMER=` persists modem settings. Require expert context/authorization.
+- **Research:** service checks and speed tests from other software studied as behavioral references; replace Gosuslugi with Wildberries in restriction-test sample list.
+
+## 0.14.0-r20 — 2026-10-09
+
+Bench build: `bench-v0.14.0-r20-60fc9d8`.
+
+- **Carrier aggregation SCells:** MM exposes primary cell but not secondaries; read secondary CA through QMI `--nas-get-lte-cphy-ca-info` via proxy, render inactive SCells dim and derive band from EARFCN. Requires qmi-utils.
+- **T99 port claim race:** if MM reclaims reserved tty during startup, revoke once rather than disturbing an active session.
+- **Avoid duplicate dynamic port binds** and ADB flicker on boot.
+- **TUI stage 2:** Overview/Radio/Service tabs; confirmation-based `c` health check, 1–8 recovery stages and `M` MM restart.
+- **Bench release notes** describe changes/testing in Russian.
+
+## 0.14.0-r19 — 2026-10-09
+
+Bench build: `bench-v0.14.0-r19-cb7e18e`.
+
+- **Correct session uptime** for MM netifd child interfaces; stop displaying 0 min.
+- **IPv4/IPv6 prefix, gateway and DNS** shown in Basic connection card.
+- **Fix UCI save on empty list** (ubus code 4) and rollback failed save.
+- **TUI stage 1:** read-only modem list and individual connection, radio, antennas, SIM, recovery and events.
+- **LuCI 0.7.3:** versioned styles avoid hard refresh, readable dark themes, grey offline indicator, untruncated fields and correct SIM PIN2 state.
+
+## 0.14.0-r18 — 2026-10-09
+
+Bench build: `bench-v0.14.0-r18-54b98fe`.
+
+- **Manual emergency ModemManager restart:** Service tab, explicit confirmation, at most once every five minutes and never during recovery; affects all modems and never automatic. Wait for old process exit, then restart and suppress auto-recovery for three minutes.
+- **Sensitive IDs visible in authorized UI** (full IMEI in Advanced, USB serial, IMSI, ICCID, SIM number), not in logs/persistent state and redacted in diagnostics.
+- **SIM card status:** present/PIN/PUK/missing, SIM operator and number.
+- **SIM label** (number/description) follows ICCID across modems.
+- **CI MM restart test** no longer waits for GitHub runner's own ModemManager.
+
+## 0.14.0-r17 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r17-e96ba0d`.
+
+- **Per-chain antenna RSRP/TX** through read-only QMI proxy beside MM (`qmicli -p --nas-get-tx-rx-info`), not AT. Requires qmi-utils. Radio card highlights a chain 10 dB below best, unavailable chains and Expert phase/TX power.
+- **Band consistency** against modem-reported available bands, flag ambiguous `B7?`.
+- **ubus API reference** for read-only external clients including Android.
+
+## 0.14.0-r16 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r16-e265d6c`.
+
+- **MM radio data without AT:** bands/aggregation, serving and neighbor cells, network code and TAC/CID at higher detail; refresh at most every 30 s, no GPS read.
+- **Device page** adds firmware and last IMEI digits.
+- **Band inconsistency warning** when reported current band isn't in MM's allowed list; request mmcli evidence.
+- **External manager preferred for FM350/Quectel** starting r15.
+
+## 0.14.0-r15 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r15-23ca471`.
+
+- **Reserve T77 tty from MM** using VID/PID and early boot policy; MM handles T77 over cdc-wdm only.
+- **External modem manager preferred for FM350/Quectel** when installed and backend Auto; manual backend remains higher priority. Add Quectel USB `2c7c` family profile.
+- **Design note:** Telegram proxy chain specified but not yet implemented.
+
+## 0.14.0-r14 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r14-e634d1e`.
+
+- **LuCI 0.6.1 UI revisions:** Settings cards, modem names in heading, clearer labels, Modems menu; daemon unchanged since r13.
+- **Foxconn T77 family** covering Dell/Foxconn/Telit LN960: MM only, no simultaneous AT; recovery radio reset and USB reauthorization, not modem soft reboot.
+- **Build job timeout increased** to 75 minutes after r14 reached a previous 45-minute limit.
+
+## 0.14.0-r13 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r13-db96992`.
+
+- **LuCI 0.6.0 dashboard layout:** overall verdict, modem cards with operator icons, detail-level switch and Modems/Settings navigation. Per-modem Overview/Radio/Service tabs, 24-hour event band, joint RSRP/SINR/RSRQ scales and recovery ladder.
+- **New ubus `check`** immediately probes link and DNS.
+- **Single validated Settings Save** commits changes atomically.
+- **Readable modem names/status** at top of homepage and Russian driver events coalesced within two seconds.
+- **Detail labels** Basic/Advanced/Expert and approachable recovery actions.
+
+## 0.14.0-r12 — 2026-10-08
+
+Bench build: `bench-v0.14.0-r12-0a45a81`.
+
+- **T99 tty not sent to MM:** after USB reset, MM spent over a minute probing four tty (including DIAG/ADB) and failed to identify cdc-wdm0 as QMI. Early hotplug policy `mm_ports=control` removes TTY, reports only control/network ports.
+- **Persist MM-observed model** in `identity.json`, enabling early profile/port policies before MM reconnect.
+- **USB hub power recovery** only by explicit action; USB reset counts as successful only after actual disappearance.
+- **LuCI 0.5.0**.
+
+## 0.14.0-r11 — 2026-10-07–08
+
+Bench build: `bench-v0.14.0-r11-45d0021`.
+
+- **Early operator whitelist detection:** if Internet checks fail but known allowed sites (`ya.ru`, `vk.com` via `reach_restricted`) answer, label Restricted and avoid recovery, using hysteresis.
+- **DNS health check** of router resolver on otherwise working channel; warn after two failures.
+- **Recovery policy:** one reconnect after traffic stalls, then suspect operator restriction instead of endless resets (2G may escalate); do not reset all modems when all channels fail simultaneously; wait up to 12 min for network registration; single re-registration after carrier denial; reload firewall if modem interface absent from fw4.
+- **USB power errors** such as −71/over-current displayed with powered-hub advice, not a reset trigger.
+- **Manual port power cycle** for six seconds, where supported; require actual bus disappearance.
+- **Reject unrelated LAN/WAN/tunnel UCI interfaces** as modem interfaces.
+- **LuCI 0.4.1:** formal service language, qualitative RSRP/SINR, version footer.
+- **Research on MM restoration/stuck modems** summarized in development notes.
+
+## 0.14.0-r10 — 2026-10-07
+
+Bench build: `bench-v0.14.0-r10-ccd5b43`.
+
+- **Visible recovery progress:** after USB reset, MM missed one kernel event and abandoned the modem. Re-report ports up to three times at 30/60/120 s; on `mm_not_holding`, report ports rather than reconnect an absent session.
+- **Bind ports before evaluating recovery**, restoring ADB before MM probes.
+- **Recovery UI/log:** steps, elapsed time, limits, wait, prior outcome and initiator (automatic, LuCI, CLI, operator). History includes configuration apply/rollback and interface repair.
+- **Known modem model display** rather than a raw MM product string.
+- **LuCI 0.4.0:** progress, hazardous-event logging, connect/disconnect notifications and localized language.
+
+## 0.14.0-r9 — 2026-10-06–07
+
+Bench build: `bench-v0.14.0-r9-0508ceb`.
+
+- **APN matching from SIM:** ship GNOME MBPI + Android AOSP operator data with Russian MVNO corrections. Select most specific IMSI/GID1/SPN/PLMN match; keep raw IMSI/ICCID internal.
+- **`apn-update`** securely downloads/validates newer operator database to `/etc/medvemodem` with TLS, available from LuCI Settings.
+- **Versioned bench archive names** such as `medvemodem-0.14.0-r9-…tar.gz`.
+
+## 0.14.0-r8 — 2026-10-06
+
+No standalone bench release.
+
+- **MM detailed signal:** RSRP/RSRQ/RSSI/SINR, enabling polling as needed, signal bars and Radio page.
+- **LuCI modem connection controls:** APN, IP type, operator suggestion and Connect/Disconnect; `adopt=1` converts an existing user interface into engine management while preserving other options and firewall zone.
+- **Repair interface device path after USB bus renumbering** (H618 EHCI/OHCI startup order), restore `wan` zone if missing, optional `repair_interfaces`.
+- **Prevent double counting `wwan0`** before MM identifies physical modem; fix null traffic aggregates.
+- **Human descriptions of recovery steps** and expected outage/manual vs automatic policy.
+
+## 0.14.0-r7 — 2026-10-02–06
+
+Bench build: `bench-v0.14.0-r7-d71e783`.
+
+- **LuCI 0.2.0:** homepage with Internet state/operator, backup readiness, modem names/roles, throughput/traffic and active/stuck automatic recovery.
+- **Settings page** for recovery, port binding, reachability targets and modem names.
+- **Modem page** covering connection, health, traffic, stability, ports, recovery actions, explanations, authorization and confirmation.
+- **Localized recovery reasons** in UI.
+
+## 0.14.0-r6 — 2026-10-02
+
+Bench build: `bench-v0.14.0-r6-fc54fe5`.
+
+- **Recover MM ownership after a modem soft reset:** a rebooting T99W175 missed MM probe, leaving netifd disabled. If MM fails to reacquire within 30 s, re-report kernel ports via `modemmanager.common` without restarting MM; then re-enable failed netifd proto interfaces.
+- **Auto recovery ladder** for stalled sessions/registration/firmware and ownership conflicts; hard steps limited to bench-validated profiles; UCI `auto_recovery`, `health` in state.
+- **Uplink status** includes active/backup role, interface-specific TCP probe, traffic/speed/daily/monthly usage and names; `uplink` via ubus/CLI.
+- **Recovery snapshot/history** via ubus/diagnostic export, redacted.
+- **Valgrind CI regression testing** manually available.
+
+## 0.14.0-r5 — 2026-10-02
+
+Bench build: `bench-v0.14.0-r5-eb5b71e`.
+
+- **Auto-bind tty interfaces by profile:** T99W175 needs dynamic `option new_id` for interfaces 00/02/03 after reboot. Apply on reconnect and verify binding.
+- **Don't claim ADB or foreign-driver ports:** restore wrongly attached extras; at most two attempts/device; only bench-validated policies; UCI `core.host_fixes` disable switch.
+
+## 0.14.0-r4 — 2026-10-02
+
+No standalone bench release.
+
+- **Avoid profile oscillation** between generic QMI/T99W175 while MM probes a released modem for ~15 s; refresh state after 5/15/45 s.
+- **Never recover on stale MM data:** ask for a fresh query, with CLI retry.
+
+## 0.14.0-r3 — 2026-10-02
+
+Bench build: `bench-v0.14.0-r3-d213274`.
+
+- **Return a released modem to MM on udev-less OpenWrt:** re-report kernel port events with `mmcli --report-kernel-event` after unblocking or daemon shutdown, following MM hotplug practice.
+- **Back off failed inhibit attempts** when MM has no active device instead of repeating every five seconds.
+
+## 0.14.0-r2 — 2026-10-02
+
+No standalone bench release.
+
+- **Restart daemon after package upgrade:** procd otherwise left old `medvemodemd 0.13.0` running with the unchanged command line, breaking new `probe`/`recover`.
+- **CLI missing-method diagnostics** and bench version mismatch refusal; for proto qmi inspect child `<iface>_4` for IP/DNS.
+
+## 0.14.0-r1 — 2026-10-02
+
+No standalone bench release.
+
+- **On-demand modem recovery** via `ubus recover` / `medvemodem recover`: MM session/radio reset, driver rebind and USB reauthorization only on that modem, then validate return to service.
+- **Serialize recovery** with dial, configuration, eSIM and AT; capture state and release leases before destructive stages.
+- **Persistent bench pre-releases** `bench-v<version>-<commit>` with aarch64 archives, independent of 14-day CI artifacts; production releases remain manual.
 
 ---
 
