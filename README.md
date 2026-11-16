@@ -36,11 +36,6 @@ MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C d
 
 Менеджер USB-модемов для OpenWrt 24.10 и 25.12: движок, веб-интерфейс LuCI, консоль и Telegram-бот.
 
-> **Статус: альфа.** Есть только стендовые сборки — pre-release `bench-v<версия>-<коммит>` на странице
-> [Releases](https://github.com/Medvedolog/medvemodem/releases), последняя сверху.
-> Ставьте на роутер, к которому есть доступ не только через модем.
-> Что менялось от версии к версии — [docs/CHANGELOG.md](docs/CHANGELOG.md).
-
 ## Зачем
 
 Модемом на роутере обычно пытаются управлять сразу несколько программ: ModemManager, QModem, хотплаг-скрипты.
