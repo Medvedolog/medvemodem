@@ -14,10 +14,10 @@ AT on ttyACM0 can reboot device; never probe without verified profile.
 ## Related reference
 
 - [USB composition and boot mode recipes](../COMPOSITION-AND-BOOT-MODES.md)
-- another modem manager source map
+- archive source map
 
-<!-- upstream-another modem manager-v3.5.2:start -->
-## Field incidents — a field report another modem manager
+<!-- upstream-field-notes-v3.5.2:start -->
+## Field incidents — archived field notes
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -31,4 +31,4 @@ AT on ttyACM0 can reboot device; never probe without verified profile.
 - **Safety:** Never use read-only AT as a discovery test on this interface.
 - **Original source:** issue / release / pinned source
 
-<!-- upstream-another modem manager-v3.5.2:end -->
+<!-- upstream-field-notes-v3.5.2:end -->
