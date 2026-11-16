@@ -28,6 +28,8 @@
 
 MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C daemon, LuCI interface, CLI/TUI and optional Telegram bot. It coordinates modem ownership across ModemManager, QModem and native QMI/MBIM/AT paths; supervises connectivity, failover and staged recovery. The hardware knowledge base covers device profiles, modem-specific quirks and field reports.
 
+**eSIM in Alpha 1:** Use **Diagnostics → Check for an eSIM** to detect an embedded eUICC or removable UICC/9eSIM; the **eSIM** tab reads EID and installed profiles and can **switch between existing profiles**. Until **Alpha 2**, download new profiles to the chip using a compatible phone and its card app (or EasyEUICC/OpenEUICC on Android). MedveModem does not yet download or delete eSIM profiles.
+
 
 
 ## Русское описание
