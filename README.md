@@ -2,9 +2,7 @@
 
 # 🐻 MedveModem
 
-**Yet Another Modem Orchestrator for OpenWrt**  
-*Bear-Metal. Oakwood-Solid.*
-
+**Yet Another Modem Orchestrator**  
 **A profile-driven, multi-modem orchestration engine for OpenWrt.**  
 *Управление USB-модемами, с резервированием каналов и восстановлением связи.*
 
