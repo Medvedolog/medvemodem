@@ -118,7 +118,7 @@ running() {
 }
 
 status() {
-	local why state result inst=false ver= update=false
+	local why state result inst=false ver= update=false download=
 	why=$(unsupported)
 	installed && { inst=true; ver=$(installed_version); }
 	[ "$inst" = true ] && [ -n "$VERSION" ] && ! current && update=true
@@ -126,9 +126,15 @@ status() {
 	elif [ -s "$RUN/result" ]; then state=$(sed -n 1p "$RUN/result"); result=$(sed -n 2p "$RUN/result")
 	else state=idle
 	fi
-	printf '{"ok":true,"version":"%s","installed":%s,"installed_version":"%s","update":%s,"supported":%s,"why":"%s","source":%s,"arch":"%s","openwrt":"%s","archive":"%s","state":"%s","result":"%s","log":"%s"}\n' \
+	# Expose a clickable link only for our canonical tagged-release origin.
+	# Custom UCI sources still work for installation but are not injected into LuCI as URLs.
+	case "$BASE" in
+		https://github.com/Medvedolog/medvemodem/releases/download/*)
+			case "$BASE" in *[!A-Za-z0-9_./:-]*) ;; *) download="$BASE/qmodem-$VERSION-$ARCH-$LINE.tar.gz" ;; esac ;;
+	esac
+	printf '{"ok":true,"version":"%s","installed":%s,"installed_version":"%s","update":%s,"supported":%s,"why":"%s","source":%s,"arch":"%s","openwrt":"%s","archive":"%s","download":"%s","state":"%s","result":"%s","log":"%s"}\n' \
 		"$VERSION" "$inst" "$ver" "$update" "$([ -z "$why" ] && echo true || echo false)" "$why" \
-		"$([ -n "$BASE" ] && echo true || echo false)" "$ARCH" "$REL" "qmodem-$VERSION-$ARCH-$LINE.tar.gz" "$state" "$result" "$LOG"
+		"$([ -n "$BASE" ] && echo true || echo false)" "$ARCH" "$REL" "qmodem-$VERSION-$ARCH-$LINE.tar.gz" "$download" "$state" "$result" "$LOG"
 }
 
 # one run at a time, taken atomically as pkg-install does: two buttons (install in one tab, remove in another) passed
