@@ -44,7 +44,7 @@ REPO=$(uci -q get medvemodem.core.update_repo 2>/dev/null)
 [ -n "$REPO" ] || REPO=Medvedolog/medvemodem
 case "$REPO" in */*) case "$REPO" in *[!A-Za-z0-9_./-]*|*..*) REPO= ;; esac ;; *) REPO= ;; esac
 CHANNEL=$(uci -q get medvemodem.core.update_channel 2>/dev/null)
-[ "$CHANNEL" = release ] || CHANNEL=bench
+[ "$CHANNEL" = bench ] || CHANNEL=release
 
 T() { if [ "$(cat "$LANG_FILE" 2>/dev/null)" = ru ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
 say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
@@ -95,7 +95,7 @@ pick() {
 	assets "$1" | awk -v ch="$CHANNEL" -v arch="$ARCH" -v line="$LINE" '
 		{ tag = $1; url = $2; n = split(url, p, "/"); f = p[n] }
 		ch == "release" && tag !~ /^v[0-9]/ { next }
-		ch == "bench" && tag !~ /^(bench-)?v[0-9]/ { next }
+		ch == "bench" && tag !~ /^bench-v[0-9]/ { next }
 		f == "SHA256SUMS" { sums[tag] = url; next }
 		f ~ ("^medvemodem-[0-9].*-" arch "-" line "\\.[0-9]+\\.tar\\.gz$") && !(tag in arch_url) { arch_url[tag] = url; order[++k] = tag }
 		END {
@@ -275,7 +275,7 @@ start() {
 
 case "$1" in
 status) status ;;
-check) check; status ;;
+check) check || :; status ;;
 start) start "$2" ;;
 run) run ;;
 addon) mkdir -p "$RUN/addon" && LANG_FILE="$RUN/addon/lang"; case "$3" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"; addon "$2" ;;

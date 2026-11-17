@@ -132,7 +132,7 @@ function parse(r) { try { return JSON.parse((r && r.stdout) || '{}'); } catch (e
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r1';
+var VIEW_VERSION = '0.16.0-alpha1-r2';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -381,12 +381,48 @@ return view.extend({
 		});
 	},
 
+	/* A physical modem, not the operator's custom label: the same hardware identity
+	 * in the status table, test selector, and the matrix. WAN stays named as WAN. */
+	modemForPath: function(p) {
+		var paths = list((this.uplinkData || {}).paths), id = p.device_id, dev = p.device, iface = p.interface;
+		if (!id) paths.forEach(function(x) {
+			if (!id && x && ((dev && x.device === dev) || (iface && x.interface === iface)))
+				id = x.device_id;
+		});
+		return list(this.devices).filter(function(d) {
+			if (id && d.device_id === id) return true;
+			var ports = d.ports || {}, conn = d.connection || {}, session = d.session || {};
+			return !!(dev && (conn.device === dev || conn.netdev === dev ||
+				list(ports.net).some(function(n) { return n === dev || (n && (n.node === dev || n.name === dev)); }) ||
+				(session.netifd || {}).device === dev));
+		})[0] || null;
+	},
+
+	modemTitle: function(d) {
+		if (!d) return '';
+		var profile = d.profile || {}, mmgr = d.modemmanager || {};
+		return words(mmgr.model) || words(profile.title) || words(d.product) ||
+			words(d.name) || words(profile.id) || '';
+	},
+
+	modemOperator: function(d) {
+		if (!d) return '';
+		var m = d.modemmanager || {}, sim = d.sim_operator || {}, read = d.reading || {},
+			web = d.web || {};
+		return words(m.operator) || words(read.operator) || words(web.operator) ||
+			words(d.operator) || (sim.code ? String(sim.code) : '') ||
+			words(m.operator_code) || '';
+	},
+
+	channelTitle: function(p) {
+		var modem = this.modemForPath(p), name = this.modemTitle(modem);
+		return name ? name + ' (' + (p.interface || p.device || 'USB') + ')' :
+			words(p.name) || words(p.interface) || words(p.device) || '—';
+	},
+
 	/* each channel now, from the engine's uplink: open, the whitelist only, the internet through the tunnel, silent */
 	wlNowCard: function() {
-		var self = this, u = this.uplinkData, tunnel = (u.tunnel || {}).ok === true, names = {};
-		var given = {};
-		Object.keys(this.names || {}).forEach(function(k) { var n = self.names[k]; if (n && n.device_id && words(n.name)) given[n.device_id] = words(n.name); });
-		list(this.devices).forEach(function(d) { names[d.device_id] = given[d.device_id] || words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || d.device_id; });
+		var self = this, u = this.uplinkData, tunnel = (u.tunnel || {}).ok === true;
 		/* the main first, then the backups in their priority (the route metric), numbered as the dashboard numbers them (the
 		 * owner, 2026-11-16: «резерв номер какой надо бы писать, мы же уже знаем») */
 		var isMain = function(p) { return p.role === 'carrying' || p.role === 'limited'; };
@@ -399,13 +435,23 @@ return view.extend({
 				r.ok === true ? [_('the whole internet'), 'ok'] : r.ok === false ? [_('no internet'), 'err'] : [_('not checked yet'), 'idle'];
 			/* the main channel filled (the owner, 2026-11-12: «основной надо выделять заливкой») */
 			var main = pth.role === 'carrying' || pth.role === 'limited';
-			return E('tr', { 'class': main ? 'mm-wl-main' : '' }, [E('td', {}, names[pth.device_id] || words(pth.name) || pth.device || '—'),
+			return E('tr', { 'class': main ? 'mm-wl-main' : '' }, [E('td', {}, self.channelTitle(pth)),
+				E('td', {}, self.modemOperator(self.modemForPath(pth)) || '—'),
 				E('td', {}, E('span', { 'class': 'mm-light is-' + st[1] }, [E('i'), st[0]])),
 				E('td', { 'class': 'mm-faint' }, isMain(pth) ? _('main') : backups > 1 ? _('backup %d').format(++nth) : _('backup'))]);
 		});
 		return this.sec('set-wl-now', _('Now'), [rows.length ?
-			E('table', { 'class': 'mm-table mm-wl-now' }, [E('thead', {}, E('tr', {}, [E('th', {}, _('Channel')), E('th', {}, _('Channel status')), E('th', {}, _('Role'))])),
+			E('table', { 'class': 'mm-table mm-wl-now' }, [E('thead', {}, E('tr', {}, [E('th', {}, _('Channel')), E('th', {}, _('Mobile operator')), E('th', {}, _('Channel status')), E('th', {}, _('Role'))])),
 				E('tbody', {}, rows)]) : E('p', { 'class': 'mm-faint' }, _('No channel is checked yet.')),
+			E('p', { 'class': 'mm-faint' }, (function() {
+				/* The daemon supplies reach.age_s (time since a monotonic probe).
+				 * Reconstruct the wall-clock time from that age, not from page load. */
+				var ages = paths.map(function(p) { return (p.reach || {}).age_s; })
+					.filter(function(v) { return typeof v === 'number' && isFinite(v) && v >= 0; });
+				return ages.length ? _('Last channel check: %s').format(
+					new Date(Date.now() - Math.min.apply(null, ages) * 1000).toLocaleString(mm.LANG)) :
+					_('Last channel check: not reported by the engine');
+			})()),
 			E('p', { 'class': 'mm-faint' }, _('A channel counts as «the whitelist only» when the main check addresses are silent and the whitelist ones answer. MedveModem does not restart such a modem and moves the traffic to a free channel when there is one.'))]);
 	},
 
@@ -415,13 +461,14 @@ return view.extend({
 		var self = this, k = this.wlc = {};
 		k.pick = E('select', { 'class': 'mm-select', id: 'mm-wlc-dev' }, E('option', { value: '*' }, _('All channels')));
 		k.say = E('p', { 'class': 'mm-faint mm-wlc-say', role: 'status', hidden: '' });
-		k.verdict = E('div', { 'class': 'mm-callout is-info mm-wlc-verdict', hidden: '' });
 		k.out = E('div', { 'class': 'mm-wlc-out' });
+		/* One dismissible diagnostic after the whole run, not a per-route 0/N balloon. */
+		k.verdict = mm.dismissible(E('div', { 'class': 'mm-callout is-info mm-wlc-result', hidden: '' }), 'medvemodem:whitelist-check');
 		k.run = E('button', { type: 'button', 'class': 'mm-btn is-primary mm-wlc-run', disabled: true, click: mm.busy(function() { return self.wlCheck(); }) }, _('Check the services'));
 		return this.sec('set-wl-check', _('Service check'), [
 			E('p', { 'class': 'mm-faint' }, _('Through the chosen channel, even if another one is main: do the services open. About 10 seconds a channel and less than 1 MB of traffic. Yandex, VK and Wildberries are for comparison: under whitelists only such open.')),
 			E('label', { 'for': 'mm-wlc-dev', 'class': 'mm-field' }, [E('span', { 'class': 'mm-dim' }, _('Channel')), k.pick]),
-			E('div', { 'class': 'mm-row' }, k.run), k.say, k.verdict, k.out]);
+			E('div', { 'class': 'mm-row' }, k.run), k.say, k.out, k.verdict]);
 	},
 
 	wlCheck: function() {
@@ -437,35 +484,57 @@ return view.extend({
 				return mm.execLong(fs, 'netcheck', NETCHECK, [d[0]]).then(function(r) {
 					var j = null;
 					try { j = JSON.parse((r && r.stdout) || ''); } catch (e) {}
-					got.push({ dev: d[0], name: d[1], res: j && !j.error ? list(j.results) : null,
+					got.push({ dev: d[0], name: d[1], operator: self.modemOperator(self.modemForPath({ device: d[0] })), res: j && !j.error ? list(j.results) : null,
 						err: !j ? _('no answer') : j.error ? (NC_ERROR[j.error] || j.error) : '' });
-				}, function(e) { got.push({ dev: d[0], name: d[1], res: null, err: failText(e) }); });
+				}, function(e) { got.push({ dev: d[0], name: d[1], operator: self.modemOperator(self.modemForPath({ device: d[0] })), res: null, err: failText(e) }); });
 			});
 		}, Promise.resolve()).then(function() {
 			k.running = false; k.run.disabled = false;
-			text(k.say, _('Checked at %s.').format(new Date().toLocaleTimeString(mm.LANG)));
+			text(k.say, _('Last service check: %s').format(new Date().toLocaleString(mm.LANG)));
+			/* The whitelist diagnosis needs positive reachability of an allowed-site control.
+			 * All failures are not proof of an operator whitelist. */
+			var suspicious = [], clear = [], unknown = [];
+			got.forEach(function(g) {
+				var services = g.res || [], open = services.filter(function(x) { return x.group === 'open'; }),
+					allow = services.filter(function(x) { return x.group === 'list'; });
+				if (!open.length || !allow.length || !g.res) { unknown.push(g.name); return; }
+				if (open.some(function(x) { return x.verdict === 'ok'; })) clear.push(g.name);
+				else if (allow.some(function(x) { return x.verdict === 'ok'; }) &&
+					open.some(function(x) { return x.verdict !== 'tunnel'; }))
+					suspicious.push(g.name);
+				else unknown.push(g.name);
+			});
+			var diagnosis = suspicious.length ? _('Possible operator whitelist on: %s. Ordinary sites fail while control sites answer.').format(suspicious.join(', ')) :
+				clear.length ? _('No whitelist signs on the checked routes: ordinary internet sites respond.') :
+				_('Whitelist mode cannot be determined: no control-site response or insufficient results.');
+			if (unknown.length && (suspicious.length || clear.length))
+				diagnosis += ' ' + _('Inconclusive routes: %s.').format(unknown.join(', '));
+			k.verdict.classList.toggle('is-err', !!suspicious.length);
+			k.verdict.classList.toggle('is-ok', !suspicious.length && !!clear.length && !unknown.length);
+			var close = k.verdict.querySelector('.mm-dismiss');
+			k.verdict.replaceChildren(E('strong', {}, _('Whitelist diagnosis')), E('span', {}, diagnosis));
+			if (close) k.verdict.appendChild(close);
+			mm.bannerShow(k.verdict, true);
 			if (!all) {
 				var g = got[0], body = E('tbody');
 				if (!g.res) { text(k.say, _('The check did not run: %s.').format(g.err)); return; }
 				body.replaceChildren.apply(body, ncRows(g.res));
-				k.out.replaceChildren(ncTable(body));
-				var say = ncSummary(g.res, g.dev);
-				k.verdict.hidden = !say; text(k.verdict, say);
+				var table = ncTable(body);
+				table.hidden = false;
+				k.out.replaceChildren(table);
 				return;
 			}
 			/* all: the services down, the channels across */
 			var first = got.filter(function(g) { return g.res && g.res.length; })[0];
 			if (!first) { text(k.say, _('The check did not run: %s.').format(got.map(function(g) { return g.dev + ': ' + g.err; }).join('; '))); return; }
-			var head = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) { return E('th', { title: g.name }, g.dev); })));
+			var head = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) { return E('th', { title: g.name + (g.operator ? ' · ' + g.operator : '') }, [g.name, g.operator ? E('small', { 'class': 'mm-wlc-operator' }, g.operator) : '']); })));
 			var rows = first.res.map(function(x) {
 				return E('tr', {}, [E('td', {}, mm.ncName(x))].concat(got.map(function(g) {
-					var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null, cell = y ? mm.ncCell(y) : { text: g.err || '—', tone: '' };
-					return E('td', { 'class': cell.tone ? 'mm-nc-' + cell.tone : 'mm-faint' }, cell.text);
+					var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null, cell = mm.ncCell(y);
+					return E('td', { 'class': 'mm-nc-signal' + (y ? '' : ' mm-nc-unchecked'), title: y ? '' : (g.err || _('not checked')) }, cell.node);
 				})));
 			});
 			k.out.replaceChildren(E('div', { 'class': 'mm-table-scroll' }, E('table', { 'class': 'mm-table mm-wlc-table' }, [E('thead', {}, head), E('tbody', {}, rows)])));
-			var says = got.filter(function(g) { return g.res; }).map(function(g) { return g.dev + ': ' + ncSummary(g.res, g.dev); });
-			k.verdict.hidden = !says.length; k.verdict.replaceChildren.apply(k.verdict, says.map(function(t) { return E('div', {}, t); }));
 		});
 	},
 
@@ -610,12 +679,7 @@ return view.extend({
 	/* a channel by its modem's name, the interface and the device after it (the owner, 2026-11-16: «не понятно какой
 	 * интерфейс какому модему соответствует, угадайка»): «E3372 (mm5 · eth1)»; a wired one as before */
 	chanLabel: function(x) {
-		var self = this, given = {}, id = null;
-		Object.keys(this.names || {}).forEach(function(k) { var n = self.names[k]; if (n && n.device_id && words(n.name)) given[n.device_id] = words(n.name); });
-		list((this.uplinkData || {}).paths).forEach(function(p) { if (p && p.device === x.device && p.device_id) id = p.device_id; });
-		var d = id ? list(this.devices).filter(function(z) { return z.device_id === id; })[0] : null;
-		var name = id ? given[id] || (d && (words(d.name) || words((d.modemmanager || {}).model) || words(d.product))) : '';
-		return name ? name + ' (' + x.interface + ' · ' + x.device + ')' : x.interface + ' — ' + x.device;
+		return this.channelTitle(x);
 	},
 
 	loadChannels: function() {
@@ -1496,10 +1560,18 @@ return view.extend({
 	updateDraw: function(j) {
 		var u = this.up, ins = j.installed || {}, running = j.state === 'running';
 		var row = function(k, v) { return [E('dt', {}, k), E('dd', {}, v || '—')]; };
+		/* OpenWrt package managers spell alpha1 as _alpha1 and releases as -alpha1-r1.
+		 * Normalize only for display; the updater itself compares installed packages. */
+		var pretty = function(v) { return String(v || '').replace(/_alpha([0-9]+)/, '-alpha$1').replace(/-(\d+)$/, '-r$1'); };
+		var versionLink = j.tag && /^[A-Za-z0-9._-]+$/.test(j.tag) && /^[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/.test(j.repo || '') ?
+			E('a', { href: 'https://github.com/' + j.repo + '/releases/tag/' + j.tag, target: '_blank', rel: 'noopener noreferrer' }, pretty(j.latest)) : pretty(j.latest);
 		u.latest = j.latest;
 		u.kv.replaceChildren.apply(u.kv, [].concat(
-			row(_('Installed'), ins.engine ? ins.engine + (ins.bot ? ' · ' + _('bot %s').format(ins.bot) : '') : _('not installed')),
-			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('newer') : ' · ' + _('this one')) : j.error ? _('unknown: %s').format(j.error) : _('not checked yet')),
+			row(_('Installed'), ins.engine ? pretty(ins.engine) : _('not installed')),
+			ins.luci && ins.luci !== ins.engine ? row(_('LuCI version'), pretty(ins.luci) + ' · ' + _('does not match the engine')) : [],
+			ins.bot ? row(_('Telegram bot'), pretty(ins.bot)) : [],
+			row(_('Available'), j.latest ? [versionLink, ' · ', j.newer ? _('update available') : _('already installed')] : j.error ? _('Check failed: %s').format(j.error) : _('Not checked yet')),
+			row(_('Channel'), j.channel === 'bench' ? _('Test builds') : _('Published releases')),
 			row(_('Checked'), j.checked_at ? new Date(j.checked_at * 1000).toLocaleString(mm.LANG) : '—')));
 		/* what is new since the installed version: the release's short highlights, by version (the owner, 2026-11-14) */
 		var news = list(j.highlights).filter(function(h) { return h && h.t; }), by = [], cur = null;
@@ -1509,12 +1581,12 @@ return view.extend({
 			return E('div', { 'class': 'mm-up-ver' }, [E('div', { 'class': 'mm-faint' }, g.v),
 				E('ul', {}, g.t.map(function(t) { return E('li', {}, t); }))]);
 		})) : []);
-		u.btn.hidden = !j.newer;
+		u.btn.hidden = !j.newer || !!j.error || running;
 		u.btn.disabled = running;
 		text(u.btn, j.latest ? _('Update to %s').format(j.latest) : _('Update'));
-		var gist = j.newer ? _('update %s available').format(j.latest) : j.latest ? _('the newest') : '';
+		var gist = j.error ? _('Update check failed') : j.newer ? _('update %s available').format(pretty(j.latest)) : j.latest ? _('up to date') : '';
 		if (this.upGist) text(this.upGist, gist);
-		text(u.out, running ? _('Updating, the log is below.') : j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
+		text(u.out, j.error ? _('Update check failed: %s').format(j.error) : running ? _('Updating, the log is below.') : j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
 			j.state === 'done' && j.result && j.result !== 'current' ? _('Updated to %s.').format(j.result) : '');
 		return running;
 	},
@@ -1525,7 +1597,7 @@ return view.extend({
 		return fs.exec(SELFUP, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			if (!j.ok) { text(u.out, _('The update script does not answer.')); return; }
 			/* over an hour since the last check: ask again by itself, once when the card opens */
-			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at > 3600) && !j.error)
+			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at> 3600))
 				return fs.exec(SELFUP, ['check']).then(parse, function() { return j; }).then(function(k) { self.updateDraw(k.ok ? k : j); });
 			var running = self.updateDraw(j);
 			if (!running && j.state !== 'failed' && j.state !== 'done') return;

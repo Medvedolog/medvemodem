@@ -2157,7 +2157,12 @@ return view.extend({
 		 * for this composition yet is not offered): its first or fallback owner, or an AT dial recipe of its own (the Intel
 		 * XMM: ModemManager takes PPP on its ACM composition and gets no address, the owner: «xmm не надо скрывать»);
 		 * a recipe never run on a modem of ours says so. A choice saved earlier stays visible, greyed, until changed */
-		var p = d.profile || {}, nativeOk = p.prefer_owner === 'native' || p.fallback_owner === 'native' || !!p.dial;
+		var p = d.profile || {}, protocols = list(p.protocols),
+			nativeOk = p.prefer_owner === 'native' || p.fallback_owner === 'native' || !!p.dial ||
+			/* The profile's QMI/MBIM hint is an explicit netifd-capable path.
+			 * T99W175 includes it although its preferred owner is ModemManager.
+			 * T77W968 explicitly declares only ModemManager: keep native hidden there. */
+			protocols.indexOf('qmi') >= 0 || protocols.indexOf('mbim') >= 0;
 		c.nativeOpt.disabled = !nativeOk;
 		c.nativeOpt.hidden = !nativeOk && k.backend !== 'native';
 		text(c.nativeOpt, (p.dial || {}).status === 'unverified' ? _('MedveModem directly (AT; not yet checked on this model)') :

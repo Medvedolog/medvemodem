@@ -9,7 +9,7 @@
 
 /* the stylesheet carries the package version: LuCI versions its own scripts, not an app's
  * <link>, and a browser keeps an old dashboard.css after an upgrade (seen on the bench, 0.7.2) */
-var VERSION = '0.16.0-alpha1-r1';	/* = the engine's version */
+var VERSION = '0.16.0-alpha1-r2';	/* = the engine's version */
 
 /* a value as a list: the module has its own (a view's list is not in its scope; r26 broke the icon on this) */
 function list(v) { return Array.isArray(v) ? v : v == null || v === '' ? [] : [v]; }
@@ -81,20 +81,28 @@ var NC_WORD = { ok: _('works'), blocked: _('access denied'), timeout: _('no answ
 var NC_TONE = { ok: 'ok', blocked: 'err', timeout: 'err', reset: 'err', cert: 'err' };
 /* the service names of netcheck.list are the brands; one is said differently in Russian */
 var NC_NAME = { wikipedia: _('Wikipedia'), yandex: _('Yandex'), mts: _('MTS'), t2: _('T2 (Tele2)'), megafon: _('MegaFon'), beeline: _('Beeline') };
+/* Traffic lights for per-service checks: keep the detailed cause in the tooltip. */
+function ncLight(x) {
+	var verdict = x && x.verdict, tone = verdict === 'ok' ? 'ok' :
+		['blocked', 'timeout', 'dns', 'refused', 'reset', 'tls', 'cert'].indexOf(verdict) >= 0 ? 'err' :
+		verdict ? 'warn' : 'idle';
+	var label = x ? (NC_WORD[verdict] || verdict) : _('not checked');
+	if (x && x.code && (verdict === 'other' || verdict === 'blocked'))
+		label += ' (HTTP ' + x.code + ')';
+	return E('span', { 'class': 'mm-nc-light is-' + tone, title: label,
+		role: 'img', 'aria-label': label });
+}
 function ncRows(res) {
 	return list(res).map(function(x) {
-		var w = NC_WORD[x.verdict] || x.verdict;
-		if ((x.verdict === 'other' || x.verdict === 'blocked') && x.code) w += ' (HTTP ' + x.code + ')';
-		return E('tr', { 'class': 'mm-nc-' + (NC_TONE[x.verdict] || 'warn') }, [E('td', {}, (NC_NAME[x.id] || x.name) + (x.group === 'list' ? ' · ' + _('for comparison') : x.group === 'known' ? ' · ' + _('usually closed in Russia') : '')),
-			E('td', {}, w), E('td', {}, x.verdict === 'timeout' ? '—' : _('%d ms').format(x.ms || 0))]);
+		return E('tr', { 'class': 'mm-nc-' + (NC_TONE[x.verdict] || 'warn') }, [
+			E('td', {}, ncName(x)),
+			E('td', { 'class': 'mm-nc-signal' }, ncLight(x)),
+			E('td', {}, x.verdict === 'timeout' ? '—' : _('%d ms').format(x.ms || 0))]);
 	});
 }
-/* one service's result as a cell of a table over several channels: {text, tone} («Белые списки», 2026-11-12) */
+/* Same icon for one channel and for a service-by-channel matrix. */
 function ncCell(x) {
-	if (!x) return { text: '—', tone: '' };
-	var w = NC_WORD[x.verdict] || x.verdict;
-	if ((x.verdict === 'other' || x.verdict === 'blocked') && x.code) w += ' (HTTP ' + x.code + ')';
-	return { text: w, tone: NC_TONE[x.verdict] || 'warn' };
+	return { node: ncLight(x), tone: x ? (NC_TONE[x.verdict] || 'warn') : 'idle' };
 }
 function ncName(x) { return (NC_NAME[x.id] || x.name) + (x.group === 'list' ? ' · ' + _('for comparison') : x.group === 'known' ? ' · ' + _('usually closed in Russia') : ''); }
 /* where: «this modem», «the wan channel», as the views pass it */
@@ -1071,7 +1079,7 @@ return baseclass.extend({
 	chev: chev,
 	pageHead: pageHead,
 	list: list,
-	ncRows: ncRows, ncSummary: ncSummary, ncTable: ncTable, NC_ERROR: NC_ERROR, ncCell: ncCell, ncName: ncName,
+	ncRows: ncRows, ncSummary: ncSummary, ncTable: ncTable, NC_ERROR: NC_ERROR, ncCell: ncCell, ncName: ncName, ncLight: ncLight,
 	dnsRows: dnsRows, dnsSummary: dnsSummary, dnsTable: dnsTable,
 	privacy: privacy,
 	secret: secret,
