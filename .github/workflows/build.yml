@@ -11,6 +11,7 @@ on:
       - '**/*.md'
       - 'docs/**'
       - 'screenshots/**'
+      - 'tools/build-qmodem.sh'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/workflows/**'
   pull_request:
@@ -18,6 +19,7 @@ on:
       - '**/*.md'
       - 'docs/**'
       - 'screenshots/**'
+      - 'tools/build-qmodem.sh'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/workflows/**'
   workflow_dispatch:
