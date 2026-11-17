@@ -483,13 +483,13 @@ return view.extend({
 				return mm.execLong(fs, 'netcheck', NETCHECK, [d[0]]).then(function(r) {
 					var j = null;
 					try { j = JSON.parse((r && r.stdout) || ''); } catch (e) {}
-					got.push({ dev: d[0], name: d[1], res: j && !j.error ? list(j.results) : null,
+					got.push({ dev: d[0], name: d[1], operator: self.modemOperator(self.modemForPath({ device: d[0] })), res: j && !j.error ? list(j.results) : null,
 						err: !j ? _('no answer') : j.error ? (NC_ERROR[j.error] || j.error) : '' });
-				}, function(e) { got.push({ dev: d[0], name: d[1], res: null, err: failText(e) }); });
+				}, function(e) { got.push({ dev: d[0], name: d[1], operator: self.modemOperator(self.modemForPath({ device: d[0] })), res: null, err: failText(e) }); });
 			});
 		}, Promise.resolve()).then(function() {
 			k.running = false; k.run.disabled = false;
-			text(k.say, _('Checked at %s.').format(new Date().toLocaleTimeString(mm.LANG)));
+			text(k.say, _('Last service check: %s').format(new Date().toLocaleString(mm.LANG)));
 			/* The whitelist diagnosis needs positive reachability of an allowed-site control.
 			 * All failures are not proof of an operator whitelist. */
 			var suspicious = [], clear = [], unknown = [];
@@ -524,7 +524,7 @@ return view.extend({
 			/* all: the services down, the channels across */
 			var first = got.filter(function(g) { return g.res && g.res.length; })[0];
 			if (!first) { text(k.say, _('The check did not run: %s.').format(got.map(function(g) { return g.dev + ': ' + g.err; }).join('; '))); return; }
-			var head = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) { return E('th', { title: g.name }, g.dev); })));
+			var head = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) { return E('th', { title: g.name + (g.operator ? ' · ' + g.operator : '') }, [g.name, g.operator ? E('small', { 'class': 'mm-wlc-operator' }, g.operator) : '']); })));
 			var rows = first.res.map(function(x) {
 				return E('tr', {}, [E('td', {}, mm.ncName(x))].concat(got.map(function(g) {
 					var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null, cell = mm.ncCell(y);
@@ -676,12 +676,7 @@ return view.extend({
 	/* a channel by its modem's name, the interface and the device after it (the owner, 2026-11-16: «не понятно какой
 	 * интерфейс какому модему соответствует, угадайка»): «E3372 (mm5 · eth1)»; a wired one as before */
 	chanLabel: function(x) {
-		var self = this, given = {}, id = null;
-		Object.keys(this.names || {}).forEach(function(k) { var n = self.names[k]; if (n && n.device_id && words(n.name)) given[n.device_id] = words(n.name); });
-		list((this.uplinkData || {}).paths).forEach(function(p) { if (p && p.device === x.device && p.device_id) id = p.device_id; });
-		var d = id ? list(this.devices).filter(function(z) { return z.device_id === id; })[0] : null;
-		var name = id ? given[id] || (d && (words(d.name) || words((d.modemmanager || {}).model) || words(d.product))) : '';
-		return name ? name + ' (' + x.interface + ' · ' + x.device + ')' : x.interface + ' — ' + x.device;
+		return this.channelTitle(x);
 	},
 
 	loadChannels: function() {
