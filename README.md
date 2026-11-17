@@ -241,6 +241,10 @@ mediatek/filogic, Nokia XG-040G-MD (Airoha AN7581, снапшот), x86_64.
 
 ## Установка и обновление
 
+**Зависимости APK/OPKG:** [полная таблица по всем пакетам, включая QModem](docs/DEPENDENCIES.md). Минимальная пара — `medvemodem` (требует `libjson-c`, `jsonfilter`, `modemmanager`, `qmi-utils`) + `luci-app-medvemodem` (требует `luci-base` и строго совпадающую версию движка). Для Telegram-бота нужны `ucode` и его модули, `curl`, `ca-bundle`, `jq`; для lpac — `libcurl`; QModem зависит от отдельного набора USB `kmod-*` и вспомогательных пакетов. `apk`/`opkg` подтягивают зависимости из feeds текущей прошивки; **не устанавливайте всё принудительно и не смешивайте модули разных ядер**.
+
+
+
 **[Полная инструкция: структура релизов, обязательные и опциональные пакеты](docs/INSTALL.md)** · **[English installation / release layout](docs/INSTALL.en.md)**
 
 Скачайте **один** архив MedveModem для своего `DISTRIB_ARCH` и точной версии OpenWrt (`24.10.8` или `25.12.6`) со страницы [Releases](https://github.com/Medvedolog/medvemodem/releases). Архив `medvemodem-<версия>-<архитектура>-<версия OpenWrt>.tar.gz` содержит обязательные `medvemodem` + `luci-app-medvemodem` **одной версии**, а также опциональные Telegram-бот с LuCI и lpac для eSIM. **Не устанавливайте все пакеты из архива подряд.** Выбирайте дополнительные компоненты только по потребности.
