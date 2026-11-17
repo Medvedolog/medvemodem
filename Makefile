@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=medvemodem
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 # QModem's core, built from its source by CI for the LuCI installer
 # (files/usr/libexec/medvemodem/qmodem-install);
