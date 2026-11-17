@@ -9,7 +9,7 @@
 
 /* the stylesheet carries the package version: LuCI versions its own scripts, not an app's
  * <link>, and a browser keeps an old dashboard.css after an upgrade (seen on the bench, 0.7.2) */
-var VERSION = '0.16.0-alpha1-r1';	/* = the engine's version */
+var VERSION = '0.16.0-alpha1-r2';	/* = the engine's version */
 
 /* a value as a list: the module has its own (a view's list is not in its scope; r26 broke the icon on this) */
 function list(v) { return Array.isArray(v) ? v : v == null || v === '' ? [] : [v]; }
