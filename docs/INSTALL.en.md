@@ -22,6 +22,23 @@ The daemon statically includes libubox/libubus/libuci; other dependencies (Modem
 
 ## Release layout: required versus optional packages
 
+## APK / OPKG package dependencies
+
+For **all package-level runtime dependencies** (`DEPENDS` and `EXTRA_DEPENDS`), including QModem and its helpers, see the **[complete dependency matrix](DEPENDENCIES.md)**. The dependency names come from the pinned package Makefiles. They are resolved by the firmware's `apk` (OpenWrt 25.12.6) or `opkg` (24.10.8), not bundled wholesale into the GitHub Release.
+
+| Installed component | Declared dependencies |
+| --- | --- |
+| `medvemodem` | `libjson-c`, `jsonfilter`, `modemmanager`, `qmi-utils` |
+| `luci-app-medvemodem` | `luci-base`, exact matching `medvemodem` version |
+| Telegram bot | `medvemodem`, `ucode`, `ucode-mod-{ubus,uloop,fs,uci,log,digest}`, `curl`, `ca-bundle`, `jq` |
+| Bot LuCI | `luci-base`, `medvemodem-bot`, `luci-app-medvemodem` |
+| lpac/eSIM | `libcurl`; optional APDU plugins require `uqmi`, `libmbim` or `libqmi` |
+| Separate QModem core | USB `kmod-*` drivers, `tom_modem`, `ubus-at-daemon`, `modem_scan`, `sms-tool_q`, `jq`, `flock`, `bc`, `coreutils`, `xxd`, `usbutils` and more (full matrix linked above) |
+
+The pinned QModem Makefile even declares `kmod-usb3` on devices with no USB 3.0 port. All `kmod-*` packages must match the router's **exact running kernel**; do not bypass missing dependencies with force flags. Run `apk update` **or** `opkg update` first, then install only your selected components and let the package manager resolve their dependencies.
+
+
+
 Open **[GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)** rather than Source code ZIPs or temporary GitHub Actions artifacts. Choose **one** MedveModem archive matching the router's `DISTRIB_ARCH` and OpenWrt version: `medvemodem-<version>-<architecture>-<24.10.8|25.12.6>.tar.gz`. The archive includes required and optional packages; **do not install all of them by default**.
 
 | Package | Purpose | Requirement |
