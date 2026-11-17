@@ -6,11 +6,12 @@ PKG_RELEASE:=2
 
 # QModem's core, built from its source by CI for the LuCI installer
 # (files/usr/libexec/medvemodem/qmodem-install);
-# CI sets MEDVEMODEM_DOWNLOAD_BASE to the release that carries those packages
+# Standalone QModem publishes persistent assets in its own GitHub prerelease;
+# the MedveModem LuCI installer downloads from this version-pinned release.
 QMODEM_VERSION:=3.3.0_p20261108
 QMODEM_COMMIT:=3196ab787e06f93ef343d0beceadd9758e78ef8b
 QMODEM_ARCHES:=aarch64_cortex-a53 aarch64_generic x86_64
-MEDVEMODEM_DOWNLOAD_BASE?=
+MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-3.3.0_p20261108-r1
 
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE
