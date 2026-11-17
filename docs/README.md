@@ -1,5 +1,9 @@
 # MedveModem Documentation / Документация
 
+**[Зависимости всех пакетов (APK / OPKG) / All package dependencies](DEPENDENCIES.md)** — MedveModem, LuCI, Telegram-бот, lpac, QModem, драйверы ядра и условные зависимости.
+
+
+
 [Repository / Репозиторий](../README.md) · [Modem Zoo / Зоопарк](modem-zoo/README.md)
 
 Документация разделена по назначению. **Технические идентификаторы, API, примеры команд, имена файлов и JSON-поля не переводятся.** Полевые наблюдения и материалы зоопарка сохраняются на исходном языке.
