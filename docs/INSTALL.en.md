@@ -16,9 +16,26 @@ echo "OpenWrt: $DISTRIB_RELEASE; package architecture: $DISTRIB_ARCH"
 df -h /overlay
 ```
 
-From the matching **tested build** (not a source ZIP), select the packages for the exact OpenWrt release family and `DISTRIB_ARCH`. Bench archives may be named `medvemodem-<version>-<architecture>-<release>.tar.gz`; separate archives may contain the Telegram bot or QModem. OpenWrt 25.12/snapshots use APK, while 24.10 uses IPK. Do not guess the package architecture from the CPU model.
+Select the published archive for your exact OpenWrt version and package architecture; see the release layout below.
 
 The daemon statically includes libubox/libubus/libuci; other dependencies (ModemManager, qmi-utils, jsonfilter, libjson-c, etc.) are installed from your firmware's package feeds.
+
+## Release layout: required versus optional packages
+
+Open **[GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)** rather than Source code ZIPs or temporary GitHub Actions artifacts. Choose **one** MedveModem archive matching the router's `DISTRIB_ARCH` and OpenWrt version: `medvemodem-<version>-<architecture>-<24.10.8|25.12.6>.tar.gz`. The archive includes required and optional packages; **do not install all of them by default**.
+
+| Package | Purpose | Requirement |
+| --- | --- | --- |
+| `medvemodem` | Daemon and CLI/TUI | **Required** |
+| `luci-app-medvemodem` | LuCI frontend | **Required for LuCI**, same version as the daemon |
+| `medvemodem-bot` + `luci-app-medvemodem-bot` | Telegram bot and UI | Optional; install **both together** with versions compatible with the daemon |
+| `medvemodem-lpac` and relevant APDU components | Extra eSIM operations | Optional, hardware-dependent; do not install every transport |
+| QModem core | Alternative modem executor | Optional and **separately installed** only when using QModem ownership; QModem LuCI is not bundled |
+| ModemManager, `uqmi`/`umbim`, drivers, `qmi-utils` | Modem-specific dependencies | As required by the modem; the package manager resolves declared dependencies from the firmware feeds |
+
+**Separate release families.** MedveModem releases (`v0.16.0-alpha1-r1`, later `v0.16.0-alpha1-r2`, etc.) provide target-specific archives plus `SHA256SUMS`. The separate permanent [QModem `qmodem-3.3.0_p20261108-r1` release](https://github.com/Medvedolog/medvemodem/releases/tag/qmodem-3.3.0_p20261108-r1) provides six different archives, one per architecture (`aarch64_cortex-a53`, `aarch64_generic`, `x86_64`) and OpenWrt line (`24.10`, `25.12`), plus its own `SHA256SUMS`. The QModem naming pattern is `qmodem-3.3.0_p20261108-<architecture>-<24.10|25.12>.tar.gz`. QModem is **not required** to run MedveModem.
+
+**Checksums and updates.** Verify the selected archive against `SHA256SUMS` in the *same release* with `sha256sum filename.tar.gz`. The MedveModem LuCI updater checks GitHub Releases and upgrades the daemon and LuCI together; it upgrades the bot and bot LuCI **only when the bot is already installed**, never installs the bot as a surprise. The `bench` channel selects `bench-v*` releases; `release` selects `v*` tags. Select **release** for `v0.16.0-alpha1-r*`. The updater performs user-initiated checks and installs; do not assume unattended automatic upgrades. QModem installation/update is a **separate** LuCI components action using a version-pinned release URL and SHA256 verification, not arbitrary upstream latest.
 
 ## 2. Transfer and install
 
