@@ -415,13 +415,12 @@ return view.extend({
 		var self = this, k = this.wlc = {};
 		k.pick = E('select', { 'class': 'mm-select', id: 'mm-wlc-dev' }, E('option', { value: '*' }, _('All channels')));
 		k.say = E('p', { 'class': 'mm-faint mm-wlc-say', role: 'status', hidden: '' });
-		k.verdict = E('div', { 'class': 'mm-callout is-info mm-wlc-verdict', hidden: '' });
 		k.out = E('div', { 'class': 'mm-wlc-out' });
 		k.run = E('button', { type: 'button', 'class': 'mm-btn is-primary mm-wlc-run', disabled: true, click: mm.busy(function() { return self.wlCheck(); }) }, _('Check the services'));
 		return this.sec('set-wl-check', _('Service check'), [
 			E('p', { 'class': 'mm-faint' }, _('Through the chosen channel, even if another one is main: do the services open. About 10 seconds a channel and less than 1 MB of traffic. Yandex, VK and Wildberries are for comparison: under whitelists only such open.')),
 			E('label', { 'for': 'mm-wlc-dev', 'class': 'mm-field' }, [E('span', { 'class': 'mm-dim' }, _('Channel')), k.pick]),
-			E('div', { 'class': 'mm-row' }, k.run), k.say, k.verdict, k.out]);
+			E('div', { 'class': 'mm-row' }, k.run), k.say, k.out]);
 	},
 
 	wlCheck: function() {
@@ -429,7 +428,7 @@ return view.extend({
 		var devs = all ? Array.prototype.slice.call(k.pick.options, 1).map(function(o) { return [o.value, o.textContent]; }) :
 			[[k.pick.value, (k.pick.selectedOptions[0] || {}).textContent]];
 		if (!devs.length || k.running) return Promise.resolve();
-		k.running = true; k.run.disabled = true; k.say.hidden = false; k.verdict.hidden = true; k.out.replaceChildren();
+		k.running = true; k.run.disabled = true; k.say.hidden = false; k.out.replaceChildren();
 		var got = [];
 		return devs.reduce(function(p, d) {
 			return p.then(function() {
@@ -449,8 +448,6 @@ return view.extend({
 				if (!g.res) { text(k.say, _('The check did not run: %s.').format(g.err)); return; }
 				body.replaceChildren.apply(body, ncRows(g.res));
 				k.out.replaceChildren(ncTable(body));
-				var say = ncSummary(g.res, g.dev);
-				k.verdict.hidden = !say; text(k.verdict, say);
 				return;
 			}
 			/* all: the services down, the channels across */
@@ -459,13 +456,11 @@ return view.extend({
 			var head = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) { return E('th', { title: g.name }, g.dev); })));
 			var rows = first.res.map(function(x) {
 				return E('tr', {}, [E('td', {}, mm.ncName(x))].concat(got.map(function(g) {
-					var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null, cell = y ? mm.ncCell(y) : { text: g.err || '—', tone: '' };
-					return E('td', { 'class': cell.tone ? 'mm-nc-' + cell.tone : 'mm-faint' }, cell.text);
+					var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null, cell = mm.ncCell(y);
+					return E('td', { 'class': 'mm-nc-signal' + (y ? '' : ' mm-nc-unchecked'), title: y ? '' : (g.err || _('not checked')) }, cell.node);
 				})));
 			});
 			k.out.replaceChildren(E('div', { 'class': 'mm-table-scroll' }, E('table', { 'class': 'mm-table mm-wlc-table' }, [E('thead', {}, head), E('tbody', {}, rows)])));
-			var says = got.filter(function(g) { return g.res; }).map(function(g) { return g.dev + ': ' + ncSummary(g.res, g.dev); });
-			k.verdict.hidden = !says.length; k.verdict.replaceChildren.apply(k.verdict, says.map(function(t) { return E('div', {}, t); }));
 		});
 	},
 
