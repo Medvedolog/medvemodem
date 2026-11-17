@@ -71,8 +71,13 @@ find bin/packages -type f \( -name "ndisc6-*.apk" -o -name "ndisc6_*.ipk" \) -ex
 ls -l /out
 '
 asset="qmodem-$version-$arch-$line.tar.gz"
-tar -C "$out" -czf "$out/$asset.tmp" --exclude="$asset.tmp" .
-mv "$out/$asset.tmp" "$out/$asset"
+# Keep tar's temporary output OUTSIDE the directory it reads. Otherwise GNU tar
+# observes its own growing archive and exits with "file changed as we read it".
+tmp=$(mktemp "$root/dist/.qmodem-archive-XXXXXX")
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+tar -C "$out" -czf "$tmp" .
+mv -f "$tmp" "$out/$asset"
+trap - EXIT HUP INT TERM
 # Only the target archive is uploaded; never upload a naked unverified package directory.
 find "$out" -maxdepth 1 -type f ! -name "$asset" -delete
 echo "Built $out/$asset"
