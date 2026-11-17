@@ -14,7 +14,7 @@
 
 **[🇷🇺 Русский](#русское-описание) · [🇬🇧 English Quick Start](docs/USER-GUIDE.en.md) · [English overview](#english-overview)**
 
-**RU: [Установка](docs/INSTALL.md) · [Краткая инструкция](docs/USER-GUIDE.md) · [Руководство](docs/MANUAL.md) · [Белые списки в России: настройка и диагностика](docs/WHITELISTS-RU.md)**  
+**RU: [Установка](docs/INSTALL.md) · [Краткая инструкция](docs/USER-GUIDE.md) · [Руководство](docs/MANUAL.md) · [Белые списки оператора: настройка](docs/WHITELISTS-RU.md)**  
 **EN: [Installation](docs/INSTALL.en.md) · [Quick Start](docs/USER-GUIDE.en.md) · [Full Manual](docs/MANUAL.en.md)**
 **[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
