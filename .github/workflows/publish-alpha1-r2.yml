@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/publish-alpha1-r2.yml'
+      - 'Makefile'
+      - 'packages/luci-app-medvemodem/Makefile'
+      - 'packages/medvemodem-bot/Makefile'
+      - 'packages/luci-app-medvemodem-bot/Makefile'
   workflow_dispatch:
 
 permissions:
@@ -34,7 +38,10 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' Makefile
-          grep -Fxq 'PKG_RELEASE:=2' Makefile
+          for f in Makefile packages/luci-app-medvemodem/Makefile packages/medvemodem-bot/Makefile packages/luci-app-medvemodem-bot/Makefile; do
+            grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' "$f"
+            grep -Fxq 'PKG_RELEASE:=2' "$f"
+          done
           grep -Fxq 'MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r1' Makefile
       - name: Build MedveModem, LuCI, bot and lpac
         run: sh tools/build.sh "${{ matrix.arch }}" "${{ matrix.release }}"
@@ -44,7 +51,7 @@ jobs:
           set -euo pipefail
           out="dist/${{ matrix.arch }}-${{ matrix.release }}"
           for pkg in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot medvemodem-lpac; do
-            find "$out" -maxdepth 1 -type f \( -name "${pkg}_*.ipk" -o -name "${pkg}-*.apk" \) | grep -q . || { echo "Missing package $pkg" >&2; exit 1; }
+            find "$out" -maxdepth 1 -type f \( -name "${pkg}_*0.16.0_alpha1-2*.ipk" -o -name "${pkg}-*0.16.0_alpha1-r2*.apk" -o -name "${pkg}-*0.16.0_alpha1-2*.apk" \) | grep -q . || { echo "Missing matching r2 package $pkg" >&2; exit 1; }
           done
       - uses: actions/upload-artifact@v4
         with:
