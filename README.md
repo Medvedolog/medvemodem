@@ -290,17 +290,11 @@ umbim/uqmi, usb-modeswitch, qmi-utils и QModem, кнопками с журна�
 3. **Откройте [GitHub Issues → «Новый модем»](https://github.com/Medvedolog/medvemodem/issues/new?template=new-modem.yml)**. Укажите модель и прошивку модема, модель роутера, версию OpenWrt и MedveModem, что работает и на каком этапе возникает ошибка.
 4. **Прикрепите файл отчёта в поле «Отчёт»** через скрепку/перетаскивание. Если GitHub не принимает `.json`, упакуйте его в `.zip` и прикрепите архив. Дождитесь загрузки вложения, затем отправьте Issue. При необходимости дополните сообщение выводом `logread -e medvemodem` и `logread -e ModemManager`, предварительно проверив их содержимое.
 
+Для незнакомой модели, если установлен `medvemodem-bench`, дополнительно можно приложить архив из `/tmp`, созданный командой `medvemodem-bench probe --at`: она только считывает сведения и не переключает режимы модема. Перед отправкой также проверьте содержимое архива.
+
 Отчёт штатно скрывает IMEI, IMSI, ICCID, номера телефонов, пароли, PIN и тексты SMS, а серийный номер заменяет хешем. **Перед публикацией всё равно откройте файл и проверьте его: Issue и вложения публичны.** Не прикладывайте конфигурации с токенами или паролями.
 
 *English:* If your modem is unknown, partially recognized or cannot connect, open **MedveModem → modem → Diagnostics → Modem report**, save the generated JSON, then [create a New modem issue](https://github.com/Medvedolog/medvemodem/issues/new?template=new-modem.yml) and attach the report (ZIP it if JSON attachments are rejected). Include your modem and router models, OpenWrt/MedveModem versions, symptoms and reproduction steps. **Review the report for sensitive data before submitting a public issue.**
-
-## Если что-то не так
-
-Пришлите отчёт («Диагностика» → «Отчёт о модеме» или `medvemodem diag profile <device-id> --at`) и опишите, что делали.
-Для незнакомого модема — ещё архив `medvemodem-bench probe --at` из `/tmp`: он только читает, ничего не переключает.
-
-Новый модем или модем, который MedveModem знает не полностью, — [форма «Новый модем»](https://github.com/Medvedolog/medvemodem/issues/new?template=new-modem.yml)
-на GitHub: модель, роутер, версия, что работает, и файл отчёта.
 
 ## Чего пока нет
 
