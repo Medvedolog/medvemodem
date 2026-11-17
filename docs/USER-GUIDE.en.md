@@ -1,5 +1,9 @@
 # MedveModem: Quick User Guide
 
+**Package dependencies:** [complete APK/OPKG dependency matrix for all mandatory and optional packages](DEPENDENCIES.md).
+
+
+
 [Русский оригинал](USER-GUIDE.md) · [Documentation](README.md) · [Installation](INSTALL.en.md)
 
 This guide describes the `0.15.0-r197` source baseline (2026-11-16), published as the initial `0.16.0-alpha1` line. Refer to the [full manual](MANUAL.md), the [ubus API](UBUS-API.md), and the current project status for details. Hardware-dependent functionality requires validation on the actual modem.
