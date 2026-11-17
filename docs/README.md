@@ -16,6 +16,7 @@
 | Полное руководство / Manual | [MANUAL.md](MANUAL.md) | [MANUAL.en.md](MANUAL.en.md) |
 | ubus API | [Подробный русский справочник](UBUS-API.ru.md) | [Full API reference](UBUS-API.md) |
 | Архитектура плагинов / Plugin architecture | [PLUGIN-ARCHITECTURE.ru.md](PLUGIN-ARCHITECTURE.ru.md) | [PLUGIN-ARCHITECTURE.md](PLUGIN-ARCHITECTURE.md) |
+| Техническое ТЗ: SIM-слоты и eSIM / SIM-slot and eSIM handoff | [HANDOFF-SIM-SLOTS-ESIM.md](HANDOFF-SIM-SLOTS-ESIM.md) | [Технические идентификаторы сохранены](HANDOFF-SIM-SLOTS-ESIM.md) |
 | Темы LuCI / LuCI themes | [LUCI-THEMES.ru.md](LUCI-THEMES.ru.md) | [LUCI-THEMES.md](LUCI-THEMES.md) |
 | История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (all 238 entries) |
 | Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) |
