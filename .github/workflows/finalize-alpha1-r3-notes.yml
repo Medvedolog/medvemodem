@@ -1,0 +1,44 @@
+# Finalize human-readable release notes after the one-shot r3 publisher.
+# A release created with GITHUB_TOKEN does not trigger other workflows, so
+# this push-triggered job waits for the already-running publisher.
+name: finalize-alpha1-r3-notes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/finalize-alpha1-r3-notes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    name: Attach r3 highlights and release notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v5
+      - name: Wait for published r3 and update release description
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='v0.16.0-alpha1-r3'
+          # Skip writing release notes until the six archived builds,
+          # checksums and original highlights are published.
+          ready=0
+          for i in $(seq 1 240); do
+            n=$(gh release view "$tag" --json assets --jq '.assets | length' 2>/dev/null || true)
+            if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 8 ]; then
+              ready=1
+              break
+            fi
+            sleep 15
+          done
+          [ "$ready" = 1 ] || { echo "Release $tag did not finish publishing" >&2; exit 1; }
+          gh release edit "$tag" --notes-file docs/RELEASE-HIGHLIGHTS-ALPHA1-R3.md
+          cp docs/RELEASE-HIGHLIGHTS-ALPHA1-R3.md /tmp/HIGHLIGHTS.txt
+          gh release upload "$tag" /tmp/HIGHLIGHTS.txt --clobber
+          gh release view "$tag" --json url,assets --jq '{url: .url, assets: [.assets[].name]}'
