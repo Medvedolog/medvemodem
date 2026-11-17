@@ -818,6 +818,17 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-chain-say { margin: 4px 0 0; }
 .mm-warn-text { color: var(--warn-color-medium, #946300); }
 .mm-ok-text { color: var(--success-color-medium, #2e7d32); }
+/* Service-check status lamps: exact reason is in title/accessible label. */
+.mm-nc-signal { text-align: center; vertical-align: middle; min-width: 46px; }
+.mm-nc-light { display: inline-block; width: 16px; height: 16px; box-sizing: border-box;
+  border: 2px solid currentColor; border-radius: 50%; vertical-align: middle; }
+.mm-nc-light.is-ok { color: var(--success-color-medium, #1a7f37); background: currentColor; }
+.mm-nc-light.is-err { color: var(--error-color-medium, #cf222e); background: currentColor; }
+.mm-nc-light.is-warn { color: var(--warn-color-medium, #946300); background: currentColor; }
+.mm-nc-light.is-idle { color: var(--text-color-medium, #59636e); background: transparent; opacity: .55; }
+.mm-wlc-table td.mm-nc-signal { text-align: center; }
+.mm-wlc-result { margin-top: 12px; }
+
 .mm-nc-ok td:nth-child(2) { color: var(--success-color-medium, #1a7f37); }
 .mm-nc-err td:nth-child(2) { color: var(--error-color-medium, #cf222e); }
 .mm-nc-warn td:nth-child(2) { color: var(--warn-color-medium, #946300); }
