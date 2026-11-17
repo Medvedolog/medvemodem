@@ -1,0 +1,45 @@
+# Standalone QModem SDK builds. No MedveModem package rebuild and no release publishing.
+name: qmodem
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/build-qmodem.sh'
+      - '.github/workflows/qmodem.yml'
+      - 'Makefile'
+  pull_request:
+    paths:
+      - 'tools/build-qmodem.sh'
+      - '.github/workflows/qmodem.yml'
+      - 'Makefile'
+  workflow_dispatch:
+
+concurrency:
+  group: qmodem-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: QModem ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64_cortex-a53, aarch64_generic, x86_64]
+        release: ['25.12.6', '24.10.8']
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build pinned QModem in matching OpenWrt SDK
+        run: sh tools/build-qmodem.sh "${{ matrix.arch }}" "${{ matrix.release }}"
+      - name: Upload QModem archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: qmodem-${{ matrix.arch }}-${{ matrix.release }}
+          path: dist/qmodem-${{ matrix.arch }}-${{ matrix.release }}/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
