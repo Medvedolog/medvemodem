@@ -452,9 +452,15 @@ return view.extend({
 		var devs = list(this.devices).filter(function(d) { return !!d.device_id; }).slice(0, 32);
 		return Promise.all(devs.map(function(d) {
 			return getEvents(d.device_id, 64).then(function(r) {
-				return list((r || {}).events).filter(function(e) { return e.kind === 'internet' && /^(limited|ok|down)$/.test(e.detail || ''); })
+				var changes = list((r || {}).events).filter(function(e) { return e.kind === 'internet' && /^(limited|ok|down)$/.test(e.detail || ''); })
 					.map(function(e) { return { name: words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || d.device_id,
-						t: Number(e.t) || 0, detail: e.detail }; });
+						t: Number(e.t) || 0, detail: e.detail }; }).sort(function(a, b) { return a.t - b.t; });
+				var started = 0;
+				changes.forEach(function(e) {
+					if (e.detail === 'limited') started = e.t;
+					else if (started && e.t >= started) { e.duration = e.t - started; started = 0; }
+				});
+				return changes;
 			}, function() { return []; });
 		})).then(function(groups) {
 			var data = [].concat.apply([], groups).sort(function(a, b) { return b.t - a.t; }).slice(0, 30);
@@ -463,7 +469,8 @@ return view.extend({
 			k.out.replaceChildren.apply(k.out, data.map(function(e) {
 				return E('div', { 'class': 'mm-wl-history-row' }, [
 					E('time', { 'class': 'mm-faint' }, e.t ? new Date(e.t * 1000).toLocaleString(mm.LANG) : '—'),
-					E('span', {}, e.name), E('strong', {}, label[e.detail] || e.detail)
+					E('span', {}, e.name), E('strong', {}, label[e.detail] || e.detail),
+					e.duration ? E('span', { 'class': 'mm-faint mm-wl-duration' }, _('Duration: %d min').format(Math.max(1, Math.round(e.duration / 60)))) : ''
 				]);
 			}));
 		}, function() { text(k.out, _('The history is unavailable.')); });
