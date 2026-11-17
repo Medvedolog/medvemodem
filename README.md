@@ -18,7 +18,7 @@
 **EN: [Installation](docs/INSTALL.en.md) · [Quick Start](docs/USER-GUIDE.en.md) · [Full Manual](docs/MANUAL.en.md)**
 **[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
-[Unknown modem / Неизвестный модем — отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report) · [Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
+[Отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report)
 
 **[Screenshots / Скриншоты интерфейса — 12 изображений](screenshots/README.md)**
 
