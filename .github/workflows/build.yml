@@ -10,12 +10,16 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - '.github/workflows/docs.yml'
+      - 'screenshots/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - '.github/workflows/docs.yml'
+      - 'screenshots/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 concurrency:
