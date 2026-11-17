@@ -821,7 +821,10 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-nc-ok td:nth-child(2) { color: var(--success-color-medium, #1a7f37); }
 .mm-nc-err td:nth-child(2) { color: var(--error-color-medium, #cf222e); }
 .mm-nc-warn td:nth-child(2) { color: var(--warn-color-medium, #946300); }
-.mm-private .mm-sim-edit { display: none; }
+/* Privacy hides phone identifiers, not the SIM nickname editor. */
+.mm-private .mm-sim-edit label[for="mm-sim-number"],
+.mm-private .mm-sim-edit label[for="mm-sim-smsc"],
+.mm-private .mm-sim-edit .mm-sim-smsc-row { display: none; }
 .mm-private .mm-cell-map { display: none; }
 .mm-privacy[aria-pressed="true"] { color: var(--warn-color-medium, #946300); }
 .mm-chain .mm-chain-warn { border-color: var(--warn-color-medium, #946300); }
