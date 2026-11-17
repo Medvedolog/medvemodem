@@ -36,7 +36,7 @@ jobs:
           grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' Makefile
           for f in Makefile packages/luci-app-medvemodem/Makefile packages/medvemodem-bot/Makefile packages/luci-app-medvemodem-bot/Makefile; do
             grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' "$f"
-            grep -Fxq 'PKG_RELEASE:=2' "$f"
+            grep -Fxq 'PKG_RELEASE:=3' "$f"
           done
           grep -Fxq 'MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r1' Makefile
       - name: Build MedveModem, LuCI, bot and lpac
