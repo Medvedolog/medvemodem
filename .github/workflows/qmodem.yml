@@ -1,0 +1,93 @@
+# Standalone QModem SDK builds and persistent GitHub prerelease assets.
+# QModem has its own release series: no MedveModem SDK rebuild or CI-artifact dependency.
+name: qmodem
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/build-qmodem.sh'
+      - '.github/workflows/qmodem.yml'
+      - 'Makefile'
+  pull_request:
+    paths:
+      - 'tools/build-qmodem.sh'
+      - '.github/workflows/qmodem.yml'
+      - 'Makefile'
+  workflow_dispatch:
+
+concurrency:
+  group: qmodem-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: QModem ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64_cortex-a53, aarch64_generic, x86_64]
+        release: ['25.12.6', '24.10.8']
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build pinned QModem in matching OpenWrt SDK
+        run: sh tools/build-qmodem.sh "${{ matrix.arch }}" "${{ matrix.release }}"
+      - name: Upload QModem archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: qmodem-${{ matrix.arch }}-${{ matrix.release }}
+          path: dist/qmodem-${{ matrix.arch }}-${{ matrix.release }}/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish QModem prerelease
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qmodem-*
+          path: qmodem-artifacts
+          merge-multiple: false
+      - name: Verify six QModem archives and create checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^QMODEM_VERSION:=//p' Makefile | head -1)
+          [ -n "$version" ]
+          mkdir -p release-assets
+          for arch in aarch64_cortex-a53 aarch64_generic x86_64; do
+            for release in 25.12.6 24.10.8; do
+              line="${release%.*}"
+              source="qmodem-artifacts/qmodem-$arch-$release/qmodem-$version-$arch-$line.tar.gz"
+              [ -s "$source" ] || { echo "Missing expected archive: $source" >&2; exit 1; }
+              tar -tzf "$source" >/dev/null
+              cp "$source" release-assets/
+            done
+          done
+          [ "$(find release-assets -type f -name '*.tar.gz' | wc -l)" -eq 6 ]
+          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
+          printf 'QMODEM_TAG=qmodem-%s-r1\n' "$version" >> "$GITHUB_ENV"
+      - name: Publish permanent GitHub Release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$QMODEM_TAG" >/dev/null 2>&1; then
+            echo "Release $QMODEM_TAG already exists; refusing to overwrite pinned assets" >&2
+            exit 1
+          fi
+          gh release create "$QMODEM_TAG" release-assets/* \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "QModem $QMODEM_TAG for MedveModem" \
+            --notes "Pinned QModem core built from FUjr/QModem for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK). Six architecture/firmware archives and SHA256SUMS. No QModem LuCI. Experimental; validate on hardware before production. These persistent GitHub Release assets are used by MedveModem LuCI auto-install."
