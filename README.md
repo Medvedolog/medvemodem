@@ -20,6 +20,10 @@
 
 [Unknown modem / Неизвестный модем — отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report) · [Report a bug](https://github.com/Medvedolog/medvemodem/issues/new) · [Build status](https://github.com/Medvedolog/medvemodem/actions) · [Source](https://github.com/Medvedolog/medvemodem)
 
+**[Screenshots / Скриншоты интерфейса — 12 изображений](screenshots/README.md)**
+
+[![MedveModem LuCI: главные карточки модемов, резервные каналы и состояние связи](screenshots/01-modems-cards.png)](screenshots/README.md)
+
 </div>
 
 > [!WARNING]
