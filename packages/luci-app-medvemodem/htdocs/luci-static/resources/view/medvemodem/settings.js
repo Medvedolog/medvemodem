@@ -416,11 +416,13 @@ return view.extend({
 		k.pick = E('select', { 'class': 'mm-select', id: 'mm-wlc-dev' }, E('option', { value: '*' }, _('All channels')));
 		k.say = E('p', { 'class': 'mm-faint mm-wlc-say', role: 'status', hidden: '' });
 		k.out = E('div', { 'class': 'mm-wlc-out' });
+		/* One dismissible diagnostic after the whole run, not a per-route 0/N balloon. */
+		k.verdict = mm.dismissible(E('div', { 'class': 'mm-callout is-info mm-wlc-result', hidden: '' }), 'medvemodem:whitelist-check');
 		k.run = E('button', { type: 'button', 'class': 'mm-btn is-primary mm-wlc-run', disabled: true, click: mm.busy(function() { return self.wlCheck(); }) }, _('Check the services'));
 		return this.sec('set-wl-check', _('Service check'), [
 			E('p', { 'class': 'mm-faint' }, _('Through the chosen channel, even if another one is main: do the services open. About 10 seconds a channel and less than 1 MB of traffic. Yandex, VK and Wildberries are for comparison: under whitelists only such open.')),
 			E('label', { 'for': 'mm-wlc-dev', 'class': 'mm-field' }, [E('span', { 'class': 'mm-dim' }, _('Channel')), k.pick]),
-			E('div', { 'class': 'mm-row' }, k.run), k.say, k.out]);
+			E('div', { 'class': 'mm-row' }, k.run), k.say, k.out, k.verdict]);
 	},
 
 	wlCheck: function() {
@@ -428,7 +430,7 @@ return view.extend({
 		var devs = all ? Array.prototype.slice.call(k.pick.options, 1).map(function(o) { return [o.value, o.textContent]; }) :
 			[[k.pick.value, (k.pick.selectedOptions[0] || {}).textContent]];
 		if (!devs.length || k.running) return Promise.resolve();
-		k.running = true; k.run.disabled = true; k.say.hidden = false; k.out.replaceChildren();
+		k.running = true; k.run.disabled = true; k.say.hidden = false; k.verdict.hidden = true; k.out.replaceChildren();
 		var got = [];
 		return devs.reduce(function(p, d) {
 			return p.then(function() {
@@ -443,6 +445,30 @@ return view.extend({
 		}, Promise.resolve()).then(function() {
 			k.running = false; k.run.disabled = false;
 			text(k.say, _('Checked at %s.').format(new Date().toLocaleTimeString(mm.LANG)));
+			/* The whitelist diagnosis needs positive reachability of an allowed-site control.
+			 * All failures are not proof of an operator whitelist. */
+			var suspicious = [], clear = [], unknown = [];
+			got.forEach(function(g) {
+				var services = g.res || [], open = services.filter(function(x) { return x.group === 'open'; }),
+					allow = services.filter(function(x) { return x.group === 'list'; });
+				if (!open.length || !allow.length || !g.res) { unknown.push(g.name); return; }
+				if (open.some(function(x) { return x.verdict === 'ok'; })) clear.push(g.name);
+				else if (allow.some(function(x) { return x.verdict === 'ok'; }) &&
+					open.some(function(x) { return x.verdict !== 'tunnel'; }))
+					suspicious.push(g.name);
+				else unknown.push(g.name);
+			});
+			var diagnosis = suspicious.length ? _('Possible operator whitelist on: %s. Ordinary sites fail while control sites answer.').format(suspicious.join(', ')) :
+				clear.length ? _('No whitelist signs on the checked routes: ordinary internet sites respond.') :
+				_('Whitelist mode cannot be determined: no control-site response or insufficient results.');
+			if (unknown.length && (suspicious.length || clear.length))
+				diagnosis += ' ' + _('Inconclusive routes: %s.').format(unknown.join(', '));
+			k.verdict.classList.toggle('is-err', !!suspicious.length);
+			k.verdict.classList.toggle('is-ok', !suspicious.length && !!clear.length && !unknown.length);
+			var close = k.verdict.querySelector('.mm-dismiss');
+			k.verdict.replaceChildren(E('strong', {}, _('Whitelist diagnosis')), E('span', {}, diagnosis));
+			if (close) k.verdict.appendChild(close);
+			mm.bannerShow(k.verdict, true);
 			if (!all) {
 				var g = got[0], body = E('tbody');
 				if (!g.res) { text(k.say, _('The check did not run: %s.').format(g.err)); return; }
