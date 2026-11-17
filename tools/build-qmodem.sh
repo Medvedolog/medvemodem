@@ -54,7 +54,7 @@ CONFIG_PACKAGE_quectel-CM-5G-M=m
 EOF
 make defconfig >/dev/null
 for pkg in qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M qmodem; do
-  make -j"$JOBS" "package/$pkg/compile" V=s || make -j1 "package/$pkg/compile" V=s
+  make -j"$JOBS" "package/feeds/qmodem/$pkg/compile" V=s || make -j1 "package/feeds/qmodem/$pkg/compile" V=s
 done
 for pkg in qmodem qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M; do
   matches=$(find bin/packages -type f \( -name "$pkg-*.apk" -o -name "${pkg}_*.ipk" \) | wc -l)
