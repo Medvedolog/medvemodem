@@ -84,8 +84,15 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$QMODEM_TAG" >/dev/null 2>&1; then
-            echo "Release $QMODEM_TAG already exists; refusing to overwrite pinned assets" >&2
-            exit 1
+            echo "Release $QMODEM_TAG already exists; verifying permanent assets rather than overwriting"
+            published=$(gh release view "$QMODEM_TAG" --json assets --jq '.assets[].name')
+            for expected in release-assets/*; do
+              printf '%s\n' "$published" | grep -Fxq "$(basename "$expected")" || {
+                echo "Existing release missing $(basename "$expected")" >&2; exit 1;
+              }
+            done
+            echo "All seven persistent assets already published"
+            exit 0
           fi
           gh release create "$QMODEM_TAG" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
