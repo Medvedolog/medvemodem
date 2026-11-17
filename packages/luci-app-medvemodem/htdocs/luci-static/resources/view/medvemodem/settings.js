@@ -381,12 +381,48 @@ return view.extend({
 		});
 	},
 
+	/* A physical modem, not the operator's custom label: the same hardware identity
+	 * in the status table, test selector, and the matrix. WAN stays named as WAN. */
+	modemForPath: function(p) {
+		var paths = list((this.uplinkData || {}).paths), id = p.device_id, dev = p.device, iface = p.interface;
+		if (!id) paths.forEach(function(x) {
+			if (!id && x && ((dev && x.device === dev) || (iface && x.interface === iface)))
+				id = x.device_id;
+		});
+		return list(this.devices).filter(function(d) {
+			if (id && d.device_id === id) return true;
+			var ports = d.ports || {}, conn = d.connection || {}, session = d.session || {};
+			return !!(dev && (conn.device === dev || conn.netdev === dev ||
+				list(ports.net).some(function(n) { return n === dev || (n && (n.node === dev || n.name === dev)); }) ||
+				(session.netifd || {}).device === dev));
+		})[0] || null;
+	},
+
+	modemTitle: function(d) {
+		if (!d) return '';
+		var profile = d.profile || {}, mmgr = d.modemmanager || {};
+		return words(mmgr.model) || words(profile.title) || words(d.product) ||
+			words(d.name) || words(profile.id) || '';
+	},
+
+	modemOperator: function(d) {
+		if (!d) return '';
+		var m = d.modemmanager || {}, sim = d.sim_operator || {}, read = d.reading || {},
+			web = d.web || {};
+		return words(m.operator) || words(read.operator) || words(web.operator) ||
+			words(d.operator) || (sim.code ? String(sim.code) : '') ||
+			words(m.operator_code) || '';
+	},
+
+	channelTitle: function(p) {
+		var modem = this.modemForPath(p), name = this.modemTitle(modem);
+		return name ? name + ' (' + (p.interface || p.device || 'USB') + ')' :
+			words(p.name) || words(p.interface) || words(p.device) || '—';
+	},
+
 	/* each channel now, from the engine's uplink: open, the whitelist only, the internet through the tunnel, silent */
 	wlNowCard: function() {
-		var self = this, u = this.uplinkData, tunnel = (u.tunnel || {}).ok === true, names = {};
-		var given = {};
-		Object.keys(this.names || {}).forEach(function(k) { var n = self.names[k]; if (n && n.device_id && words(n.name)) given[n.device_id] = words(n.name); });
-		list(this.devices).forEach(function(d) { names[d.device_id] = given[d.device_id] || words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || d.device_id; });
+		var self = this, u = this.uplinkData, tunnel = (u.tunnel || {}).ok === true;
 		/* the main first, then the backups in their priority (the route metric), numbered as the dashboard numbers them (the
 		 * owner, 2026-11-16: «резерв номер какой надо бы писать, мы же уже знаем») */
 		var isMain = function(p) { return p.role === 'carrying' || p.role === 'limited'; };
@@ -399,13 +435,22 @@ return view.extend({
 				r.ok === true ? [_('the whole internet'), 'ok'] : r.ok === false ? [_('no internet'), 'err'] : [_('not checked yet'), 'idle'];
 			/* the main channel filled (the owner, 2026-11-12: «основной надо выделять заливкой») */
 			var main = pth.role === 'carrying' || pth.role === 'limited';
-			return E('tr', { 'class': main ? 'mm-wl-main' : '' }, [E('td', {}, names[pth.device_id] || words(pth.name) || pth.device || '—'),
+			return E('tr', { 'class': main ? 'mm-wl-main' : '' }, [E('td', {}, self.channelTitle(pth)),
+				E('td', {}, self.modemOperator(self.modemForPath(pth)) || '—'),
 				E('td', {}, E('span', { 'class': 'mm-light is-' + st[1] }, [E('i'), st[0]])),
 				E('td', { 'class': 'mm-faint' }, isMain(pth) ? _('main') : backups > 1 ? _('backup %d').format(++nth) : _('backup'))]);
 		});
 		return this.sec('set-wl-now', _('Now'), [rows.length ?
-			E('table', { 'class': 'mm-table mm-wl-now' }, [E('thead', {}, E('tr', {}, [E('th', {}, _('Channel')), E('th', {}, _('Channel status')), E('th', {}, _('Role'))])),
+			E('table', { 'class': 'mm-table mm-wl-now' }, [E('thead', {}, E('tr', {}, [E('th', {}, _('Channel')), E('th', {}, _('Mobile operator')), E('th', {}, _('Channel status')), E('th', {}, _('Role'))])),
 				E('tbody', {}, rows)]) : E('p', { 'class': 'mm-faint' }, _('No channel is checked yet.')),
+			E('p', { 'class': 'mm-faint' }, (function() {
+				var times = paths.map(function(p) { var r = p.reach || {};
+					return r.checked_at || r.at || r.last_at || p.checked_at || p.reach_at || 0; })
+					.filter(function(v) { return typeof v === 'number' && v > 1000000000; });
+				return times.length ? _('Last channel check: %s').format(
+					new Date(Math.max.apply(null, times) * 1000).toLocaleString(mm.LANG)) :
+					_('Last channel check: not reported by the engine');
+			})()),
 			E('p', { 'class': 'mm-faint' }, _('A channel counts as «the whitelist only» when the main check addresses are silent and the whitelist ones answer. MedveModem does not restart such a modem and moves the traffic to a free channel when there is one.'))]);
 	},
 
