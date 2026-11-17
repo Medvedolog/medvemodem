@@ -20,6 +20,23 @@ df -h /overlay
 
 ## Структура релизов и состав установки
 
+## Зависимости APK / OPKG
+
+Полный проверенный перечень **всех объявленных зависимостей каждого пакета** (`DEPENDS`/`EXTRA_DEPENDS`), включая QModem, находится в **[таблице зависимостей](DEPENDENCIES.md)**. Они одинаковы по смыслу для `apk` (OpenWrt 25.12.6) и `opkg` (24.10.8); пакетный менеджер подтягивает их из репозиториев прошивки, а не из GitHub Release.
+
+| Что ставим | Что требует пакетный менеджер |
+| --- | --- |
+| Движок `medvemodem` | `libjson-c`, `jsonfilter`, `modemmanager`, `qmi-utils` |
+| `luci-app-medvemodem` | `luci-base` и **точно совпадающий** `medvemodem` |
+| Telegram-бот | `medvemodem`, `ucode`, `ucode-mod-{ubus,uloop,fs,uci,log,digest}`, `curl`, `ca-bundle`, `jq` |
+| LuCI Telegram-бота | `luci-base`, `medvemodem-bot`, `luci-app-medvemodem` |
+| lpac/eSIM | `libcurl`; транспортные плагины при выборе дополнительно требуют `uqmi` / `libmbim` / `libqmi` |
+| QModem Core (отдельный релиз) | USB `kmod-*`, `tom_modem`, `ubus-at-daemon`, `modem_scan`, `sms-tool_q`, `jq`, `flock`, `bc`, `coreutils`, `xxd`, `usbutils` и другие — **полный точный список в таблице** |
+
+В частности, QModem объявляет `kmod-usb3` даже на устройствах без порта USB 3.0; установка возможна только при наличии совместимого пакета в feeds. **Нельзя** ставить `kmod-*` от другого ядра или обходить зависимости принудительными флагами. Сперва обновите списки `apk update` **или** `opkg update`, затем устанавливайте только выбранные пакеты из архива: зависимости разрешаются автоматически.
+
+
+
 Открывайте **[GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)**, а не исходники в «Source code» и не временные артефакты Actions. Для одного роутера нужен **один** архив MedveModem, точно соответствующий `DISTRIB_ARCH` и версии OpenWrt: `medvemodem-<версия>-<архитектура>-<24.10.8|25.12.6>.tar.gz`. Внутри уже находятся и обязательные, и необязательные пакеты; **не требуется устанавливать всё содержимое**.
 
 | Пакет | Назначение | Установка |
