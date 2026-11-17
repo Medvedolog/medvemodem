@@ -456,8 +456,7 @@ return view.extend({
 					.map(function(e) { return { name: words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || d.device_id,
 						t: Number(e.t) || 0, detail: e.detail }; });
 			}, function() { return []; });
-		}));
-		}).then(function(groups) {
+		})).then(function(groups) {
 			var data = [].concat.apply([], groups).sort(function(a, b) { return b.t - a.t; }).slice(0, 30);
 			if (!data.length) { text(k.out, _('No recorded access changes yet.')); return; }
 			var label = { limited: _('Limited access'), ok: _('Full internet restored'), down: _('No internet') };
