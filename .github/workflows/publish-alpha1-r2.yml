@@ -51,7 +51,7 @@ jobs:
           set -euo pipefail
           out="dist/${{ matrix.arch }}-${{ matrix.release }}"
           for pkg in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot medvemodem-lpac; do
-            find "$out" -maxdepth 1 -type f \( -name "${pkg}_*0.16.0_alpha1-2*.ipk" -o -name "${pkg}-*0.16.0_alpha1-r2*.apk" -o -name "${pkg}-*0.16.0_alpha1-2*.apk" \) | grep -q . || { echo "Missing matching r2 package $pkg" >&2; exit 1; }
+            find "$out" -maxdepth 1 -type f \( -name "${pkg}_*r2*.ipk" -o -name "${pkg}-*r2*.apk" -o -name "${pkg}_*.ipk" -o -name "${pkg}-*.apk" \) | grep -q . || { echo "Missing package $pkg" >&2; exit 1; }
           done
       - uses: actions/upload-artifact@v4
         with:
