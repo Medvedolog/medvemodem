@@ -3100,7 +3100,7 @@ return view.extend({
 		f.simSc = E('span', { 'class': 'mm-dim' });
 		f.writeSc = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-sim-smsc-write', click: mm.busy(function() { return self.writeSmsCenter(); }) },
 			_('Write to the SIM card'));
-		f.scRow = E('div', { 'class': 'mm-row', hidden: '' }, [f.simSc, f.writeSc]);
+		f.scRow = E('div', { 'class': 'mm-row mm-sim-smsc-row', hidden: '' }, [f.simSc, f.writeSc]);
 		/* the T99's storage switch (a field recipe, HANDOFF 150): after a modem flash the SMS stop arriving */
 		f.kick = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-sms-storage', click: mm.busy(function() { return self.smsStorageKick(); }) },
 			_('Switch the SMS storage'));
