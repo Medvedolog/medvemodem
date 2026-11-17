@@ -5,6 +5,27 @@
 > [!NOTE]
 > English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
 
+## 0.16.0-alpha1-r3 — 2026-11-18
+
+Alpha 1 r3 prerelease candidate. The GitHub Release and Actions results, not this entry, determine whether publishing completed.
+
+- **Whitelist LuCI layout:** compact summary of checked and limited uplinks; per-modem rows with status, role, operator name when available, and last check time.
+- **Service availability matrix:** All / Unavailable / DNS / TLS-certificate filters, sticky service names when scrolling horizontally, readable channel headings and check timestamps.
+- **Access change history:** displays existing `internet` events (`limited`, `ok`, `down`), plus the duration of completed restricted periods, read through `ubus events` without new modem polling.
+- **Notifications:** SMS send status and a test-SMS action on the whitelist page; Telegram delivery settings remain in the separate bot. Enabled notifications do not imply confirmed delivery.
+- **Responsive layout:** streamlined mobile presentation and collapsed advanced tools.
+- **Documentation:** rewritten operator-whitelist diagnostics guide with neutral wording; user-facing bypass, proxy and tunnel setup suggestions removed.
+- **Package revisions:** core daemon, LuCI, bot and bot LuCI use `0.16.0_alpha1-r3`. No automatic physical SIM-slot switching or new eSIM provisioning functionality was added.
+
+## 0.16.0-alpha1-r2 — 2026-11-17
+
+Published [Alpha 1 r2](https://github.com/Medvedolog/medvemodem/releases/tag/v0.16.0-alpha1-r2).
+
+- **Persistent release downloads:** six platform archives for `aarch64_cortex-a53`, `aarch64_generic` and `x86_64` on OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), including `SHA256SUMS`.
+- **Package set:** MedveModem engine, LuCI, Telegram bot and its LuCI, plus optional lpac.
+- **Pinned QModem dependency:** installer uses the separately published permanent `qmodem-3.3.0_p20261108-r1` release rather than expiring CI build artifacts.
+- Hardware verification remains separate from successful SDK compilation.
+
 ## 0.16.0-alpha1-r1 — 2026-11-16
 
 Public Alpha 1, published from the `0.15.0-r197` source snapshot without functional changes. The package release counter `r1` belongs to the renamed package version; `r197` remains the source baseline in the historical log.
