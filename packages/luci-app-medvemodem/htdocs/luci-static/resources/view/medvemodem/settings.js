@@ -444,11 +444,12 @@ return view.extend({
 			E('table', { 'class': 'mm-table mm-wl-now' }, [E('thead', {}, E('tr', {}, [E('th', {}, _('Channel')), E('th', {}, _('Mobile operator')), E('th', {}, _('Channel status')), E('th', {}, _('Role'))])),
 				E('tbody', {}, rows)]) : E('p', { 'class': 'mm-faint' }, _('No channel is checked yet.')),
 			E('p', { 'class': 'mm-faint' }, (function() {
-				var times = paths.map(function(p) { var r = p.reach || {};
-					return r.checked_at || r.at || r.last_at || p.checked_at || p.reach_at || 0; })
-					.filter(function(v) { return typeof v === 'number' && v > 1000000000; });
-				return times.length ? _('Last channel check: %s').format(
-					new Date(Math.max.apply(null, times) * 1000).toLocaleString(mm.LANG)) :
+				/* The daemon supplies reach.age_s (time since a monotonic probe).
+				 * Reconstruct the wall-clock time from that age, not from page load. */
+				var ages = paths.map(function(p) { return (p.reach || {}).age_s; })
+					.filter(function(v) { return typeof v === 'number' && isFinite(v) && v >= 0; });
+				return ages.length ? _('Last channel check: %s').format(
+					new Date(Date.now() - Math.min.apply(null, ages) * 1000).toLocaleString(mm.LANG)) :
 					_('Last channel check: not reported by the engine');
 			})()),
 			E('p', { 'class': 'mm-faint' }, _('A channel counts as «the whitelist only» when the main check addresses are silent and the whitelist ones answer. MedveModem does not restart such a modem and moves the traffic to a free channel when there is one.'))]);
@@ -518,7 +519,9 @@ return view.extend({
 				var g = got[0], body = E('tbody');
 				if (!g.res) { text(k.say, _('The check did not run: %s.').format(g.err)); return; }
 				body.replaceChildren.apply(body, ncRows(g.res));
-				k.out.replaceChildren(ncTable(body));
+				var table = ncTable(body);
+				table.hidden = false;
+				k.out.replaceChildren(table);
 				return;
 			}
 			/* all: the services down, the channels across */
