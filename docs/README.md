@@ -11,7 +11,7 @@
 | Раздел / Topic | Русский | English |
 |---|---|---|
 | Установка / Installation | [INSTALL.md](INSTALL.md) | [INSTALL.en.md](INSTALL.en.md) |
-| Белые списки мобильного интернета / Russian mobile whitelist guide | [WHITELISTS-RU.md](WHITELISTS-RU.md) | [Русское руководство](WHITELISTS-RU.md) |
+| Настройка при белых списках оператора / Operator whitelist setup | [WHITELISTS-RU.md](WHITELISTS-RU.md) | [Русское руководство](WHITELISTS-RU.md) |
 | Сборка / Building | [BUILDING.md](BUILDING.md) | [BUILDING.en.md](BUILDING.en.md) |
 | Краткое руководство / User guide | [USER-GUIDE.md](USER-GUIDE.md) | [USER-GUIDE.en.md](USER-GUIDE.en.md) |
 | Полное руководство / Manual | [MANUAL.md](MANUAL.md) | [MANUAL.en.md](MANUAL.en.md) |
