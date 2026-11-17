@@ -563,9 +563,9 @@ return view.extend({
 			E('a', { href: L.url('admin/modem/medvemodem/settings') + '#set-alerts' }, _('Open') + ' →')]);
 		var bot = E('a', { 'class': 'mm-btn is-quiet mm-wl-bot', href: L.url('admin/modem/medvemodem/bot/settings') }, _('The bot\'s notifications in LuCI'));
 		return this.sec('set-wl-alerts', _('Notifications'), [
-			this.group(_('SMS alert')), a.wlRows[0], a.wlRows[1], E('div', { 'class': 'mm-actions' }, [save]), a.out, off,
+			this.group(_('SMS alert')), a.wlRows[0], a.wlRows[1], E('div', { 'class': 'mm-actions' }, [save, a.test]), a.out, a.state, off,
 			this.group(_('Telegram bot')),
-			E('p', { 'class': 'mm-faint' }, _('The bot says when a channel is left with the whitelist only and when it is lifted; the kinds and the quiet hours are in its settings: in LuCI, or in Telegram with /settings. Its «🚧 Whitelists» button shows the channels, switches the whitelist mode and runs the blocking test.')),
+			E('p', { 'class': 'mm-faint' }, _('Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable.')),
 			E('div', { 'class': 'mm-row' }, bot)]);
 	},
 
