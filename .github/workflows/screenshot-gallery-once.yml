@@ -21,7 +21,10 @@ jobs:
           set -euo pipefail
           test -f screenshots/medvemodem-screenshots-ready.zip
           mkdir -p /tmp/medvemodem-gallery
+          unzip -t screenshots/medvemodem-screenshots-ready.zip | tail -3
+          unzip -Z1 screenshots/medvemodem-screenshots-ready.zip
           unzip -q screenshots/medvemodem-screenshots-ready.zip -d /tmp/medvemodem-gallery
+          find /tmp/medvemodem-gallery -type f | sort
           test -f /tmp/medvemodem-gallery/screenshots/README.md
           test -f /tmp/medvemodem-gallery/screenshots/01-modems-cards.png
           test -f /tmp/medvemodem-gallery/screenshots/12-site-access-speed-check.png
