@@ -53,8 +53,13 @@ CONFIG_PACKAGE_modem_scan=m
 CONFIG_PACKAGE_quectel-CM-5G-M=m
 EOF
 make defconfig >/dev/null
-for pkg in qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M qmodem; do
-  make -j"$JOBS" "package/feeds/qmodem/$pkg/compile" V=s || make -j1 "package/feeds/qmodem/$pkg/compile" V=s
+# Build targets use upstream source directory names, not binary package names.
+# In particular, ubus-at-daemon lives in ubus_at_daemon and
+# quectel-CM-5G-M in quectel_CM_5G_M.
+for src in qmodem-seal tom_modem ubus_at_daemon sms-tool_q modem_scan quectel_CM_5G_M qmodem; do
+  target="package/feeds/qmodem/$src/compile"
+  [ -f "package/feeds/qmodem/$src/Makefile" ] || { echo "Missing feed source: $src" >&2; exit 1; }
+  make -j"$JOBS" "$target" V=s || make -j1 "$target" V=s
 done
 for pkg in qmodem qmodem-seal tom_modem ubus-at-daemon sms-tool_q modem_scan quectel-CM-5G-M; do
   matches=$(find bin/packages -type f \( -name "$pkg-*.apk" -o -name "${pkg}_*.ipk" \) | wc -l)
