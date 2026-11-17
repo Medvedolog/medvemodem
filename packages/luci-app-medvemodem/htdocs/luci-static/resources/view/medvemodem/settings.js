@@ -1496,10 +1496,18 @@ return view.extend({
 	updateDraw: function(j) {
 		var u = this.up, ins = j.installed || {}, running = j.state === 'running';
 		var row = function(k, v) { return [E('dt', {}, k), E('dd', {}, v || '—')]; };
+		/* OpenWrt package managers spell alpha1 as _alpha1 and releases as -alpha1-r1.
+		 * Normalize only for display; the updater itself compares installed packages. */
+		var pretty = function(v) { return String(v || '').replace(/_alpha([0-9]+)/, '-alpha$1').replace(/-(\\d+)$/, '-r$1'); };
+		var versionLink = j.tag && /^[A-Za-z0-9._-]+$/.test(j.tag) && /^[A-Za-z0-9_-]+\\/[A-Za-z0-9_.-]+$/.test(j.repo || '') ?
+			E('a', { href: 'https://github.com/' + j.repo + '/releases/tag/' + j.tag, target: '_blank', rel: 'noopener noreferrer' }, pretty(j.latest)) : pretty(j.latest);
 		u.latest = j.latest;
 		u.kv.replaceChildren.apply(u.kv, [].concat(
-			row(_('Installed'), ins.engine ? ins.engine + (ins.bot ? ' · ' + _('bot %s').format(ins.bot) : '') : _('not installed')),
-			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('newer') : ' · ' + _('this one')) : j.error ? _('unknown: %s').format(j.error) : _('not checked yet')),
+			row(_('Installed'), ins.engine ? pretty(ins.engine) : _('not installed')),
+			ins.luci && ins.luci !== ins.engine ? row(_('LuCI version'), pretty(ins.luci) + ' · ' + _('does not match the engine')) : [],
+			ins.bot ? row(_('Telegram bot'), pretty(ins.bot)) : [],
+			row(_('Available'), j.latest ? [versionLink, ' · ', j.newer ? _('update available') : _('already installed')] : j.error ? _('Check failed: %s').format(j.error) : _('Not checked yet')),
+			row(_('Channel'), j.channel === 'bench' ? _('Test builds') : _('Published releases')),
 			row(_('Checked'), j.checked_at ? new Date(j.checked_at * 1000).toLocaleString(mm.LANG) : '—')));
 		/* what is new since the installed version: the release's short highlights, by version (the owner, 2026-11-14) */
 		var news = list(j.highlights).filter(function(h) { return h && h.t; }), by = [], cur = null;
@@ -1509,12 +1517,12 @@ return view.extend({
 			return E('div', { 'class': 'mm-up-ver' }, [E('div', { 'class': 'mm-faint' }, g.v),
 				E('ul', {}, g.t.map(function(t) { return E('li', {}, t); }))]);
 		})) : []);
-		u.btn.hidden = !j.newer;
+		u.btn.hidden = !j.newer || !!j.error || running;
 		u.btn.disabled = running;
 		text(u.btn, j.latest ? _('Update to %s').format(j.latest) : _('Update'));
-		var gist = j.newer ? _('update %s available').format(j.latest) : j.latest ? _('the newest') : '';
+		var gist = j.error ? _('Update check failed') : j.newer ? _('update %s available').format(pretty(j.latest)) : j.latest ? _('up to date') : '';
 		if (this.upGist) text(this.upGist, gist);
-		text(u.out, running ? _('Updating, the log is below.') : j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
+		text(u.out, j.error ? _('Update check failed: %s').format(j.error) : running ? _('Updating, the log is below.') : j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
 			j.state === 'done' && j.result && j.result !== 'current' ? _('Updated to %s.').format(j.result) : '');
 		return running;
 	},
@@ -1525,7 +1533,7 @@ return view.extend({
 		return fs.exec(SELFUP, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			if (!j.ok) { text(u.out, _('The update script does not answer.')); return; }
 			/* over an hour since the last check: ask again by itself, once when the card opens */
-			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at > 3600) && !j.error)
+			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at > 3600) )
 				return fs.exec(SELFUP, ['check']).then(parse, function() { return j; }).then(function(k) { self.updateDraw(k.ok ? k : j); });
 			var running = self.updateDraw(j);
 			if (!running && j.state !== 'failed' && j.state !== 'done') return;
