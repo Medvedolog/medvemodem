@@ -239,38 +239,26 @@ mediatek/filogic, Nokia XG-040G-MD (Airoha AN7581, снапшот), x86_64.
 Остальные модели из каталога опознаются и получают безопасные настройки; всё, что меняет модем, для них выключено
 до проверки на стенде.
 
-## Установка
+## Установка и обновление
 
-Скачайте со страницы последней стендовой сборки архивы для своей линии OpenWrt и архитектуры
-(`aarch64_cortex-a53`, `aarch64_generic`, `x86_64`):
+**[Полная инструкция: структура релизов, обязательные и опциональные пакеты](docs/INSTALL.md)** · **[English installation / release layout](docs/INSTALL.en.md)**
 
-- `medvemodem-<версия>-<архитектура>-<линия>.tar.gz` — движок, LuCI и lpac для eSIM;
-- `medvemodem-bot-<версия>-<линия>.tar.gz` — Telegram-бот и его страница в LuCI (по желанию);
-- `qmodem-3.3.0-<архитектура>-<линия>.tar.gz` — ядро QModem для FM350 и Quectel (можно поставить и позже из
-  LuCI, «Настройки» → «Диагностика и компоненты»).
+Скачайте **один** архив MedveModem для своего `DISTRIB_ARCH` и точной версии OpenWrt (`24.10.8` или `25.12.6`) со страницы [Releases](https://github.com/Medvedolog/medvemodem/releases). Архив `medvemodem-<версия>-<архитектура>-<версия OpenWrt>.tar.gz` содержит обязательные `medvemodem` + `luci-app-medvemodem` **одной версии**, а также опциональные Telegram-бот с LuCI и lpac для eSIM. **Не устанавливайте все пакеты из архива подряд.** Выбирайте дополнительные компоненты только по потребности.
 
 ```sh
-# OpenWrt 25.12 (apk)
-tar xzf medvemodem-*.tar.gz && apk update
+# Распакуйте только свой архив в отдельный каталог, затем:
+# OpenWrt 25.12.6 (APK)
+apk update
 apk add --allow-untrusted ./medvemodem-0*.apk ./luci-app-medvemodem-*.apk
-/etc/init.d/rpcd restart
 
-# OpenWrt 24.10 (opkg)
-tar xzf medvemodem-*.tar.gz && opkg update
+# ИЛИ OpenWrt 24.10.8 (IPK)
+opkg update
 opkg install ./medvemodem_*.ipk ./luci-app-medvemodem_*.ipk
 ```
 
-`medvemodem-lpac*` из того же архива — только для eSIM. Всё, что нужно модемам, кроме самого MedveModem, ставится и из
-LuCI без SSH: «Модем» → «MedveModem» → «Настройки» → «Диагностика и компоненты» — ModemManager, драйверы ядра,
-umbim/uqmi, usb-modeswitch, qmi-utils и QModem, кнопками с журналом; сначала пробный прогон, работающий ModemManager
-не перезапускается.
+**QModem устанавливается отдельно и не обязателен**: [постоянный выпуск QModem 3.3.0_p20261108-r1](https://github.com/Medvedolog/medvemodem/releases/tag/qmodem-3.3.0_p20261108-r1) содержит шесть архивов под три архитектуры и линии OpenWrt 24.10/25.12 плюс `SHA256SUMS`. Его можно установить через «Модем» → «MedveModem» → «Настройки» → «Диагностика и компоненты», если нужен исполнитель QModem. Чужой LuCI QModem в комплект не входит. Здесь же по необходимости ставятся ModemManager, драйверы, umbim/uqmi и lpac.
 
-Движок и LuCI ставятся только парой одной версии. Новая сборка ставится поверх, настройки
-(`/etc/config/medvemodem`) сохраняются.
-
-Не ставьте MedveModem рядом с другими менеджерами модемов
-(страница «Модемы» предупредит о них): два менеджера на
-одном модеме мешают друг другу. QModem MedveModem ведёт сам.
+Обновление MedveModem из LuCI заменяет движок и его LuCI совместной версией; Telegram-бот и его LuCI обновляются только при наличии установленного бота. Канал `bench` видит `bench-v*`, канал `release` — `v*` (включая `v0.16.0-alpha1-r*`). Проверка новых версий и запуск установки выполняются из LuCI **по действию администратора**; бесконтрольное фоновое обновление не предполагается. У QModem отдельный установщик, скачивающий закреплённую сборку с проверкой SHA256. Сохраняйте резервный доступ к роутеру.
 
 ## Первые шаги
 
