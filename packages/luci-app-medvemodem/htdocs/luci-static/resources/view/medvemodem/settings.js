@@ -1498,8 +1498,8 @@ return view.extend({
 		var row = function(k, v) { return [E('dt', {}, k), E('dd', {}, v || '—')]; };
 		/* OpenWrt package managers spell alpha1 as _alpha1 and releases as -alpha1-r1.
 		 * Normalize only for display; the updater itself compares installed packages. */
-		var pretty = function(v) { return String(v || '').replace(/_alpha([0-9]+)/, '-alpha$1').replace(/-(\\d+)$/, '-r$1'); };
-		var versionLink = j.tag && /^[A-Za-z0-9._-]+$/.test(j.tag) && /^[A-Za-z0-9_-]+\\/[A-Za-z0-9_.-]+$/.test(j.repo || '') ?
+		var pretty = function(v) { return String(v || '').replace(/_alpha([0-9]+)/, '-alpha$1').replace(/-(\d+)$/, '-r$1'); };
+		var versionLink = j.tag && /^[A-Za-z0-9._-]+$/.test(j.tag) && /^[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/.test(j.repo || '') ?
 			E('a', { href: 'https://github.com/' + j.repo + '/releases/tag/' + j.tag, target: '_blank', rel: 'noopener noreferrer' }, pretty(j.latest)) : pretty(j.latest);
 		u.latest = j.latest;
 		u.kv.replaceChildren.apply(u.kv, [].concat(
@@ -1533,7 +1533,7 @@ return view.extend({
 		return fs.exec(SELFUP, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			if (!j.ok) { text(u.out, _('The update script does not answer.')); return; }
 			/* over an hour since the last check: ask again by itself, once when the card opens */
-			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at > 3600) )
+			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at> 3600))
 				return fs.exec(SELFUP, ['check']).then(parse, function() { return j; }).then(function(k) { self.updateDraw(k.ok ? k : j); });
 			var running = self.updateDraw(j);
 			if (!running && j.state !== 'failed' && j.state !== 'done') return;
