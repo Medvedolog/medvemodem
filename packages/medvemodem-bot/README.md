@@ -1,5 +1,9 @@
 # MedveModem Bot
 
+**Зависимости `apk`/`opkg`:** `medvemodem` (не ниже версии бота), `ucode`, `ucode-mod-ubus`, `ucode-mod-uloop`, `ucode-mod-fs`, `ucode-mod-uci`, `ucode-mod-log`, `ucode-mod-digest`, `curl`, `ca-bundle`, `jq`. Для веб-страниц бота дополнительно `luci-app-medvemodem-bot` (зависит от `luci-base`, `luci-app-medvemodem`, `medvemodem-bot`). Всё ставится через `apk` или `opkg` из feeds и архива MedveModem; [вся матрица зависимостей](../../docs/DEPENDENCIES.md).
+
+
+
 Telegram-бот для роутера с [MedveModem](../../README.md): оповещения о модемах и каналах, сводка, входящие SMS и
 журнал в личном чате администратора. Отдельный пакет `medvemodem-bot` (и страница LuCI `luci-app-medvemodem-bot`);
 модемами он не управляет сам — всё спрашивает у движка MedveModem через ubus и делает только то, что движок
