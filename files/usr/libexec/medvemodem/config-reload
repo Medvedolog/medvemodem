@@ -130,7 +130,7 @@ qm_dial_process_exists() {
 	local section="$1" proc cmd
 	for proc in /proc/[0-9]*; do
 		[ -r "$proc/cmdline" ] || continue
-		cmd=$(tr '\\000' ' ' < "$proc/cmdline" 2>/dev/null) || continue
+		cmd=$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null) || continue
 		case "$cmd" in *"/usr/share/qmodem/modem_dial.sh $section dial"*) return 0 ;; esac
 	done
 	return 1
