@@ -92,3 +92,21 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - The r6 package candidate is PR #9, combining PR #8 fixes and the bot update-version regex correction. Release CI must publish all six SDK tarballs, `SHA256SUMS` and `HIGHLIGHTS.txt`; until then, an installer 404 is expected.
 - User requested verifying Telegram update checks: `update.uc` consumes `self-update status`, checks every 12 hours, then notifies once for a newer version; `updview.uc` did not accept underscores in APK version strings. r6 corrects this. No bot hardware verification for r6 has been completed.
 - Never claim the new installer lifecycle is tested because the previous r3→r5 successful upgrade happened **before** quiescence was added.
+
+## 11. r6 field regression: blank LuCI modem detail and mandatory pre-release QA (2026-11-19)
+
+**Field evidence, R3S-Himki / OpenWrt 25.12.6 / aarch64_generic:**
+- The published r6 `common.js`, `dashboard.js` and `modem.js` files on the router matched the `v0.16.0-alpha1-r6` source byte for byte (verified by SHA256). `ubus call medvemodem devices` and `ubus call medvemodem device` returned valid objects; the device was `EP06-E` with health `ok`.
+- The LuCI detail page was blank until a temporary diagnostic view revealed: `Unable to display modem data: mm.setOwnerBadge is not a function`. The owner badge is an optional feature introduced in r6; an older cached `medvemodem.common` module may omit this method even when the on-disk file is r6. A matching VERSION constant alone does not prove the browser loaded the matching module.
+- A guarded `typeof mm.setOwnerBadge === 'function'` fallback restored the modem card on hardware. LuCI must never lose basic controls because a decoration/helper API is missing. The view now leaves panels visible during RPC/render failures and shows diagnostic messages.
+- PR #6 was behind main: `common.js` and `dashboard.js` were r5 and `modem.js` was r1/r6 at different points, despite a clean r6 tag. The branch's LuCI files were synchronized to r6; PR remains subject to merge-conflict review.
+
+**Release gate implementation in PR #6:**
+- `tests/test-luci-frontend.py`: shared/public `mm.*` API contract, exact view/common version consistency, optional badge fallback and visible error contract. This caught the branch's mixed r5/r6 files and failed CI until corrected.
+- `tests/test-luci-browser.cjs`: headless Chromium loads the *actual* LuCI modem view JS with stubbed LuCI/browser dependencies, simulates failed `device` RPC and rendering errors and executes the owner's badge fallback with an older common API. This is a smoke test, not full router or all-modem UI integration.
+- `.github/workflows/build.yml` gates every six-architecture OpenWrt build and release publication behind `luci-contracts` AND `luci-browser` jobs. `.github/workflows/ssh-installer-tests.yml` executes both on the development branch. Branch protection should require these checks on main before merging.
+- Test instructions locally: `python3 tests/test-luci-frontend.py`; `npm install --no-save --no-package-lock playwright@1.58.2 && npx playwright install chromium && node tests/test-luci-browser.cjs`. CI installs Chromium OS dependencies.
+- **Still required before r7:** test branch CI green, merge safely after resolving PR #6 conflicts, inspect the resulting diff for obsolete r5 code, test actual OpenWrt router in normal browser and incognito, APK/IPK clean install/update/reinstall, and verify fallback against older cached common module. Release should not advance merely because package compilation succeeded.
+
+**Installer neighbour false positive also corrected:** an orphaned `/etc/config/5gmodem` UCI file emits `WARN residual-config` for installer preflight, not `BLOCK`, and is excluded as a 5gmodem package from normal LuCI JSON; live 5gmodem hotplug remains a block.
+
