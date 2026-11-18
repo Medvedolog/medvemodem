@@ -24,6 +24,9 @@ esac
 ROOT=${MEDVEMODEM_NEIGHBOURS_ROOT:-}
 PROC=${MEDVEMODEM_NEIGHBOURS_PROC:-/proc}
 
+# Additional signatures from third-party OpenWrt modem ecosystems. The
+# display and SSH preflight share this file, rather than maintaining lists in
+# two separate installers. These are evidence markers, not removal orders.
 # id|files (the first that is there names the package; any listed may be)|init scripts|process names|cron word
 KNOWN='5gmodem|/etc/hotplug.d/usb/21-5gmodem-usbmode-extra /etc/hotplug.d/usb/62-5gmodem-fastboot-rescue /etc/hotplug.d/usb/55-5gmodem-usbports /etc/hotplug.d/iface/60-5gmodem-health /etc/hotplug.d/tty/26-5gmodem-mmreserve /etc/config/5gmodem|5gmodem-sessionwatch 5gmodem-mm-inhibit 5gmodem-sms-notify 5gmodem-usbports 5gmodem-antenna||5gmodem
 usb-reinit|/etc/hotplug.d/usb/99-modems /etc/init.d/fix-modem-reinit /etc/init.d/fix-usb-reinit /usr/bin/modem-init|fix-modem-reinit fix-usb-reinit||
@@ -38,7 +41,93 @@ modemdata|/etc/config/modemdata /usr/bin/md_serial_ecm /usr/bin/md_uqmi|||md_
 lite-watchdog|/usr/bin/lite_watchdog.sh /etc/config/watchdog|||lite_watchdog
 easyconfig|/etc/init.d/easyconfig_modemdetect /usr/bin/easyconfig_watchdog.sh /etc/config/easyconfig|easyconfig_modemdetect||easyconfig_watchdog
 rooter|/usr/lib/rooter /etc/init.d/rooter|rooter||rooter
-luci-app-modem|/usr/share/modem/fibocom.sh /etc/init.d/modem|modem||'
+luci-app-modem|/usr/share/modem/fibocom.sh /etc/init.d/modem|modem||
+automodem|/etc/init.d/automodem /etc/config/automodem /usr/lib/automodem /usr/bin/automodem|automodem||automodem
+santa-hotplug|/etc/init.d/santa-hotplug /etc/init.d/santa_hotplug /usr/lib/santa /etc/hotplug.d/usb/90-santa-hotplug|santa-hotplug santa_hotplug||santa
+xmm-modem|/etc/config/xmm-modem /usr/bin/xmm-modem /usr/share/xmm-modem|||xmm-modem
+mmconfig|/etc/config/mmconfig /usr/share/mmconfig|||mmconfig
+qminfo|/usr/bin/qminfo|||qminfo
+atinout|/usr/bin/atinout|||atinout
+sms-tool-js|/etc/config/sms_tool_js /etc/init.d/sms_tool_calllogd /etc/init.d/my_new_sms|sms_tool_calllogd my_new_sms|sms_tool_calllog sms_led.sh|'
+
+# Audit interface: stable tab-separated records for the SSH installer.
+# Output: BLOCK|WARN|INFO<TAB>kind<TAB>identifier<TAB>evidence.
+# Never stop a service or remove packages. A package alone does not establish
+# port ownership for SMS/AT tools; only a live smsd is a blocker.
+audit_installed() {
+    if command -v apk >/dev/null 2>&1; then apk info -e "$1" >/dev/null 2>&1
+    elif command -v opkg >/dev/null 2>&1; then
+        opkg status "$1" 2>/dev/null | grep -q '^Status:.*installed'
+    else return 1
+    fi
+}
+audit_emit() { printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4"; }
+audit_scan() {
+    # Known competing controllers: package database and firmware file markers.
+    for spec in \
+        'luci-app-5gmodem:block' '5gmodem:block' \
+        'luci-app-automodem:block' 'automodem:block' \
+        'rooter:block' 'luci-app-rooter:block' \
+        'luci-app-modem:block' 'xmm-modem:block' \
+        'easyconfig:block' 'luci-app-lite-watchdog:warn' \
+        'luci-app-smstools3:warn' 'smstools3:warn' \
+        'luci-app-sms-tool-js:warn' 'sms-tool:warn' \
+        'luci-app-sms-tool:warn' 'luci-app-3ginfo-lite:warn' \
+        '3ginfo-lite:warn' 'luci-app-modemdata:warn' \
+        'modemdata:warn' 'luci-app-modemband:warn' 'modemband:warn' \
+        'modeminfo:info' 'luci-app-modeminfo:info' \
+        'luci-app-mmconfig:info' 'atinout:info' 'qtools:info' 'qminfo:info'; do
+        pkg=${spec%%:*}; level=${spec#*:}
+        if audit_installed "$pkg"; then
+            case "$level" in block) level=BLOCK ;; warn) level=WARN ;; *) level=INFO ;; esac
+            audit_emit "$level" package "$pkg" 'package database'
+        fi
+    done
+    for spec in \
+        '/usr/lib/rooter:rooter' '/etc/init.d/rooter:rooter' \
+        '/etc/init.d/automodem:automodem' '/usr/lib/automodem:automodem' \
+        '/etc/config/automodem:automodem' \
+        '/etc/init.d/santa-hotplug:santa' '/etc/init.d/santa_hotplug:santa' \
+        '/etc/config/5gmodem:5gmodem' \
+        '/etc/init.d/easyconfig_modemdetect:easyconfig'; do
+        path=${spec%%:*}; family=${spec#*:}
+        [ -e "$ROOT$path" ] && audit_emit BLOCK marker "$family" "$path"
+    done
+    for directory in usb tty net iface usbmisc; do
+        for file in "$ROOT/etc/hotplug.d/$directory/"*; do
+            [ -f "$file" ] || continue
+            name=${file##*/}
+            case "$name" in
+                *santa*|*Santa*|*automodem*|*rooter*|*ROOter*|*5gmodem*|*qmi-autoconnect*|*modem-auto*)
+                    audit_emit BLOCK hotplug "$name" "${file#"$ROOT"}" ;;
+            esac
+        done
+    done
+    # A daemon can hold an AT port even if it came without a package.
+    if [ -z "$ROOT" ] && command -v pidof >/dev/null 2>&1 && pidof smsd >/dev/null 2>&1; then
+        audit_emit WARN process smsd 'Check its configured serial port; do not kill unrelated processes'
+    fi
+    # Unnamed third-party hooks: content heuristic, not proof of ownership.
+    # Warn (do not block) to avoid treating ordinary network hooks as owners.
+    for dir in usb tty net iface usbmisc; do
+        for file in "$ROOT/etc/hotplug.d/$dir/"*; do
+            [ -f "$file" ] || continue
+            case "$file" in *medvemodem*|*qmodem*|*5gmodem*|*automodem*|*santa*) continue ;; esac
+            if grep -Eq 'usb_modeswitch|qmicli|mbimcli|mmcli|(/dev/ttyUSB|/dev/cdc-wdm)|unbind' "$file" 2>/dev/null; then
+                audit_emit WARN hook "${file##*/}" "${file#"$ROOT"}"
+            fi
+        done
+    done
+    # Legitimate supported owners are never blockers.
+    for pkg in qmodem luci-app-qmodem luci-app-qmodem-next modemmanager; do
+        audit_installed "$pkg" && audit_emit INFO compatible "$pkg" 'supported by MedveModem'
+    done
+}
+
+if [ "${1:-}" = --audit ]; then
+    audit_scan
+    exit 0
+fi
 
 # a modem node: the serial, control and WWAN ports
 MODEM_NODE='^/dev/(ttyUSB[0-9]+|ttyACM[0-9]+|cdc-wdm[0-9]+|wwan[0-9]+(at|mbim|qmi|qcdm|xmmrpc|firehose)[0-9]+|mhi_[A-Za-z0-9_]+)$'
