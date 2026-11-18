@@ -59,6 +59,10 @@ Tests are static. Before claiming a production-ready installer, verify actual tr
 
 ## Field finding and release gating — 2026-11-18
 
+**Second OPiZ3 field finding:** The published r5 archive passed SHA256 and official `apk update` succeeded on 25.12.5, but the installer falsely reported `duplicate medvemodem package` because the APK selector matched the optional bot. Branch fix restricts package filenames to exact name followed by a numeric version. The new release-preview screen shows r5 English highlights before the Telegram bot choice, and a final explicit confirmation follows dependency dry-run. The highlights live in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md`, with a dedicated release metadata workflow. **No successful apk installation has yet been demonstrated.**
+
+
+
 - First real OPiZ3 trial: OpenWrt **25.12.5**, package architecture `aarch64_cortex-a53`, package manager `apk`. The script correctly identified the OpenWrt line and warned that published packages target the **25.12.6 SDK**.
 - The first `--install` attempt failed before package installation: GitHub returned `curl (22)` / **HTTP 404** for `v0.16.0-alpha1-r5/SHA256SUMS` because MedveModem r5 was not yet published. The script incorrectly treated the missing release as a network outage and asked for a proxy. The user did not report a successful installation.
 - A subsequent branch fix (`e50f502`) checks the GitHub API and rejects a missing release instead of automatically requesting an unrelated proxy. **This fix still requires a repeat run on OpenWrt**.
