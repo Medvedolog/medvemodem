@@ -86,12 +86,16 @@ audit_scan() {
     for spec in \
         '/usr/lib/rooter:rooter' '/etc/init.d/rooter:rooter' \
         '/etc/init.d/automodem:automodem' '/usr/lib/automodem:automodem' \
-        '/etc/config/automodem:automodem' \
         '/etc/init.d/santa-hotplug:santa' '/etc/init.d/santa_hotplug:santa' \
-        '/etc/config/5gmodem:5gmodem' \
         '/etc/init.d/easyconfig_modemdetect:easyconfig'; do
         path=${spec%%:*}; family=${spec#*:}
         [ -e "$ROOT$path" ] && audit_emit BLOCK marker "$family" "$path"
+    done
+    # Configuration files are often preserved by apk/opkg after package removal.
+    # Their mere presence does not mean an orchestrator is installed or running.
+    for spec in '/etc/config/5gmodem:5gmodem' '/etc/config/automodem:automodem'; do
+        path=${spec%%:*}; family=${spec#*:}
+        [ -e "$ROOT$path" ] && audit_emit WARN residual-config "$family" "$path"
     done
     for directory in usb tty net iface usbmisc; do
         for file in "$ROOT/etc/hotplug.d/$directory/"*; do
