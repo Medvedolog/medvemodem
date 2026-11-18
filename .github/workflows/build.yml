@@ -4,7 +4,7 @@ name: build
 
 on:
   push:
-    branches: [main, fix/qmodem-owner-failover-alerts]
+    branches: [main]
     tags:
       - 'v*'
     paths-ignore:
@@ -54,7 +54,7 @@ jobs:
 
   release:
     name: Publish tagged release
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/fix/qmodem-owner-failover-alerts' && github.event_name == 'push')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     needs: packages
     runs-on: ubuntu-latest
     permissions:
@@ -70,8 +70,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          if [ "$GITHUB_REF_NAME" = 'fix/qmodem-owner-failover-alerts' ]; then
-            tag='0.16.0-alpha1-r5-fm350-test'
+          if [ "$GITHUB_REF_NAME" = 'main' ]; then
+            tag='0.16.0-alpha1-r5'
           else
             tag="${GITHUB_REF_NAME#v}"
           fi
@@ -88,8 +88,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          if [ "$GITHUB_REF_NAME" = 'fix/qmodem-owner-failover-alerts' ]; then
-            tag='v0.16.0-alpha1-r5-fm350-test'
+          if [ "$GITHUB_REF_NAME" = 'main' ]; then
+            tag='v0.16.0-alpha1-r5'
           fi
           gh release create "$tag" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
