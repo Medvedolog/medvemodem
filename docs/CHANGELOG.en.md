@@ -5,6 +5,17 @@
 > [!NOTE]
 > English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
 
+## 0.16.0-alpha1-r4 — 2026-11-18
+
+Alpha 1 r4 hotfix for an incorrect web-interface version displayed after installing r3 packages.
+
+- **LuCI version metadata:** `common.js`, `dashboard.js` and `settings.js` were still hard-coded to `0.16.0-alpha1-r1`. This made the r3 interface incorrectly display `web interface ... r1 (another version)`. The constants now match r4.
+- **Version normalization:** treat OpenWrt's package form `0.16.0_alpha1-r4` and the UI form `0.16.0-alpha1-r4` as the same release.
+- **Build regression guard:** `tools/check-web-version.sh` validates package revisions and browser-side versions before SDK builds.
+- **Packages:** main package revisions bumped to `0.16.0_alpha1-r4`. No intentional modem engine behavior changes from r3.
+
+Publishing status must be confirmed against [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases).
+
 ## 0.16.0-alpha1-r3 — 2026-11-18
 
 Alpha 1 r3 prerelease candidate. The GitHub Release and Actions results, not this entry, determine whether publishing completed.
