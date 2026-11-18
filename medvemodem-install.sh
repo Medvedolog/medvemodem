@@ -176,7 +176,7 @@ installed() {
 # On a clean router that file is not installed yet. Fetch the canonical script
 # from an immutable repository commit rather than maintaining a second catalog.
 # This is a read-only audit: only explicit controller evidence blocks install.
-NEIGHBOURS_COMMIT=2bb490349b2203a534685be2ce35c24dfc250f51
+NEIGHBOURS_COMMIT=4bd47a3a5d48234eb0a17675bbb1810e3fd1ac0d
 audit_modem_owners() {
     local level kind name evidence conflicts=0 five_count=0 five_more=0 five_list=
     say 'Checking existing modem controllers using MedveModem neighbours detector...'
