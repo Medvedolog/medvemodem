@@ -547,7 +547,7 @@ function describe(device, status) {
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r4';
+var VIEW_VERSION = '0.16.0-alpha1-r5';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
