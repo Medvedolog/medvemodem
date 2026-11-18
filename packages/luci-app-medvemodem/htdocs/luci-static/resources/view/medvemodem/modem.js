@@ -2157,10 +2157,18 @@ return view.extend({
 		 * for this composition yet is not offered): its first or fallback owner, or an AT dial recipe of its own (the Intel
 		 * XMM: ModemManager takes PPP on its ACM composition and gets no address, the owner: «xmm не надо скрывать»);
 		 * a recipe never run on a modem of ours says so. A choice saved earlier stays visible, greyed, until changed */
-		var p = d.profile || {}, nativeOk = p.prefer_owner === 'native' || p.fallback_owner === 'native' || !!p.dial;
+		var p = d.profile || {}, ctl = ((d.port_roles || {}).control) || {}, driver = ctl.driver || '';
+		/* netcfg.c accepts explicit native through netifd proto qmi/mbim whenever
+		 * a matching control port exists. Profile preference affects AUTO only,
+		 * not whether a T99W175 or T77W968 may use native manually. */
+		var directQmiMbim = !!ctl.node && (/^qmi_wwan(?:_q)?$/.test(driver) || driver === 'cdc_mbim');
+		var nativeOk = directQmiMbim || p.prefer_owner === 'native' || p.fallback_owner === 'native' || !!p.dial;
 		c.nativeOpt.disabled = !nativeOk;
-		c.nativeOpt.hidden = !nativeOk && k.backend !== 'native';
-		text(c.nativeOpt, (p.dial || {}).status === 'unverified' ? _('MedveModem directly (AT; not yet checked on this model)') :
+		/* Keep the option visible: missing control port is a meaningful diagnostic,
+		 * not an implicit claim that only ModemManager and QModem are supported. */
+		c.nativeOpt.hidden = false;
+		text(c.nativeOpt, (p.dial || {}).status === 'unverified' && !directQmiMbim ?
+			_('MedveModem directly (AT; not yet checked on this model)') :
 			_('MedveModem directly (QMI, MBIM or AT)'));
 		if (!c.dirty && document.activeElement !== c.backend) c.backend.value = k.backend || 'auto';
 		if (!c.dirty && document.activeElement !== c.ttl) c.ttl.checked = !!k.ttl;
