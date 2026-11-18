@@ -996,7 +996,7 @@ var SEC_CLOSED = { events: 1, stab: 1, neigh: 1, ant: 1, rset: 1, netcheck: 1, r
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r1';
+var VIEW_VERSION = '0.16.0-alpha1-r5';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -1998,6 +1998,7 @@ return view.extend({
 		h.title = E('h2', { 'class': 'mm-hero-name' });
 		h.model = E('span', { 'class': 'mm-faint' });
 		h.pill = E('span', { 'class': 'mm-pill' });
+		h.ownerTag = E('span', { 'class': 'mm-owner-tag', hidden: true });
 		h.sayB = E('b'); h.sayText = E('span');
 		h.badge = E('span', { 'class': 'mm-badge-slot' });
 		h.net = E('span'); h.bars = barsNode(); h.sig = E('span');
@@ -2030,7 +2031,7 @@ return view.extend({
 		});
 		var nm = this.nameEditor();
 		h.node = E('section', { 'class': 'mm-card mm-hero mm-header' }, [
-			E('div', { 'class': 'mm-hero-top' }, [h.mark, E('div', { 'class': 'mm-hero-id' }, [E('div', { 'class': 'mm-hero-name-row' }, [h.title, nm.open, h.web]),
+			E('div', { 'class': 'mm-hero-top' }, [h.mark, E('div', { 'class': 'mm-hero-id' }, [E('div', { 'class': 'mm-hero-name-row' }, [h.title, h.ownerTag, nm.open, h.web]),
 				h.model, h.pill])]),
 			nm.box,
 			E('div', { 'class': 'mm-hero-say' }, [h.sayB, h.sayText]),
@@ -4155,6 +4156,7 @@ return view.extend({
 		h.node.className = 'mm-card mm-hero mm-header is-' + tone;
 		text(h.mark, { ok: '✓', warn: '!', err: '×', off: '–', run: '…' }[tone]);
 		text(h.title, words(d.name) || model);
+		mm.setOwnerBadge(h.ownerTag, ((d.owner || {}).control));
 		var wc = d.connection || {}, wport = present && wc.web_port;
 		h.web.hidden = !wport;
 		if (wport) {
