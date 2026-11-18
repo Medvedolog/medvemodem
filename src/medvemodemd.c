@@ -6137,6 +6137,7 @@ static json_object *at_reply(struct at_job *j, const char *error)
 static bool at_probe_next(struct at_job *j);
 
 /* the FM350's carrier command and whether a modem is that kind (its radio dialect, profiles/generic/fibocom-fm350.json) */
+#define FIBOCOM_OPERATOR "AT+GTCURCAR?"  /* Fibocom MTK carrier name, queried through QModem's serialized send_at */
 #define FIBOCOM_CA "AT+GTCAINFO?"
 #define FIBOCOM_CC "AT+GTCCINFO?"	/* the serving cells with their SINR: 3GPP's own commands have none */
 static bool fibocom_mtk(json_object *srv)
@@ -6152,6 +6153,33 @@ static const char *sim_send_at_res(json_object *responses, const char *key)
 	json_object *cfg = json_object_object_get(json_object_object_get(responses, key), "at_cfg");
 
 	return jstr(cfg, "status") && !strcmp(jstr(cfg, "status"), "1") ? jstr(cfg, "res") : NULL;
+}
+
+/*
+ * +GTCURCAR: <id>,"<carrier>" (FM350). This is QModem-owned AT data,
+ * never a second port opener. Reject multiline/control output; if absent,
+ * keep the existing MCC/MNC fallback from cell_info.
+ */
+static void fibocom_operator_from_at(json_object *metrics, const char *raw)
+{
+	const char *p, *q;
+	char name[96];
+	size_t n, i;
+
+	if (!metrics || !raw || !(p = strstr(raw, "+GTCURCAR:")))
+		return;
+	p = strchr(p, '"');
+	if (!p || !(q = strchr(++p, '"')))
+		return;
+	n = (size_t)(q - p);
+	if (!n || n >= sizeof(name))
+		return;
+	for (i = 0; i < n; i++)
+		if ((unsigned char)p[i] < 0x20 || (unsigned char)p[i] == 0x7f)
+			return;
+	memcpy(name, p, n);
+	name[n] = '\\0';
+	json_object_object_add(metrics, "operator", json_object_new_string(name));
 }
 
 /*
@@ -6560,8 +6588,11 @@ static void at_exited(struct uloop_process *p, int ret)
 		bool via_q = jstr(j->results, "qmodem_section") != NULL;
 		json_object *m = metrics_clean(via_q ? mm_qmodem_metrics(responses) : mm_at_metrics(responses)), *entry = json_object_new_object();
 		int complete = json_object_get_int(json_object_object_get(r, "complete"));
-		const char *ca_raw = via_q ? sim_send_at_res(responses, "step1") : jstr(responses, FIBOCOM_CA);
+		const char *ca_raw = via_q ? sim_send_at_res(responses, "step2") : jstr(responses, FIBOCOM_CA);
 		json_object *ca = ca_raw ? mm_fibocom_ca(ca_raw) : NULL;
+
+		if (via_q)
+			fibocom_operator_from_at(m, sim_send_at_res(responses, "step1"));
 
 		if (ca)	/* the shape of ModemManager's QMI carriers: the pages read both alike */
 			json_object_object_add(m, "ca", ca);
@@ -7092,11 +7123,15 @@ static int metrics_launch(struct ubus_context *ctx, struct ubus_request_data *re
 
 			cmds = json_object_new_array();
 			json_object_array_add(cmds, json_object_new_string("cell_info"));
-			/* the FM350's carriers: QModem's cell_info names the primary band only (its LTE path reads no SCC), so its
-			 * own send_at asks AT+GTCAINFO? on the port its section names (the owner, 2026-10-23: «CA для FM350 под QModem») */
-			if (port && fibocom_mtk(srv) &&
-			    snprintf(ca, sizeof(ca), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", FIBOCOM_CA, port) < (int)sizeof(ca))
-				json_object_array_add(cmds, json_object_new_string(ca));
+			/* Fibocom MTK: QModem's own send_at serializes on the port lock.
+			 * First get a printable carrier name (+GTCURCAR), then LTE CA.
+			 * Never open the tty beside tom_modem. */
+			if (port && fibocom_mtk(srv)) {
+				if (snprintf(ca, sizeof(ca), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", FIBOCOM_OPERATOR, port) < (int)sizeof(ca))
+					json_object_array_add(cmds, json_object_new_string(ca));
+				if (snprintf(ca, sizeof(ca), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", FIBOCOM_CA, port) < (int)sizeof(ca))
+					json_object_array_add(cmds, json_object_new_string(ca));
+			}
 			x = json_object_new_object();
 			json_object_object_add(x, "qmodem_section", json_object_new_string(sec));
 			rc = at_begin(ctx, req, rec, AT_METRICS, NULL, cmds, NULL, MM_QMODEM_CTRL_MS, x);
