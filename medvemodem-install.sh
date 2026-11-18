@@ -173,6 +173,32 @@ prepare_network() {
         "$PM" update || fail 'OpenWrt feeds unavailable through proxy; dependencies will not be forced'
     fi
 }
+show_release() {
+    say ''
+    say '============================================================'
+    say "Available release: $TAG (MedveModem + LuCI)"
+    say "OpenWrt: $REL ($PM), package arch: $ARCH"
+    say "Package archive SDK: $SDK_RELEASE"
+    say "Release page: $REPO/releases/tag/$TAG"
+    say '------------------------------------------------------------'
+    say 'RELEASE HIGHLIGHTS (English)'
+    # Prefer a release-owned file; older releases might only contain a
+    # GitHub release description. r5 has a standalone English summary.
+    if fetch "$REPO/releases/download/$TAG/HIGHLIGHTS.txt" "$TMP/highlights" >/dev/null 2>&1 && [ -s "$TMP/highlights" ]; then
+        cat "$TMP/highlights"
+    elif [ "$TAG" = 'v0.16.0-alpha1-r5' ] &&
+         fetch "https://raw.githubusercontent.com/Medvedolog/medvemodem/main/docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md" "$TMP/highlights" >/dev/null 2>&1 &&
+         [ -s "$TMP/highlights" ]; then
+        cat "$TMP/highlights"
+    elif command -v jsonfilter >/dev/null 2>&1 &&
+         fetch "https://api.github.com/repos/Medvedolog/medvemodem/releases/tags/$TAG" "$TMP/release.json" >/dev/null 2>&1; then
+        jsonfilter -i "$TMP/release.json" -e '@.body' 2>/dev/null || say 'No release highlights provided.'
+    else
+        say 'No release highlights provided.'
+    fi
+    say '============================================================'
+    say ''
+}
 choose_bot() {
     case "$BOT" in yes) return 0 ;; no) return 1 ;; esac
     ask 'Install/update Telegram bot and its LuCI too?' no
@@ -186,6 +212,7 @@ install_flow() {
         say "WARNING: firmware and package SDK patch version differ; dependency dry-run must succeed."
     fi
     prepare_network
+    show_release
     with_bot=0
     choose_bot && with_bot=1
     base=$(printf '%s' "$TAG" | sed 's/^v//')
@@ -231,6 +258,9 @@ install_flow() {
     say 'Checking package dependencies (dry-run)...'
     if [ "$PM" = opkg ]; then
         opkg install --noaction $files || fail 'missing/conflicting dependencies'
+        if [ "$TTY" != /dev/null ]; then
+            ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
+        fi
         if [ "$FORCE" = 1 ]; then
             opkg install --force-reinstall $files || fail 'reinstallation failed'
         else
@@ -238,6 +268,9 @@ install_flow() {
         fi
     else
         apk add --simulate --allow-untrusted $files || fail 'missing/conflicting dependencies'
+        if [ "$TTY" != /dev/null ]; then
+            ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
+        fi
         if [ "$FORCE" = 1 ]; then
             apk add --force-reinstall --allow-untrusted $files || fail 'reinstallation failed'
         else
