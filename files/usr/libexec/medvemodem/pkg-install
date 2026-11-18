@@ -77,7 +77,9 @@ huawei_cdc_ncm kmod-usb-net-huawei-cdc-ncm driver
 cdc_ether kmod-usb-net-cdc-ether driver
 rndis_host kmod-usb-net-rndis driver
 ipheth kmod-usb-net-ipheth,usbmuxd driver
-lpac medvemodem-lpac,medvemodem-lpac-uqmi ours"
+lpac medvemodem-lpac,medvemodem-lpac-uqmi ours
+bot medvemodem-bot ours
+bot-luci luci-app-medvemodem-bot ours"
 
 # read, never sourced: a value is text, not a command
 osrel() { sed -n "s/^$1=['\"]\{0,1\}\([^'\"]*\)['\"]\{0,1\}\$/\1/p" "$RELEASE_FILE" 2>/dev/null | head -n 1; }
@@ -114,10 +116,22 @@ state_of() {
 		[ -f "$PROTO_DIR/$p.sh" ] && echo installed || echo missing ;;
 	# another lpac (OpenWrt's own, a manual install) works too: said apart, ours offered beside it
 	ours)
-		if [ -x "$LPAC_OURS" ]; then echo installed
-		elif [ -e "$LPAC_OTHER" ]; then echo other
-		else echo missing
-		fi ;;
+		case "$1" in
+		lpac)
+			if [ -x "$LPAC_OURS" ]; then echo installed
+			elif [ -e "$LPAC_OTHER" ]; then echo other
+			else echo missing
+			fi ;;
+		bot|bot-luci)
+			# Use package database, not menu presence: bot can be installed but stopped
+			# and LuCI's browser/menu cache may outlive package installation.
+			pkg=$(packages "$1" | awk '{ print $1 }')
+			if printf '%s\n' "$VERSIONS" | PKG="$pkg" awk '$1 == ENVIRON["PKG"] { found=1 } END { exit !found }'; then
+				echo installed
+			else
+				echo missing
+			fi ;;
+		esac ;;
 	driver)
 		if [ -d "$DRIVERS/$1" ]; then echo loaded
 		elif [ -n "$(find "$MODULES" -name "$1.ko" 2>/dev/null | head -n 1)" ]; then echo installed
