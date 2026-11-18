@@ -203,23 +203,47 @@ archive() {
 # «Драйверы и пакеты» (the owner, 2026-11-15: «уметь ставить нашу сборку»). In the foreground, its log on stdout: the
 # components installer runs it. The engine itself is not touched.
 addon() {
-	local latest tag url sums pkgs out rc
-	case "$1" in lpac) ;; *) echo "usage: self-update addon lpac" >&2; exit 2 ;; esac
+	local kind="$1" latest tag url sums pkgs out rc wanted core ui
+	case "$kind" in lpac|bot|bot-luci) ;; *) echo "usage: self-update addon lpac|bot|bot-luci" >&2; exit 2 ;; esac
 	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
 	fail() { say "$(T ERROR ОШИБКА): $1"; rm -rf "$RUN/work"; exit 1; }
 	RUN="$RUN/addon"; mkdir -p "$RUN"; CHECK="$RUN/check"
-	say "$(T "Asking the releases of $REPO for lpac" "Запрос выпусков $REPO: сборка lpac")"
+	say "$(T "Asking the releases of $REPO for $kind" "Запрос выпусков $REPO: пакет $kind")"
+	# Explicitly select a published MedveModem release; bench artifacts are not
+	# permanent release downloads and may not have these optional packages.
+	CHANNEL=release
 	check || fail "$(sed 's/^error //' "$CHECK")"
 	set -- $(cat "$CHECK"); latest=$3; tag=$4; url=$5; sums=$6
 	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"
 	say "$(T "Downloading the archive of $latest ($tag)" "Загрузка архива $latest ($tag)")"
 	archive "$url" "$sums"
 	case "$PM" in
-		apk) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac-[0-9]*.apk medvemodem-lpac-uqmi-[0-9]*.apk 2>/dev/null) ;;
-		opkg) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac_*.ipk medvemodem-lpac-uqmi_*.ipk 2>/dev/null) ;;
+		apk)
+			case "$kind" in
+			lpac) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac-[0-9]*.apk medvemodem-lpac-uqmi-[0-9]*.apk 2>/dev/null) ;;
+			bot) pkgs=$(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk 2>/dev/null) ;;
+			bot-luci) pkgs=$(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null) ;;
+			esac ;;
+		opkg)
+			case "$kind" in
+			lpac) pkgs=$(cd "$RUN/work" && ls medvemodem-lpac_*.ipk medvemodem-lpac-uqmi_*.ipk 2>/dev/null) ;;
+			bot) pkgs=$(cd "$RUN/work" && ls medvemodem-bot_*.ipk 2>/dev/null) ;;
+			bot-luci) pkgs=$(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null) ;;
+			esac ;;
 	esac
-	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no lpac packages for $PM in the archive" "в архиве нет пакетов lpac для $PM")"
-	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
+	case "$kind" in lpac|bot-luci) wanted=2 ;; *) wanted=1 ;; esac
+	[ "$(printf '%s\n' "$pkgs" | sed '/^$/d' | wc -l)" -eq "$wanted" ] ||
+		fail "$(T "the release has no complete package set for $kind" "в выпуске нет полного набора пакетов $kind")"
+	# All archive assets have been SHA256 checked; simulate dependencies before
+	# replacing anything. Do not force APK dependencies or change the modem owner.
+	say "$(T "Checking package dependencies (dry run)" "Проверка зависимостей пакетов")"
+	case "$PM" in
+		apk) out=$(cd "$RUN/work" && apk add --simulate --allow-untrusted $pkgs 2>&1); rc=$? ;;
+		opkg) out=$(cd "$RUN/work" && opkg install --noaction $pkgs 2>&1); rc=$? ;;
+	esac
+	printf '%s\n' "$out" | sed 's/^/    /'
+	[ "$rc" -eq 0 ] || fail "$(T "dependencies are missing or package versions conflict" "нет зависимостей либо версии пакетов несовместимы")"
+	say "$(T "Installing: $kind" "Установка: $kind")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
 		opkg) out=$(cd "$RUN/work" && opkg install $pkgs 2>&1); rc=$? ;;
@@ -227,7 +251,7 @@ addon() {
 	printf '%s\n' "$out" | sed 's/^/    /'
 	rm -rf "$RUN/work"
 	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; exit 1; }
-	say "$(T "lpac is installed: the eSIM tab can read the chip." "lpac установлен: чтение чипа eSIM доступно.")"
+	say "$(T "Installed: $kind. Configure the Telegram token separately." "Установлено: $kind. Токен Telegram настраивается отдельно.")"
 }
 
 run() {
