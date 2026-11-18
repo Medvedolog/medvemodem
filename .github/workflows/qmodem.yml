@@ -4,7 +4,7 @@ name: qmodem
 
 on:
   push:
-    branches: [main, fix/qmodem-owner-failover-alerts]
+    branches: [main]
     paths:
       - 'tools/build-qmodem.sh'
       - '.github/workflows/qmodem.yml'
@@ -49,7 +49,7 @@ jobs:
 
   publish:
     name: Publish QModem prerelease
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/qmodem-owner-failover-alerts') && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: packages
     runs-on: ubuntu-latest
     permissions:
@@ -79,11 +79,7 @@ jobs:
           done
           [ "$(find release-assets -type f -name '*.tar.gz' | wc -l)" -eq 6 ]
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          if [ "$GITHUB_REF_NAME" = 'fix/qmodem-owner-failover-alerts' ]; then
-            printf 'QMODEM_TAG=qmodem-%s-r2-fm350-test\n' "$version" >> "$GITHUB_ENV"
-          else
-            printf 'QMODEM_TAG=qmodem-%s-r1\n' "$version" >> "$GITHUB_ENV"
-          fi
+          printf 'QMODEM_TAG=qmodem-%s-r2\n' "$version" >> "$GITHUB_ENV"
       - name: Publish permanent GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -103,4 +99,4 @@ jobs:
           gh release create "$QMODEM_TAG" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
             --title "QModem $QMODEM_TAG for MedveModem" \
-            --notes "Pinned FUjr/QModem core and reviewed MedveModem patch overlay for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK). Six architecture/firmware archives and SHA256SUMS. No QModem LuCI. Experimental: validate on FM350 hardware before production. The test tag is not the default MedveModem LuCI auto-install source."
+            --notes "Pinned FUjr/QModem core and reviewed MedveModem patch overlay for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK). Six architecture/firmware archives and SHA256SUMS. No QModem LuCI. Experimental: validate on FM350 hardware before production. This release is the pinned MedveModem LuCI auto-install source."
