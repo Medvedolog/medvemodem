@@ -836,6 +836,7 @@ return view.extend({
 			var light = E('span', { 'class': 'mm-light is-' + lit, title: card.state.textContent + (card.health.hidden ? '' : '\n' + card.health.textContent) +
 				(prob ? '\n' + prob : '') }, [E('i'), short]);
 			var net = card.health.hidden ? '' : E('span', { 'class': 'mm-faint mm-table-net' }, card.health.textContent);
+			var ownerMark = card.ownerBadge.hidden ? null : card.ownerBadge.firstChild && card.ownerBadge.firstChild.cloneNode(true);
 			var badge = card.badge.hidden ? null : card.badge.firstChild && card.badge.firstChild.cloneNode(true);
 			var op = card.network.textContent && card.network.textContent !== '—' ? card.network.textContent : '';
 			var bars = barsNode(); setBars(bars, data.icon);
@@ -867,7 +868,7 @@ return view.extend({
 				E('td', { 'class': 'num', 'data-h': '№', title: self.ranked.indexOf(id) >= 0 ? _('Place in the channel priority') : _('No interface: outside the priority') }, String(i + 1)),
 				E('td', { 'data-h': _('Modem') }, [E('a', { href: href }, card.titleLink.textContent),
 					card.subtitle.hidden ? '' : E('div', { 'class': 'mm-faint' }, card.subtitle.textContent)]),
-				E('td', { 'data-h': _('State') }, [E('span', { 'class': 'mm-row mm-table-state' }, [light, net,
+				E('td', { 'data-h': _('State') }, [E('span', { 'class': 'mm-row mm-table-state' }, [light, net, ownerMark || '',
 					card.autofixBadge.hidden ? '' : (function(b) { b.addEventListener('click', function() { card.autofixBadge.click(); self.applyTable(); }); return b; })(card.autofixBadge.cloneNode(true))]),
 					/* two lines at most: the whole of it in the title and in the row opened (the owner, 2026-10-21: «ломают таблицу») */
 					prob ? E('div', { 'class': 'mm-table-prob mm-clamp2', title: prob },
@@ -971,6 +972,7 @@ return view.extend({
 		var refs = {}, detailsId = 'mm-details-' + ++this.cardSerial, href = L.url('admin/modem/medvemodem/modem') + '#' + encodeURIComponent(id);
 		refs.title = E('h3', { 'class': 'mm-mcard-title' }); refs.subtitle = E('span', { 'class': 'mm-faint mm-tile-sub mm-muted' });
 		refs.state = E('span', { 'class': 'mm-pill' });
+		refs.ownerBadge = E('span', { 'class': 'mm-owner-badge-slot', hidden: true });
 		refs.badge = E('span', { 'class': 'mm-badge-slot' });
 		refs.network = E('span'); refs.signal = E('span', { 'class': 'mm-signal mm-q-word' });
 		refs.icon = barsNode(); refs.rates = E('span', { 'class': 'mm-rates mm-faint', hidden: true });
@@ -1149,7 +1151,7 @@ return view.extend({
 		refs.node = E('article', { 'class': 'mm-card mm-mcard mm-tile', 'data-device-id': id }, [
 			E('div', { 'class': 'mm-mcard-top mm-card-head' }, [E('div', { 'class': 'mm-mcard-id' }, [refs.title, refs.subtitle]),
 				E('div', { 'class': 'mm-row mm-mcard-icons' }, [refs.autofixBadge, refs.web, refs.sms, refs.toggle])]),
-			E('div', {}, refs.state),
+			E('div', { 'class': 'mm-mcard-badges' }, [refs.state, refs.ownerBadge]),
 			refs.sum = E('div', { 'class': 'mm-sum mm-network' }, [E('a', { 'class': 'mm-to-radio', href: href.replace('#', '#radio:'),
 				title: _('Network and signal: cells, bands') }, refs.icon), refs.badge, refs.network]),
 			refs.sub = E('a', { 'class': 'mm-sum-sub mm-dots mm-to-radio', href: href.replace('#', '#radio:'), title: _('Network and signal: cells, bands') }),
@@ -1230,6 +1232,11 @@ return view.extend({
 			text(card.state, data.state);
 			card.state.className = 'mm-pill ' + (!data.present ? 'is-off' : data.recovering || (device.recovery || {}).state === 'running' ? 'is-run' :
 				TONE_PILL[data.tone] || 'is-idle') + ' mm-' + data.tone;
+			var showOwnerBadges = false;
+			try { showOwnerBadges = localStorage.getItem('mm:show-owner-badges') === '1'; } catch (e) {}
+			var ownerMark = showOwnerBadges && data.present ? mmc.ownerBadge(device) : null;
+			card.ownerBadge.replaceChildren.apply(card.ownerBadge, ownerMark ? [ownerMark] : []);
+			card.ownerBadge.hidden = !ownerMark;
 			card.node.classList.toggle('is-carrying', !!data.carrying);	/* the owner, 2026-10-20: the active card framed green, no fill */
 			/* framed in its pill's colour when the main one answers only the whitelist (the owner, 2026-10-28) */
 			card.node.classList.toggle('is-carrying-warn', !!data.carrying && !!rk && rk[1] === 'warn');
