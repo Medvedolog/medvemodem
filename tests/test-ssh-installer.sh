@@ -31,6 +31,15 @@ fi
 
 sh "$script" --help | grep -q -- '--reinstall'
 sh "$script" --help | grep -q -- '--allow-disconnect'
+# A second SSH install or a concurrent LuCI package transaction must be refused.
+grep -Fq 'INSTALL_LOCK=' "$script"
+grep -Fq 'PM_LOCK=' "$script"
+grep -Fq 'take_lock "$INSTALL_LOCK" || fail' "$script"
+grep -Fq "another SSH installer is already running" "$script"
+grep -Fq "another MedveModem package operation is running" "$script"
+grep -Fq 'take_package_lock' "$script"
+grep -Fq 'release_lock "$PM_LOCK"' "$script"
+grep -Fq 'release_lock "$INSTALL_LOCK"' "$script"
 grep -Fq 'quiesce_for_upgrade() {' "$script"
 grep -Fq 'restore_services() {' "$script"
 grep -Fq 'wait_pids_gone medvemodemd' "$script"
