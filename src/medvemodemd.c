@@ -9728,6 +9728,17 @@ static void holders_note(json_object *before, json_object *after)
 		if (!registry.devices || !(id = device_of_node(node)))
 			continue;
 		/*
+		 * QModem's tom_modem legitimately owns the AT node of a modem handed
+		 * to QModem. Keep it in tty_holders for port safety, but do not record
+		 * a foreign-program conflict in the journal or syslog.
+		 */
+		if (!strncmp(w, "tom_modem (", 11)) {
+			json_object *rec = mm_registry_find(&registry, id);
+			json_object *owner = rec ? json_object_object_get(rec, "owner") : NULL;
+			if (owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem"))
+				continue;
+		}
+		/*
 		 * bench 2026-10-20 (FM350 handed to QModem): "ttyUSB7 is held by another program, tom_modem (pid N)" every
 		 * 15..45 s, a new pid each time: QModem runs its AT tool anew for every look. The same program taking the
 		 * same port again is no news: the journal and the log say so once.
