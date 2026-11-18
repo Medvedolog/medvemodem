@@ -1,6 +1,6 @@
 # HANDOFF: QModem upstream integration, FM350 recovery and owner-mediated AT telemetry
 
-Date: 2026-11-18. Status: confirmed field diagnosis + proposed work, **not implemented or validated**. Base: MedveModem `main` 41ca3c9 and branch `fix/qmodem-owner-failover-alerts` (10 commits ahead of main before this document). Hardware: OPiZ3/OpenWrt 25.12.5, Fibocom FM350-GL (MediaTek/RNDIS), QModem `6_1_2`, interface `mm7` / `eth3`, QModem AT port `/dev/ttyUSB3`.
+Date: 2026-11-18. Status: initial fixes **implemented and merged into `main`**, six SDK builds of MedveModem r5 and QModem r2 succeeded; **FM350 hardware validation remains outstanding**. Historical base: MedveModem `main` 41ca3c9 and branch `fix/qmodem-owner-failover-alerts` (formerly ahead of main; merged by PR #5). Hardware: OPiZ3/OpenWrt 25.12.5, Fibocom FM350-GL (MediaTek/RNDIS), QModem `6_1_2`, interface `mm7` / `eth3`, QModem AT port `/dev/ttyUSB3`.
 
 **Rules:** Keep MedveModem's existing fixes and local QModem patches. Do not bulk merge upstream branches. No CI builds, release publication, `latest` changes, main merges, or router mutation until explicitly authorized. Distinguish code verified in repository from hypotheses and physical tests.
 
@@ -81,3 +81,11 @@ Upstream documented APIs (verify availability and JSON schema in pinned installe
 - `tools/build-qmodem.sh` (`44b844c`) mounts `patches/qmodem` read-only and uses `git apply --check` then `git apply` after pin checkout, before package setup. Builds will fail closed if an overlay becomes incompatible. No build was executed.
 - `dashboard.js` additional correction `85bc141`: reads without data distinguish *pending* versus *failed* and display the QModem-specific unavailable wording. Note that full QModem telemetry verification and normalization remain pending.
 - After these changes, operator-name fallback, QModem locking/child lifecycle correctness, procd verification and deterministic host/device tests remain **open**. No release should be tagged from these commits without validation.
+
+
+## 7. Release and installer status (2026-11-18)
+
+- PR #5 was merged to `main`, merge commit `fbb739df690e5ed92400d370b2a17ce19c63abda`. All six MedveModem r5 SDK package jobs in Actions run `44303904480` succeeded, **but the release publish job failed**, lacking checkout/git context for `gh release create`; fixed in `main` commit `e53e83d`. Confirm the subsequent workflow and release assets independently; successful builds alone are not publication.
+- All six QModem r2 SDK jobs and publication succeeded in Actions run `44303904545`. Release tag: `qmodem-3.3.0_p20261108-r2`; MedveModem `r5` points its QModem installer to this release. There is no FM350 suffix in either official tag.
+- Installation over SSH is separate PR #6 / branch `feat/ssh-installer`: `medvemodem-install.sh`, `docs/SSH-INSTALLER.md`, `docs/HANDOFF-SSH-INSTALLER.md` and contract tests. **Do not claim it is verified merely because the shell script is in GitHub.** An actual OPiZ3 25.12.5 attempt stopped before installation on a 404 caused by an unpublished r5 asset; draft fix `e50f502` distinguishes this from a network/proxy problem.
+- After SSH install tests pass on 24.10/25.12, add tested one-liners to the root `README.md` and Russian/English installation docs; maintain separate installer and QModem changelog entries.
