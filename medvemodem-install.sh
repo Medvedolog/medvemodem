@@ -233,6 +233,7 @@ service_pids() {
     case "$1" in
         medvemodemd) pidof medvemodemd 2>/dev/null || : ;;
         medvemodem-bot) ps w | awk '/[u]code \/usr\/share\/medvemodem-bot\/main[.]uc/ { print $1 }' ;;
+        bot-poll) ps w | awk '/[c]url/ && /\/tmp\/medvemodem-bot\/curl-poll-[^ ]+[.]cfg/ { print $1 }' ;;
         qmodem) ps w | awk '/\/[u]sr\/share\/qmodem\/modem_dial[.]sh/ { print $1 }' ;;
     esac
 }
@@ -300,6 +301,7 @@ quiesce_for_upgrade() {
     done
     wait_pids_gone medvemodemd
     wait_pids_gone medvemodem-bot
+    wait_pids_gone bot-poll
     wait_pids_gone qmodem
     say 'Service stop and old-process checks completed.'
 }
