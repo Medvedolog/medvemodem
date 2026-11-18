@@ -4169,7 +4169,7 @@ return view.extend({
 		text(h.pill, running ? _('Recovery…') : !present ? _('Disconnected from USB') : connected ? ROLES[role] || _('Connected') : _('No internet connection'));
 		/* a working backup in its own colour, not the main one's green (the owner, 2026-10-19) */
 		h.pill.className = 'mm-pill ' + (tone === 'ok' && role === 'backup_ready' && !running && present ? 'is-backup' : TONE_PILL[tone]);
-		var ownerLabel = present ? mmc.ownerBadge(d) : null;
+		var ownerLabel = present ? mm.ownerBadge(d) : null;
 		h.ownerBadge.replaceChildren.apply(h.ownerBadge, ownerLabel ? [ownerLabel] : []);
 		h.ownerBadge.hidden = !ownerLabel;
 		text(h.sayB, b); text(h.sayText, say);
