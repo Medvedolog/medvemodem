@@ -40,6 +40,24 @@ grep -Fq "another MedveModem package operation is running" "$script"
 grep -Fq 'take_package_lock' "$script"
 grep -Fq 'release_lock "$PM_LOCK"' "$script"
 grep -Fq 'release_lock "$INSTALL_LOCK"' "$script"
+# Competing modem-manager/hotplug audit must run before release downloads,
+# leave QModem and ModemManager installed, and never auto-remove conflicts.
+grep -Fq 'audit_modem_owners() {' "$script"
+grep -Fq 'audit_modem_owners' "$script"
+grep -Fq 'luci-app-5gmodem' "$script"
+grep -Fq '/usr/lib/rooter' "$script"
+grep -Fq '*santa*' "$script"
+grep -Fq '*automodem*' "$script"
+grep -Fq 'COMPATIBLE: $name' "$script"
+grep -Fq 'NOTICE: $name installed' "$script"
+grep -Fq "installation paused due to competing modem automation" "$script"
+grep -Fq 'apk del $name' "$script"
+grep -Fq 'opkg remove $name' "$script"
+awk '
+  /audit_modem_owners$/ { audit = NR }
+  /^    prepare_network$/ { network = NR }
+  END { if (!audit || !network || audit >= network) exit 1 }
+' "$script"
 grep -Fq 'quiesce_for_upgrade() {' "$script"
 grep -Fq 'restore_services() {' "$script"
 grep -Fq 'wait_pids_gone medvemodemd' "$script"
