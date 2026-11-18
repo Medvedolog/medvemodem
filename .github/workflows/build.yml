@@ -31,7 +31,34 @@ permissions:
   contents: read
 
 jobs:
+  luci-contracts:
+    name: LuCI frontend compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify frontend API, version, installer contracts and release metadata
+        run: |
+          python3 tests/test-luci-frontend.py
+          sh tools/check-web-version.sh
+          sh tests/test-installer-release-selection.sh
+          sh tests/test-installer-locks.sh
+
+  luci-browser:
+    name: LuCI Chromium smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Playwright client
+        run: npm install --no-save --no-package-lock playwright@1.58.2
+      - name: Exercise LuCI modem view in Chromium
+        run: node tests/test-luci-browser.cjs
+
   packages:
+    needs: [luci-contracts, luci-browser]
     name: ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -54,7 +81,7 @@ jobs:
 
   release:
     name: Publish tagged release
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: packages
     runs-on: ubuntu-latest
     permissions:
@@ -71,11 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          if [ "$GITHUB_REF_NAME" = 'main' ]; then
-            tag='0.16.0-alpha1-r6'
-          else
-            tag="${GITHUB_REF_NAME#v}"
-          fi
+          tag="${GITHUB_REF_NAME#v}"
           for dir in package-artifacts/medvemodem-*; do
             [ -d "$dir" ] || { echo "missing artifact directory" >&2; exit 1; }
             [ "$(find "$dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) | wc -l)" -gt 0 ] || { echo "No packages in $dir" >&2; exit 1; }
@@ -84,16 +107,19 @@ jobs:
           done
           [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          cp docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md release-assets/HIGHLIGHTS.txt
+          revision="${GITHUB_REF_NAME##*-}"
+          notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
+          [ -s "$notes" ] || { echo "Release highlights missing: $notes" >&2; exit 1; }
+          cp "$notes" release-assets/HIGHLIGHTS.txt
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          if [ "$GITHUB_REF_NAME" = 'main' ]; then
-            tag='v0.16.0-alpha1-r6'
-          fi
+          revision="${tag##*-}"
+          notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
+          [ -s "$notes" ] || { echo "Release notes missing: $notes" >&2; exit 1; }
           gh release create "$tag" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
             --title "MedveModem ${tag#v}" \
-            --notes-file docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md
+            --notes-file "$notes"

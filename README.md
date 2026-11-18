@@ -29,6 +29,20 @@
 > [!WARNING]
 > **Alpha software / Альфа-версия.** Не устанавливайте на роутер без резервного способа доступа. CI artifacts are test builds, not a guarantee of production readiness.
 
+## Quick install / Быстрая установка (SSH)
+
+On **OpenWrt 24.10 (opkg/IPK)** or **25.12 (apk/APK)**, log in as `root` over SSH and run:
+
+```sh
+wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/medvemodem/main/medvemodem-install.sh && sh /tmp/medvemodem-install.sh
+```
+
+**RU:** Установщик выбирает **самый новый опубликованный релиз MedveModem, включая prerelease** (не `/releases/latest`, который пропускает предварительные выпуски). Отдельные релизы QModem и черновики игнорируются. Перед установкой проверяются SHA256, зависимости, обнаруженные сторонние менеджеры модемов и риск потери SSH при перезапуске связи. Бот предлагается отдельно; другие менеджеры не удаляются автоматически. Для установки конкретной версии: `sh /tmp/medvemodem-install.sh --tag v0.16.0-alpha1-r7 --install`.
+
+**EN:** The installer selects the **newest published MedveModem release, stable or pre-release**; draft and separate QModem releases are excluded. It verifies checksums, dependencies and modem-controller conflicts. Optional Telegram bot installation is confirmed separately. Use `--tag v0.16.0-alpha1-r7` to pin a specific version. Keep wired/serial recovery access; an active modem WAN may disconnect during an upgrade.
+
+[Подробно / Full installation instructions](docs/INSTALL.md) · [Latest releases](https://github.com/Medvedolog/medvemodem/releases)
+
 ## English overview
 
 **[Quick Start (EN)](docs/USER-GUIDE.en.md) · [Installation (EN)](docs/INSTALL.en.md) · [Full Manual (EN)](docs/MANUAL.en.md)**

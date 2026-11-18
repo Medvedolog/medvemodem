@@ -1,5 +1,22 @@
 # MedveModem — Release History (English)
 
+## 0.16.0 Alpha 1 r7 — release candidate (2026-11-19)
+
+- Fix the r6 blank modem details regression triggered by a stale cached LuCI module missing the optional `mm.setOwnerBadge` method. The badge now fails safely and page-rendering exceptions display a diagnostic notice.
+- Gate package builds on LuCI API/version contract checks and a Chromium smoke test that covers RPC failures, render errors and cached-module fallback.
+- Add root-level `medvemodem-install.sh`: default to the newest published MedveModem stable **or prerelease**, excluding drafts and separate QModem releases; `--tag` pins an explicit release.
+- Provide a README one-line SSH installer with rollback/access warnings, SHA256 verification and dependency dry-runs.
+- Fix orphaned `/etc/config/5gmodem` producing false-positive competing-controller alerts without ignoring active 5gmodem hotplug handlers.
+- Synchronize core/LuCI/bot package revisions; only explicitly tagged commits can publish releases.
+- **Status:** pending CI and release publication in PR #12.
+
+## Unreleased — r6 LuCI regression fix and release QA gates (2026-11-19)
+
+- Fix the blank modem detail page caused by `mm.setOwnerBadge is not a function` with a stale browser-cached shared module; optional owner badge now fails safely.
+- Show RPC/render exceptions instead of hiding all modem panels on initial load.
+- Add frontend API/version contract checks and Chromium smoke tests as mandatory package-build and release gates; real router acceptance remains separate.
+- Pending merge; published r6 artifacts are unchanged.
+
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!NOTE]
