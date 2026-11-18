@@ -5,6 +5,13 @@
 > [!NOTE]
 > English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
 
+## Unreleased — LuCI fixes after r5 (2026-11-18)
+
+- **Verified r5 field defect on OPiZ3:** individual modem page reported `page r1 / shared module r5` because `modem.js` really still declared `VIEW_VERSION = '0.16.0-alpha1-r1'`. This is not just a stale browser cache. Fix the constant and extend `tools/check-web-version.sh` to validate **all three** LuCI views, including previously omitted `modem.js`.
+- Add informational manager badges **MM** (ModemManager), **QM** (QModem), **MV** (native MedveModem) and WEB (HiLink) on dashboard modem cards, fleet table and **individual modem header**. Based only on the actual resolved owner.
+- Settings → Modems offers a browser-local management-badge switch, **off by default**; no UCI or modem-control side effects.
+- Draft PR #8 only. **Not in published r5.** Bump the entire package release coherently and validate on OPiZ3 before the next release. See [handoff](HANDOFF-LUCI-OWNER-BADGES.md).
+
 ## 0.16.0-alpha1-r4 — 2026-11-18
 
 Alpha 1 r4 hotfix for an incorrect web-interface version displayed after installing r3 packages.
