@@ -37,8 +37,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - name: Verify frontend API, version and stale-cache safety
-        run: python3 tests/test-luci-frontend.py
+      - name: Verify frontend API, version, installer contracts and release metadata
+        run: |
+          python3 tests/test-luci-frontend.py
+          sh tools/check-web-version.sh
+          sh tests/test-installer-release-selection.sh
 
   luci-browser:
     name: LuCI Chromium smoke
