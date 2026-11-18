@@ -12,6 +12,7 @@ Alpha 1 r4 hotfix for an incorrect web-interface version displayed after install
 - **LuCI version metadata:** `common.js`, `dashboard.js` and `settings.js` were still hard-coded to `0.16.0-alpha1-r1`. This made the r3 interface incorrectly display `web interface ... r1 (another version)`. The constants now match r4.
 - **Version normalization:** treat OpenWrt's package form `0.16.0_alpha1-r4` and the UI form `0.16.0-alpha1-r4` as the same release.
 - **Build regression guard:** `tools/check-web-version.sh` validates package revisions and browser-side versions before SDK builds.
+- **Whitelist service matrix:** shortened modem headings with full descriptions in tooltips; colored result lights, a single concise diagnostic summary instead of six repeated paragraphs, fixed column widths and no overlapping labels.
 - **Packages:** main package revisions bumped to `0.16.0_alpha1-r4`. No intentional modem engine behavior changes from r3.
 
 Publishing status must be confirmed against [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases).
