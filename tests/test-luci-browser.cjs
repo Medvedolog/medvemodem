@@ -11,6 +11,8 @@ const source = fs.readFileSync(path.join(__dirname,
   '../packages/luci-app-medvemodem/htdocs/luci-static/resources/view/medvemodem/modem.js'), 'utf8');
 
 async function run() {
+  const version = source.match(/var VIEW_VERSION = '([^']+)'/);
+  assert.ok(version, 'LuCI view VERSION missing');
   const browser = await chromium.launch({ headless: true });
   try {
     for (const failureMode of ['rpc-error', 'render-error']) {
@@ -20,7 +22,7 @@ async function run() {
         body: '<!doctype html><html><body></body></html>'
       }));
       await page.goto('http://router.test/modem#test-modem');
-      const result = await page.evaluate(async ({ source, failureMode }) => {
+      const result = await page.evaluate(async ({ source, failureMode, viewVersion }) => {
         const failures = [];
         window.addEventListener('error', e => failures.push(e.message));
         // LuCI extends String.prototype with format(); the real view uses it in error messages.
@@ -45,7 +47,7 @@ async function run() {
           return node;
         };
         const mm = {
-          VERSION: '0.16.0-alpha1-r6', LANG: 'en',
+          VERSION: viewVersion, LANG: 'en',
           level: () => 'normal',
           text: (node, str) => { node.textContent = str == null ? '' : String(str); },
           failText: error => String(error && error.message || error),
@@ -80,7 +82,7 @@ async function run() {
           noticeVisible: Boolean(notice && !notice.hidden),
           tabsVisible: Boolean(tabs && !tabs.hidden && getComputedStyle(tabs).display !== 'none'),
           blankWait: root.classList.contains('mm-wait')};
-      }, {source, failureMode});
+      }, {source, failureMode, viewVersion: version[1]});
       assert.equal(result.compileError, undefined, JSON.stringify(result));
       assert.equal(result.renderError, undefined, JSON.stringify(result));
       assert.equal(result.noticeVisible, true, JSON.stringify(result));
