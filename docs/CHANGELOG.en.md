@@ -1,5 +1,12 @@
 # MedveModem — Release History (English)
 
+## Post-r7 installer fix — 2026-11-19
+
+- Fix the release auto-selection failure `paste: not found` on minimal OpenWrt: replace the optional `paste` dependency with portable `awk` reading the API field streams in lockstep.
+- Add a regression test executing the installer's actual version-selection program against stable, prerelease, draft and unrelated QModem release fixtures.
+- Existing downloaded installer workaround: `sh /tmp/medvemodem-install.sh --tag v0.16.0-alpha1-r7 --install`; refresh from `main` for automatic selection.
+- This changes the standalone installer in `main`, not the published r7 package archives. Router acceptance of the new auto-selector is pending.
+
 ## 0.16.0 Alpha 1 r7 — release candidate (2026-11-19)
 
 - Fix the r6 blank modem details regression triggered by a stale cached LuCI module missing the optional `mm.setOwnerBadge` method. The badge now fails safely and page-rendering exceptions display a diagnostic notice.
