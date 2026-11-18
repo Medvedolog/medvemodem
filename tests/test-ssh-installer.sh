@@ -128,6 +128,20 @@ for ext in apk ipk; do
         }
     done
 done
+# A saved UCI file must not block installation after 5gmodem is removed.
+mkdir -p "$tmp/leftover/etc/config"
+: > "$tmp/leftover/etc/config/5gmodem"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/leftover" sh "$neighbours" --audit > "$tmp/leftover.audit"
+grep -Fq "$(printf 'WARN\tresidual-config\t5gmodem\t/etc/config/5gmodem')" "$tmp/leftover.audit"
+if grep -q '^BLOCK' "$tmp/leftover.audit"; then
+    echo 'FAIL: residual 5gmodem config alone blocked install' >&2
+    exit 1
+fi
+# A real 5gmodem hotplug hook must still block.
+mkdir -p "$tmp/leftover/etc/hotplug.d/usb"
+: > "$tmp/leftover/etc/hotplug.d/usb/21-5gmodem-usbmode-extra"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/leftover" sh "$neighbours" --audit > "$tmp/leftover.audit"
+grep -Fq "$(printf 'BLOCK\thotplug\t21-5gmodem-usbmode-extra')" "$tmp/leftover.audit"
 # Exercise the canonical detector in a fake root, without modifying host services.
 mkdir -p "$tmp/mock/etc/init.d" "$tmp/mock/etc/hotplug.d/usb"
 : > "$tmp/mock/etc/init.d/automodem"
