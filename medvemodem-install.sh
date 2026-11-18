@@ -196,7 +196,7 @@ audit_modem_owners() {
         fi
     done
     # ROOter may be baked into squashfs without a package database entry.
-    for marker in /usr/lib/rooter /etc/config/modem /etc/config/modemmanager-auto; do
+    for marker in /usr/lib/rooter /etc/config/modemmanager-auto; do
         [ -e "$marker" ] || continue
         conflict_line "modem automation marker $marker" 'Inspect firmware-owned services and hotplug handlers; do not delete firmware files blindly.'
     done
