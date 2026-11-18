@@ -26,7 +26,7 @@ sh /tmp/medvemodem-install.sh --remove-bot
 sh /tmp/medvemodem-install.sh --remove
 ```
 
-**While this remains a draft PR, use the branch URL above; do not advertise the `main` one-liner.** The default release tag is `v0.16.0-alpha1-r5`. Change it with `--tag` once a newer release is available; this script **does not** use the GitHub API `latest` endpoint because prereleases may not appear there.
+**While this remains a draft PR, use the branch URL above; do not advertise the `main` one-liner.** The default release tag is `v0.16.0-alpha1-r6`. Change it with `--tag` once a newer release is available; this script **does not** use the GitHub API `latest` endpoint because prereleases may not appear there.
 
 ## Network behavior
 
@@ -95,3 +95,8 @@ The package manager preserved new configuration files as `/etc/config/medvemodem
 After a successful dependency dry-run and the final installation confirmation, the installer requests explicit consent to temporarily stop MedveModem, QModem dial and Telegram-bot services. It captures the services that were running, issues their init-script stop actions, checks remaining engine/bot/QModem dial PIDs, and only when necessary terminates identified leftover processes (TERM then KILL). The previous running services are then restarted after the package transaction, including on installer error. This is **not yet validated on a real router**.
 
 **Warning:** stopping `qmodem_network` can interrupt the modem which carries SSH. Test with independent management access. In noninteractive mode, `--allow-disconnect` is required to approve this potentially disruptive step. Never use it remotely through the only cellular connection without a recovery plan. A force reinstall does not waive the consent requirement.
+
+## r6 readiness (2026-11-18)
+
+- Default installer tag is now `v0.16.0-alpha1-r6`, with r6 release highlights. Install **only after the release archive and SHA256SUMS are published and independently verified**.
+- The service-quiescence mechanism (stop/check/targeted cleanup/restart) has passed static CI contracts but **has not passed an OPiZ3 field reinstall**. Do not run it over the sole QModem internet/SSH route: it explicitly stops QModem and may interrupt management access.
