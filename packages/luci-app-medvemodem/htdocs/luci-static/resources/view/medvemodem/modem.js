@@ -5100,7 +5100,12 @@ return view.extend({
 
 	/* what changed since the last look, said once, with the time (modem gone/back, internet lost/back) */
 	applyHeld: function(d) {
-		var held = list(((d.port_roles || {}).candidates)).filter(function(c) { return typeof c.held_by === 'string'; });
+		var qmodemOwns = (d.owner || {}).control === 'qmodem';
+		/* tom_modem is QModem's own AT worker. It is a legitimate holder when QModem is the modem owner;
+		 * preserve the port lock itself, but do not warn that the operator installed a foreign SMS service. */
+		var held = list(((d.port_roles || {}).candidates)).filter(function(c) {
+			return typeof c.held_by === 'string' && !(qmodemOwns && /^tom_modem(?:\s|\(|$)/.test(c.held_by));
+		});
 		if (!held.length) { this.heldNote.hidden = true; return; }
 		var ports = held.map(function(c) { return String(c.node).replace(/^\/dev\//, '') + ' (' + c.held_by + ')'; }).join(', ');
 		text(this.heldText, (held.length > 1 ? _('Ports %s are busy with other programs') : _('Port %s is busy with another program')).format(ports) + '. ' +
