@@ -6,6 +6,7 @@ on:
     paths:
       - 'medvemodem-install.sh'
       - 'tests/test-luci-frontend.py'
+      - 'tests/test-luci-browser.cjs'
       - 'packages/luci-app-medvemodem/htdocs/luci-static/resources/**'
       - 'tests/test-ssh-installer.sh'
       - '.github/workflows/ssh-installer-tests.yml'
@@ -19,6 +20,22 @@ permissions:
   contents: read
 
 jobs:
+  luci-browser:
+    name: LuCI Chromium smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Exercise LuCI modem view in Chromium
+        run: node tests/test-luci-browser.cjs
+
   shell-tests:
     runs-on: ubuntu-latest
     steps:
