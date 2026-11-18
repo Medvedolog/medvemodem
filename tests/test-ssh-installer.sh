@@ -40,28 +40,28 @@ grep -Fq "another MedveModem package operation is running" "$script"
 grep -Fq 'take_package_lock' "$script"
 grep -Fq 'release_lock "$PM_LOCK"' "$script"
 grep -Fq 'release_lock "$INSTALL_LOCK"' "$script"
-# Competing modem-manager/hotplug audit must run before release downloads,
-# leave QModem and ModemManager installed, and never auto-remove conflicts.
+# Both LuCI and standalone SSH installation must use a single detector.
+neighbours="$root/files/usr/libexec/medvemodem/neighbours"
+sh -n "$neighbours"
+grep -Fq 'audit_scan() {' "$neighbours"
+grep -Fq 'luci-app-5gmodem' "$neighbours"
+grep -Fq 'santa-hotplug' "$neighbours"
+grep -Fq 'automodem' "$neighbours"
+grep -Fq 'xmm-modem' "$neighbours"
+grep -Fq 'sms-tool' "$neighbours"
+grep -Fq 'smstools3' "$neighbours"
+grep -Fq 'qmodem' "$neighbours"
 grep -Fq 'audit_modem_owners() {' "$script"
-grep -Fq 'audit_modem_owners' "$script"
-grep -Fq 'luci-app-5gmodem' "$script"
-grep -Fq 'xmm-modem' "$script"
-grep -Fq 'luci-app-modeminfo' "$script"
-grep -Fq 'luci-app-smstools3' "$script"
-grep -Fq 'pidof smsd' "$script"
-grep -Fq 'sms-tool' "$script"
-grep -Fq '/usr/lib/rooter' "$script"
-grep -Fq '*santa*' "$script"
-grep -Fq '*automodem*' "$script"
-grep -Fq 'COMPATIBLE: $name' "$script"
-grep -Fq 'NOTICE: $name installed' "$script"
+grep -Fq 'NEIGHBOURS_COMMIT=' "$script"
+grep -Fq 'sh "$TMP/neighbours" --audit' "$script"
 grep -Fq "installation paused due to competing modem automation" "$script"
 grep -Fq 'apk del $name' "$script"
 grep -Fq 'opkg remove $name' "$script"
 awk '
-  /audit_modem_owners$/ { audit = NR }
   /^    prepare_network$/ { network = NR }
-  END { if (!audit || !network || audit >= network) exit 1 }
+  /^    audit_modem_owners$/ { audit = NR }
+  /^    show_release$/ { show = NR }
+  END { if (!network || !audit || !show || network >= audit || audit >= show) exit 1 }
 ' "$script"
 grep -Fq 'quiesce_for_upgrade() {' "$script"
 grep -Fq 'restore_services() {' "$script"
