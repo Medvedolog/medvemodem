@@ -77,3 +77,11 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - `apk` wrote **`/etc/config/medvemodem.apk-new`** and **`/etc/config/medvemodem-bot.apk-new`** rather than replacing existing UCI files. Compare configuration differences and test runtime; **do not blindly overwrite live config or apply defaults**.
 - **Accepted:** online fetch, release highlights, selection/consent, hash verification, dependency dry-run, APK upgrade. **Not yet accepted:** daemon and LuCI live operation, bot runtime, modem stability, 24.10/opkg, forced reinstall, removals, disconnected feeds/GitHub, temporary authenticated mixed proxy.
 - Do not merge PR #6 or claim complete cross-version support until the remaining test matrix passes; root README and install docs remain gated.
+
+## 9. Service quiescence during upgrade — requested after r5 field trial
+
+- The successful r3→r5 APK upgrade was followed by observed duplicated processes: two `medvemodemd` and two bot ucode instances. Their parent/daemon ownership is not yet established: do not assume duplicate workers are always orphaned without PID/procd inspection.
+- Draft installer now prepares a quiescent package transaction: after SHA256 and dependency dry-run, **before** package mutation, prompt for consent that QModem internet and SSH may be interrupted; stop `medvemodem-bot`, `medvemodemd`, and installed QModem init services (`qmodem_network`, `qmodem_monitor`, `qmodem_hc_sim`, `qmodem_init`). Record and restore only services previously reported running.
+- Wait up to 10 seconds for the engine, bot, and QModem dial processes to disappear. If stop fails, TERM **identified process IDs**, then SIGKILL **only IDs that remain**. Never `killall ucode`, `killall sh`, or kill unrelated ModemManager/other user processes.
+- On installer exit or package transaction error, perform best-effort restore; the explicit `--allow-disconnect` is required for unattended installations. Without confirmation/flag, do not touch running services.
+- **Not field tested**: service stop/restart sequencing, QModem lock lifetime, procd respawn and SSH connectivity. Testing requires wired/serial or independent non-QModem management access. Once validated, test repeated r5 reinstall and single-instance behavior, including process ancestry and `ubus call service list`.
