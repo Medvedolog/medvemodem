@@ -84,6 +84,7 @@ jobs:
           done
           [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
+          cp docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md release-assets/HIGHLIGHTS.txt
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -95,4 +96,4 @@ jobs:
           gh release create "$tag" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
             --title "MedveModem ${tag#v}" \
-            --notes "Pre-release packages for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), architectures aarch64_cortex-a53, aarch64_generic and x86_64. Each archive includes the MedveModem engine, LuCI, Telegram bot, and optional eSIM/lpac packages. Check SHA256SUMS before installing. Alpha software: maintain independent access to your router."
+            --notes-file docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md
