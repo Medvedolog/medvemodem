@@ -146,9 +146,14 @@ highlights() {
 
 put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
 running() { local pid; pid=$(cat "$RUN/pid" 2>/dev/null); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }
-jstr() { printf '%s' "$1" | tr -d '"\\' | tr -cd '[:print:]'; }
-# a line of text in its own words (Cyrillic kept): only quotes, backslashes and control bytes go
-jtext() { printf '%s' "$1" | tr -d '"\\\000-\037'; }
+# BusyBox tr may treat [:print:] as literal letters. It previously changed
+# "0.16.0_alpha1-r3" into "pr", and destroyed the error message as well.
+# Encode JSON safely: keep UTF-8 bytes, remove ASCII control characters,
+# and escape backslashes/quotes rather than removing most of the string.
+jstr() {
+	printf '%s' "$1" | LC_ALL=C tr -d '\\000-\\037' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g'
+}
+jtext() { jstr "$1"; }
 
 status() {
 	local eng luci bot lbot state=idle result= c latest= tag= at=0 err= newer=false
