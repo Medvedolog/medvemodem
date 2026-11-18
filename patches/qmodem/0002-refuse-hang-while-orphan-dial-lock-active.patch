@@ -1,0 +1,26 @@
+diff --git a/application/qmodem/files/etc/init.d/qmodem_network b/application/qmodem/files/etc/init.d/qmodem_network
+--- a/application/qmodem/files/etc/init.d/qmodem_network
++++ b/application/qmodem/files/etc/init.d/qmodem_network
+@@ -118,9 +118,21 @@
+         timeout -s TERM -k 2 8 flock -x 9 || exit 124
+         rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
+     ) || return $?
+     procd_kill $service "modem_$1"
+-    /usr/share/qmodem/modem_dial.sh "$1" hang || return $?
++    # A dead procd instance does not guarantee that children inherited from
++    # modem_dial.sh have exited. They may still hold dial.lock and touch AT.
++    # Do not run another hang against an actively dialing orphan.
++    local retries=0
++    while ! flock -n "$MODEM_RUNDIR/${1}_dir/dial.lock" -c true; do
++        retries=$((retries + 1))
++        if [ "$retries" -ge 5 ]; then
++            logger -t qmodem_network "Modem $1 stop incomplete: dial.lock busy after procd_kill"
++            return 75
++        fi
++        sleep 1
++    done
++    timeout -s TERM -k 3 25 /usr/share/qmodem/modem_dial.sh "$1" hang || return $?
+     logger -t qmodem_network "Modem $1 Stop Dial and Hang"
+ }
+ 
+ _modem_status()

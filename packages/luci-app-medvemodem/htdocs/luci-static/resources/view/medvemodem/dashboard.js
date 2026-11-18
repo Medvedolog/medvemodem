@@ -317,10 +317,14 @@ function describe(device, status) {
 	/* ModemManager's freshness says nothing about a modem it does not hold (review 2026-10-22: a HiLink with no reading yet
 	 * read «Оператор пока неизвестен» and «Сигнал: нет данных» because ModemManager was fresh); before its first reading
 	 * such a modem says it is being read */
-	var ownReading = !!owner.control && owner.control !== 'modemmanager' && !device.reading_fresh && !device.modemmanager;
-	var mmFresh = !!device.reading_fresh || (!ownReading && (status.modemmanager || {}).backend === 'available' && typeof mmAge === 'number' && mmAge <= 30);
-	var readingPending = present && ownReading && !device.reading_fresh;
 	var present = device.present === true, state = present ? session.state : 'absent';
+	/* Only this modem's owner can establish reading freshness; the global
+	 * ModemManager timestamp does not validate QModem/native AT telemetry. */
+	var ownReading = !!owner.control && owner.control !== 'modemmanager' && !device.reading_fresh;
+	var mmFresh = !!device.reading_fresh ||
+		(!ownReading && owner.control === 'modemmanager' && (status.modemmanager || {}).backend === 'available' &&
+		 typeof mmAge === 'number' && mmAge <= 30);
+	var readingPending = present && ownReading && !device.reading_failed;
 	/* taken down and kept down: by the operator («Деактивировать»), or netifd gave up (the owner, 2026-10-16) */
 	var paused = present && state !== 'connected' && (device.connection || {}).deactivated || null;
 	/* «Приостановить управление» (the owner, 2026-10-19): no service touches it until «Возобновить управление» */
@@ -508,7 +512,9 @@ function describe(device, status) {
 		phone: phone,
 		network: phone ? (sharing ? _('The phone shares its internet over USB') : _('Phone over USB')) :
 			readingPending ? _('Reading the modem\'s data…') : present && mmFresh ? [words(mm.operator), techWords(mm.access_tech)].filter(Boolean).join(' · ') ||
-			(denied ? _('registration refused') : unregistered ? _('not registered in a network') : _('The operator is not known yet')) : _('The operator\'s data is unavailable'),
+			(denied ? _('registration refused') : unregistered ? _('not registered in a network') : _('The operator is not known yet')) :
+			!present ? _('Modem disconnected from USB') :
+			owner.control === 'qmodem' ? _('QModem telemetry is unavailable') : _('The operator\'s data is unavailable'),
 		readingPending: readingPending,
 		readingAge: device.reading_age,
 		quality: quality !== null && quality >= 0 && quality <= 100 ? quality : null,
@@ -530,7 +536,9 @@ function describe(device, status) {
 		reason: words(session.reason) || (['unknown', 'ready', 'ok', 'expected'].indexOf(config.state) < 0 ? list(config.evidence).join('; ') : '') ||
 			chainLine(device.diagnosis) || '—',
 		generation: device.generation,
-		freshness: present && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
+		freshness: present && device.reading_stale ?
+			(owner.control === 'qmodem' ? _('Last QModem reading is stale.') : _('Last modem reading is stale.')) :
+			present && owner.control === 'modemmanager' && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
 	};
 }
 
@@ -539,7 +547,7 @@ function describe(device, status) {
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r4';
+var VIEW_VERSION = '0.16.0-alpha1-r5';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -1429,6 +1437,11 @@ return view.extend({
 		if (d.modemmanager || d.present !== true || d.frozen || !ctl || ctl === 'modemmanager' || ctl === 'none' || ctl === 'unresolved') return d;
 		if (!this.readings) this.loadReadings();
 		var c = this.readings[id] || (this.readings[id] = {});
+		/* USB re-enumeration or an owner change invalidates prior AT readings;
+		 * an async response from the old generation must not replace them. */
+		if (c.generation !== d.generation || c.owner !== ctl) {
+			c = this.readings[id] = { generation: d.generation, owner: ctl };
+		}
 		/* at most once a minute (QModem's own tool on its port: every 2 min), one request at a time; a refusal (the port
 		 * busy with the modem page's own read) is asked again in 20 s and the last good reading kept up to 10 min (the
 		 * owner, 2026-10-20: «на дашборде оператор пока неизвестен» while the FM350's page named Билайн) */
@@ -1436,6 +1449,7 @@ return view.extend({
 		if (!c.busy && (!c.asked || Date.now() - c.asked > every)) {
 			c.asked = Date.now(); c.busy = true;
 			getMetrics(id, ctl === 'qmodem' ? 120000 : 60000).then(function(r) {
+				if (self.readings[id] !== c) return;
 				if (r && r.metrics) {
 					/* field by field over the last one: a reading without the operator does not wipe it (review 2026-10-22) */
 					/* a reading made of the web's «no SIM / no network» is not built upon: «SIM not found» stayed after the SIM
@@ -1444,7 +1458,8 @@ return view.extend({
 					c.mm = Object.assign({}, old, fresh, { signal: Object.keys(fresh.signal || {}).length ? fresh.signal : old.signal || {} });
 					['operator', 'operator_code', 'registration'].forEach(function(k) { if (!fresh[k] && old[k]) c.mm[k] = old[k]; });
 					if (!(fresh.access_tech || []).length && old.access_tech) c.mm.access_tech = old.access_tech;
-					c.at = Date.now(); c.failed = false;
+					c.at = Date.now() - (typeof r.age_ms === 'number' && r.age_ms >= 0 ? Math.min(600000, r.age_ms) : 0);
+					c.failed = false;
 					self.saveReadings();
 				} else if (r && r.web && (r.web.sim || r.web.network === 'none')) {
 					/* the modem's web says it has no SIM or no network (the tester's M150-4, 2026-11-09: the card said only
@@ -1455,16 +1470,23 @@ return view.extend({
 					self.saveReadings();
 				} else c.failed = true;
 				if (self.lastStatus) self.apply(self.lastStatus, self.lastDevices, self.lastUplink);
-			}, function() { c.failed = true; }).finally(function() { c.busy = false; });
+			}, function() {
+				if (self.readings[id] !== c) return;
+				c.failed = true;
+				if (self.lastStatus) self.apply(self.lastStatus, self.lastDevices, self.lastUplink);
+			}).finally(function() { c.busy = false; });
 		}
 		if (c.mm && Date.now() - c.at > 600000) c.mm = null;
-		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true, reading_age: Math.round((Date.now() - c.at) / 1000) }) : d;
+		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true,
+			reading_stale: Date.now() - c.at > (ctl === 'qmodem' ? 150000 : 90000),
+			reading_age: Math.round((Date.now() - c.at) / 1000) }) :
+			Object.assign({}, d, { reading_failed: !!c.failed, reading_pending: !!c.busy });
 	},
 
 	/* the readings outlive a reload of the page (sessionStorage, like the page's own cache) */
 	saveReadings: function() {
 		var out = {};
-		Object.keys(this.readings || {}).forEach(function(id) { var c = this.readings[id]; if (c.mm) out[id] = { mm: c.mm, at: c.at }; }, this);
+		Object.keys(this.readings || {}).forEach(function(id) { var c = this.readings[id]; if (c.mm) out[id] = { mm: c.mm, at: c.at, generation: c.generation, owner: c.owner }; }, this);
 		try { sessionStorage.setItem('mm:readings', JSON.stringify(out)); } catch (e) {}
 	},
 
@@ -1474,7 +1496,8 @@ return view.extend({
 		try {
 			var saved = JSON.parse(sessionStorage.getItem('mm:readings') || '{}');
 			Object.keys(saved).forEach(function(id) {
-				if (saved[id] && saved[id].mm && Date.now() - saved[id].at < 600000) self.readings[id] = { mm: saved[id].mm, at: saved[id].at };
+				if (saved[id] && saved[id].mm && Date.now() - saved[id].at < 600000)
+					self.readings[id] = { mm: saved[id].mm, at: saved[id].at, generation: saved[id].generation, owner: saved[id].owner };
 			});
 		} catch (e) {}
 	},
@@ -2047,8 +2070,11 @@ return view.extend({
 		var self = this;
 		if (devices) this.nbDevices = devices;
 		return getNeighbours(false).then(function(n) {
-			var rows = [], names = {};
-			(self.nbDevices || []).forEach(function(d) { names[d.device_id] = d.name || d.model || d.device_id; });
+			var rows = [], names = {}, owners = {};
+			(self.nbDevices || []).forEach(function(d) {
+				names[d.device_id] = d.name || d.model || d.device_id;
+				owners[d.device_id] = (d.owner || {}).control || '';
+			});
 			list(n && n.packages).forEach(function(p) {
 				var w = NEIGHBOUR[p.id] || [p.id, ''];
 				rows.push(E('li', {}, [E('strong', {}, w[0]), w[1] ? ' — ' + w[1] : '',
@@ -2056,6 +2082,8 @@ return view.extend({
 					E('br'), E('span', { 'class': 'mm-faint is-mono' }, list(p.files).join(' '))]));
 			});
 			list(n && n.holders).forEach(function(h) {
+				/* QModem's tom_modem legitimately holds its own modem's AT node. */
+				if (h.device_id && owners[h.device_id] === 'qmodem' && h.comm === 'tom_modem') return;
 				rows.push(E('li', {}, _('%s (PID %d) holds %s').format(h.comm, h.pid, h.node) +
 					(h.device_id ? ' · ' + _('modem “%s”: no AT command goes to that port while it is held').format(names[h.device_id] || h.device_id) : '')));
 			});

@@ -135,7 +135,7 @@ function parse(r) { try { return JSON.parse((r && r.stdout) || '{}'); } catch (e
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r4';
+var VIEW_VERSION = '0.16.0-alpha1-r5';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -1798,7 +1798,7 @@ return view.extend({
 		if (!sv || !me.pid) { v.procs.hidden = true; return; }
 		var eng = sv.medvemodem || {};
 		rows.push([_('MedveModem engine'), String(me.pid), mb(me.rss_kb), up(me.up_s),
-			again(eng.restarts_24h || 0, eng.crashes_since_boot ? N_(eng.crashes_since_boot, '%d crash since the router started', '%d crashes since the router started').format(eng.crashes_since_boot) : '')]);
+			again(eng.restarts_24h || 0, eng.crashes_since_boot ? N_(eng.crashes_since_boot, '%d unclean restart since the router started', '%d unclean restarts since the router started').format(eng.crashes_since_boot) : '')]);
 		[['bot', _('Telegram bot')], ['modemmanager', 'ModemManager'], ['qmodem', 'QModem']].forEach(function(k) {
 			var o = sv[k[0]];
 			if (!o) return;

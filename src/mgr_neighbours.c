@@ -53,8 +53,18 @@ static void tell(json_object *was, json_object *now)
 		json_object *a = json_object_object_get(now, lists[l]), *b = json_object_object_get(was, lists[l]);
 
 		for (size_t i = 0; a && i < json_object_array_length(a); i++) {
-			const char *k = jstr(json_object_array_get_idx(a, i), keys[l]);
+			json_object *entry = json_object_array_get_idx(a, i);
+			const char *k = jstr(entry, keys[l]);
 			bool seen = false;
+			/* A QModem-owned AT port held by its own tom_modem is expected,
+			 * not an unauthorized third-party modem helper. */
+			if (l == 1 && k && !strcmp(k, "tom_modem") && jstr(entry, "device_id")) {
+				json_object *rec = mm_registry_find(&registry, jstr(entry, "device_id"));
+				/* The live QModem section identifies its own AT helper.
+				 * Registry records do not store the resolved owner field. */
+				if (rec && qmodem_section_of(rec))
+					continue;
+			}
 
 			for (size_t j = 0; k && b && j < json_object_array_length(b); j++)
 				seen = seen || (jstr(json_object_array_get_idx(b, j), keys[l]) &&
@@ -158,6 +168,11 @@ json_object *neighbours_of(const char *id)
 
 		if (!jstr(h, "device_id") || strcmp(jstr(h, "device_id"), id))
 			continue;
+		if (jstr(h, "comm") && !strcmp(jstr(h, "comm"), "tom_modem")) {
+			json_object *rec = mm_registry_find(&registry, id);
+			if (rec && qmodem_section_of(rec))
+				continue;
+		}
 		if (!o)
 			o = json_object_new_array();
 		json_object_array_add(o, json_object_get(h));

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=medvemodem
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 # QModem's core, built from its source by CI for the LuCI installer
 # (files/usr/libexec/medvemodem/qmodem-install);
@@ -10,7 +10,7 @@ PKG_RELEASE:=4
 QMODEM_VERSION:=3.3.0_p20261108
 QMODEM_COMMIT:=3196ab787e06f93ef343d0beceadd9758e78ef8b
 QMODEM_ARCHES:=aarch64_cortex-a53 aarch64_generic x86_64
-MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r1
+MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r2
 
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE

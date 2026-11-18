@@ -79,11 +79,85 @@ fi
 # 2026-10-16: that modem's dial hung up and started again by enable_dial, the others untouched), else the service's
 # reload; never a restart.
 qm_reconfigure() { grep -q 'extra_command "reconfigure"' "$INITD/qmodem_network" 2>/dev/null; }
+# QModem takes its route metric from qmodem.<section>.metric, not from
+# network.<alias>.metric. Preserve the channel priority chosen in MedveModem
+# when handing an existing interface to QModem. Do not fabricate a metric
+# when the interface never had one.
+qm_inherit_metric() {
+	local section="$1" iface="$2" metric current
+	[ -n "$iface" ] || return 0
+	case "$section$iface" in *[!A-Za-z0-9_]*) return 2 ;; esac
+	metric=$($UCI -q get "network.$iface.metric" 2>/dev/null) || return 0
+	case "$metric" in ''|*[!0-9]*) return 0 ;; esac
+	[ "$metric" -le 9999 ] || return 0
+	current=$($UCI -q get "qmodem.$section.metric" 2>/dev/null) || current=
+	[ "$current" = "$metric" ] && return 0
+	$UCI -q set "qmodem.$section.metric=$metric" &&
+		$UCI -q commit qmodem || return 1
+	logger -t medvemodem "QModem $section inherits metric $metric from $iface"
+}
+# QModem's hang() can wait forever on event.lock, procd_kill or the
+# synchronous modem_dial.sh hang. Bound the *caller* (not a global service
+# restart). An expired operation is a failure, never a successful toggle.
+# This does not prove that orphaned grandchildren have exited: the daemon must
+# verify actual procd/connection state before treating the request as complete.
 qm_apply() {
-	[ -x "$INITD/qmodem_network" ] || return 0
-	if qm_reconfigure; then "$INITD/qmodem_network" reconfigure "$1" >/dev/null 2>&1
-	else "$INITD/qmodem_network" reload >/dev/null 2>&1
+	local rc
+	[ -x "$INITD/qmodem_network" ] || return 1
+	if ! command -v timeout >/dev/null 2>&1; then
+		logger -t medvemodem "QModem action refused: timeout utility unavailable"
+		return 127
 	fi
+	if qm_reconfigure; then
+		timeout -s TERM -k 3 45 "$INITD/qmodem_network" reconfigure "$1" >/dev/null 2>&1
+		rc=$?
+	else
+		# Older QModem only offers a global reload, so do not pretend it
+		# affects exactly one instance; this path is compatibility only.
+		timeout -s TERM -k 3 45 "$INITD/qmodem_network" reload >/dev/null 2>&1
+		rc=$?
+	fi
+	if [ "$rc" -ne 0 ]; then
+		logger -t medvemodem "QModem action for $1 failed or timed out (rc=$rc); check procd and dial process state"
+	fi
+	return "$rc"
+}
+# A successful qmodem_network exit alone is insufficient: procd may have lost
+# the instance while orphan modem_dial.sh shells still hold dial.lock.
+# Read-only observation, scoped to this exact QModem section. BusyBox ash:
+# /proc/<pid>/cmdline is NUL-separated; no GNU ps -o dependency.
+qm_dial_process_exists() {
+	local section="$1" proc cmd
+	for proc in /proc/[0-9]*; do
+		[ -r "$proc/cmdline" ] || continue
+		cmd=$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null) || continue
+		case "$cmd" in *"/usr/share/qmodem/modem_dial.sh $section dial"*) return 0 ;; esac
+	done
+	return 1
+}
+qm_instance_exists() {
+	local section="$1" state
+	state=$(ubus -t 3 call service list '{"name":"qmodem_network","verbose":true}' 2>/dev/null) || return 2
+	printf '%s\n' "$state" | jq -e --arg section "modem_$section" '.qmodem_network.instances[$section] != null' >/dev/null 2>&1
+}
+qm_verify_dial() {
+	local section="$1" want="$2" attempt=0 registered=1 procs=1
+	command -v jq >/dev/null 2>&1 || return 127
+	while [ "$attempt" -lt 3 ]; do
+		qm_instance_exists "$section"; registered=$?
+		[ "$registered" -eq 2 ] && return 2
+		qm_dial_process_exists "$section"; procs=$?
+		if [ "$want" = 0 ] && [ "$registered" -ne 0 ] && [ "$procs" -ne 0 ]; then
+			return 0
+		fi
+		if [ "$want" = 1 ] && [ "$registered" -eq 0 ] && [ "$procs" -eq 0 ]; then
+			return 0
+		fi
+		attempt=$((attempt + 1))
+		[ "$attempt" -ge 3 ] || sleep 1
+	done
+	logger -t medvemodem "QModem $section dial=$want not verified (procd_rc=$registered dial_process_rc=$procs)"
+	return 1
 }
 # qmodem-dial <section> [0|1]: QModem's dial of one modem.
 #   no switch: started when it has none (the operator's «Исправить» on a modem QModem drives; field 2026-10-20:
@@ -96,11 +170,25 @@ if [ "$1" = qmodem-dial ]; then
 	case "$2" in ''|*[!A-Za-z0-9_]*) exit 2 ;; esac
 	case "$3" in ''|0|1) ;; *) exit 2 ;; esac
 	[ "$($UCI -q get "qmodem.$2")" = modem-device ] || exit 2
+	# Keep the metric after a later single-modem reconfigure too.
+	alias=$($UCI -q get "qmodem.$2.alias" 2>/dev/null) || alias=
+	[ "$alias" = "-" ] && alias=
+	if [ -n "$alias" ]; then
+		qm_inherit_metric "$2" "$alias" || exit 1
+	fi
 	if [ -n "$3" ]; then
-		$UCI -q set "qmodem.$2.enable_dial=$3" && $UCI -q commit qmodem || exit 1
+		# A no-op UCI commit causes QModem's *global* config.change reload.
+		# Avoid disturbing other modems when the dial flag is unchanged.
+		current=$($UCI -q get "qmodem.$2.enable_dial" 2>/dev/null) || current=
+		if [ "$current" != "$3" ]; then
+			$UCI -q set "qmodem.$2.enable_dial=$3" && $UCI -q commit qmodem || exit 1
+		fi
 		[ "$3" = 0 ] && ! qm_reconfigure && ubus call service delete "{\"name\":\"qmodem_network\",\"instance\":\"modem_$2\"}" >/dev/null 2>&1
 	fi
-	qm_apply "$2"
+	qm_apply "$2" || exit $?
+	if [ -n "$3" ]; then
+		qm_verify_dial "$2" "$3" || exit 1
+	fi
 	exit 0
 fi
 # qmodem-alias <section> <name>: QModem names the modem's interfaces after the
@@ -112,10 +200,14 @@ if [ "$1" = qmodem-alias ]; then
 	# a section name and an interface name, nothing uci would read as more (HANDOFF 200 item 17)
 	case "$2$3" in *[!A-Za-z0-9_]*) exit 2 ;; esac
 	[ "${#3}" -le 15 ] || exit 2
+	# Before QModem rebuilds the network interface, copy the existing
+	# metric into its own section; otherwise it can briefly seize the
+	# default route despite being a lower-priority backup.
+	qm_inherit_metric "$2" "$3" || exit 1
 	$UCI -q set "qmodem.$2.alias=$3" && $UCI -q commit qmodem || exit 1
 	qm_reconfigure || ubus call service delete "{\"name\":\"qmodem_network\",\"instance\":\"modem_$2\"}" >/dev/null 2>&1
 	qm_apply "$2"
-	exit 0
+	exit $?
 fi
 rc=0
 for pkg in "$@"; do

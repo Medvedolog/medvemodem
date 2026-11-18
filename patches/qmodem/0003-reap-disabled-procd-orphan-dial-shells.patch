@@ -1,0 +1,82 @@
+diff --git a/application/qmodem/files/etc/init.d/qmodem_network b/application/qmodem/files/etc/init.d/qmodem_network
+--- a/application/qmodem/files/etc/init.d/qmodem_network
++++ b/application/qmodem/files/etc/init.d/qmodem_network
+@@ -110,15 +110,69 @@
+     logger -t qmodem_network "Modem $1 Start Dial Now"
+ }
+ 
+-_hang()
+-{
+-    (
+-        mkdir -p "$MODEM_RUNDIR/${1}_dir"
+-        exec 9>"$MODEM_RUNDIR/${1}_dir/event.lock"
+-        timeout -s TERM -k 2 8 flock -x 9 || exit 124
+-        rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
+-    ) || return $?
+-    procd_kill $service "modem_$1"
++# Reap only a disabled QModem section whose procd instance has vanished.
++# Recheck starttime and exact argv before signalling (PID reuse safety).
++# Unknown dial.lock owners are never targeted.
++_qm_exact_dial_shell()
++{
++    local pid="$1" section="$2" command
++    [ -r "/proc/$pid/cmdline" ] || return 1
++    command=$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null) || return 1
++    case "$command" in
++        "/bin/sh /usr/share/qmodem/modem_dial.sh $section dial "|"sh /usr/share/qmodem/modem_dial.sh $section dial ")
++            return 0 ;;
++    esac
++    return 1
++}
++
++_qm_reap_disabled_orphans()
++{
++    local section="$1" proc pid start pair expected targets="" current
++    [ "$(uci -q get "qmodem.$section.enable_dial")" = "0" ] || return 1
++    current=$(_procd_ubus_call list | jq -r --arg instance "modem_$section" \
++        '.qmodem_network.instances[$instance] // empty') || return 1
++    [ -z "$current" ] || return 1
++    for proc in /proc/[0-9]*; do
++        pid=${proc##*/}
++        _qm_exact_dial_shell "$pid" "$section" || continue
++        start=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null) || continue
++        case "$start" in ''|*[!0-9]*) continue;; esac
++        targets="$targets $pid:$start"
++    done
++    [ -n "$targets" ] || return 0
++    logger -t qmodem_network "Modem $section: stopping orphan dial shells after procd lost the instance"
++    for pair in $targets; do
++        pid=${pair%%:*}
++        expected=${pair#*:}
++        start=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null) || continue
++        if [ "$start" = "$expected" ] && _qm_exact_dial_shell "$pid" "$section"; then
++            kill -TERM "$pid" 2>/dev/null || :
++        fi
++    done
++    sleep 2
++    # Escalate only matching PIDs from the original process generation.
++    for pair in $targets; do
++        pid=${pair%%:*}
++        expected=${pair#*:}
++        start=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null) || continue
++        if [ "$start" = "$expected" ] && _qm_exact_dial_shell "$pid" "$section"; then
++            kill -KILL "$pid" 2>/dev/null || :
++        fi
++    done
++}
++
++_hang()
++{
++    (
++        mkdir -p "$MODEM_RUNDIR/${1}_dir"
++        exec 9>"$MODEM_RUNDIR/${1}_dir/event.lock"
++        timeout -s TERM -k 2 8 flock -x 9 || exit 124
++        rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
++    ) || return $?
++    procd_kill $service "modem_$1"
++    # The operator disabled dialing; reap only this section's verified
++    # orphaned shells if procd no longer knows the instance.
++    [ "$(uci -q get "qmodem.$1.enable_dial")" != "0" ] || _qm_reap_disabled_orphans "$1"
+     # A dead procd instance does not guarantee that children inherited from
+     # modem_dial.sh have exited. They may still hold dial.lock and touch AT.
+     # Do not run another hang against an actively dialing orphan.
