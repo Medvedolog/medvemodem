@@ -29,7 +29,7 @@ take_lock() {
     lock_dir=$1
     mkdir -p "${lock_dir%/*}"
     if mkdir "$lock_dir" 2>/dev/null; then
-        echo $ > "$lock_dir/owner"
+        echo $$ > "$lock_dir/owner"
         return 0
     fi
     owner=$(cat "$lock_dir/owner" 2>/dev/null || :)
@@ -40,13 +40,13 @@ take_lock() {
         # Another process might still be writing its PID.
         [ -n "$(find "$lock_dir" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
     fi
-    mv "$lock_dir" "$lock_dir.stale.$" 2>/dev/null || return 1
-    rm -rf "$lock_dir.stale.$"
+    mv "$lock_dir" "$lock_dir.stale.$$" 2>/dev/null || return 1
+    rm -rf "$lock_dir.stale.$$"
     mkdir "$lock_dir" 2>/dev/null || return 1
-    echo $ > "$lock_dir/owner"
+    echo $$ > "$lock_dir/owner"
 }
 release_lock() {
-    [ "$(cat "$1/owner" 2>/dev/null || :)" = "$" ] && rm -rf "$1"
+    [ "$(cat "$1/owner" 2>/dev/null || :)" = "$$" ] && rm -rf "$1"
     return 0
 }
 take_package_lock() {
