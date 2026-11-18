@@ -178,18 +178,30 @@ installed() {
 # This is a read-only audit: only explicit controller evidence blocks install.
 NEIGHBOURS_COMMIT=0f31e9fab1e35fbf515eca67af67bc96e75297e2
 audit_modem_owners() {
-    local level kind name evidence conflicts=0
+    local level kind name evidence conflicts=0 five_count=0 five_more=0 five_list=
     say 'Checking existing modem controllers using MedveModem neighbours detector...'
     detector="https://raw.githubusercontent.com/Medvedolog/medvemodem/$NEIGHBOURS_COMMIT/files/usr/libexec/medvemodem/neighbours"
     fetch "$detector" "$TMP/neighbours" ||
         fail 'cannot download the shared modem audit; refusing to install without preflight'
-    # Fetching from a full immutable commit avoids mismatches between branch
-    # snapshots; no executable content comes from arbitrary package feeds.
     sh "$TMP/neighbours" --audit > "$TMP/neighbours.audit" ||
         fail 'shared modem audit failed; no packages were changed'
+    : > "$TMP/5gmodem-evidence"
+    : > "$TMP/5gmodem-packages"
     while IFS="$(printf '\t')" read -r level kind name evidence; do
         case "$level" in
             BLOCK)
+                # A single installed 5gmodem may own dozens of hotplug files.
+                # Keep the full report on disk but display ONE family-level
+                # conflict, not one conflict per file.
+                case "$kind:$name:$evidence" in
+                    package:*5gmodem*:*|marker:5gmodem:*|hotplug:*5gmodem*:*)
+                        five_count=$((five_count + 1))
+                        printf '%s\n' "$evidence" >> "$TMP/5gmodem-evidence"
+                        if [ "$kind" = package ]; then
+                            printf '%s\n' "$name" >> "$TMP/5gmodem-packages"
+                        fi
+                        continue ;;
+                esac
                 conflicts=$((conflicts + 1))
                 say "CONFLICT: $kind $name ($evidence)"
                 if [ "$kind" = package ]; then
@@ -207,8 +219,31 @@ audit_modem_owners() {
                 say "INFO: $kind $name ($evidence)." ;;
         esac
     done < "$TMP/neighbours.audit"
+    if [ "$five_count" -gt 0 ]; then
+        conflicts=$((conflicts + 1))
+        say "CONFLICT: 5gmodem family ($five_count evidence entries: packages, config, hotplug)."
+        # Show a short summary. The audit report still has every path.
+        if [ -s "$TMP/5gmodem-packages" ]; then
+            five_list=$(sort -u "$TMP/5gmodem-packages" | tr '\n' ' ')
+            say "  Installed: $five_list"
+            if [ "$PM" = apk ]; then
+                say "  Manual removal after verifying your WAN: apk del $five_list"
+            else
+                say "  Manual removal after verifying your WAN: opkg remove $five_list"
+            fi
+        fi
+        say '  Examples of detected files:'
+        head -n 4 "$TMP/5gmodem-evidence" | while IFS= read -r item; do
+            say "    $item"
+        done
+        if [ "$five_count" -gt 4 ]; then
+            five_more=$((five_count - 4))
+            say "    ... and $five_more more (see $TMP/neighbours.audit during this run)."
+        fi
+        say '  Config and hotplug remnants must be reviewed, not blindly deleted.'
+    fi
     if [ "$conflicts" -gt 0 ]; then
-        say "Found $conflicts potential conflicting owners; no services or packages were changed."
+        say "Found $conflicts competing modem families (grouped); no services or packages were changed."
         fail 'installation paused due to competing modem automation'
     fi
     say 'No confirmed competing modem orchestrators found.'
