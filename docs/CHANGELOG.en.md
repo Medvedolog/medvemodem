@@ -7,6 +7,10 @@
 
 ## Unreleased — SSH installer (PR #6, 2026-11-18)
 
+- **Third OPiZ3 hardware trial (2026-11-18): SUCCESSFUL INSTALLER TRANSACTION.** OpenWrt 25.12.5 / `aarch64_cortex-a53`, direct GitHub + official feeds (11,060 packages), English r5 highlights displayed, bot + LuCI opted in, release SHA256 verified, APK dependency simulation passed and the operator approved the final install. `apk add` upgraded all four packages (`medvemodem`, its LuCI, bot, bot LuCI) from `0.16.0_alpha1-r3` to `r5`, returning `Installed successfully`. A 25.12.6 SDK-built archive resolved successfully against this particular 25.12.5 system; other patch-level combinations are not certified.
+- APK preserved new configuration variants as `/etc/config/medvemodem.apk-new` and `/etc/config/medvemodem-bot.apk-new`. Runtime/functional verification, same-version reinstall, removal, 24.10/IPK and authenticated proxy **remain untested**.
+
+
 - **OPiZ3 25.12.5 second trial:** direct GitHub and OpenWrt feeds succeeded, r5 archive SHA256 verified; package selection then wrongly reported `duplicate medvemodem package` because `medvemodem-*.apk` also matched the optional `medvemodem-bot-*.apk`. Corrected to require a numeric version after the exact package name (`b082728`). No APK transaction was run.
 - Display release version, link and **English highlights** before the bot choice; request final installation confirmation only after the dependency dry-run. An r5 highlights document and a dedicated publishing workflow add release metadata and a persistent `HIGHLIGHTS.txt` asset.
 
