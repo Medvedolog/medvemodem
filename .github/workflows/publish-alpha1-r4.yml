@@ -96,6 +96,7 @@ jobs:
           - Condensed results: remove repeated per-channel paragraphs and show a single concise summary.
           - Component manager: detect Telegram bot core and LuCI independently; install missing packages from release assets with SHA256 verification.
           - Self-update: preserve full installed package versions and useful error messages in BusyBox JSON.
+          - The QModem installer continues after unsuccessful individual fetch attempts; its log reports checksum and installation separately.
           - Installer pinned to permanent QModem 3.3.0_p20261108-r1 GitHub Release.
           - MedveModem engine, LuCI, Telegram bot, bot LuCI, and lpac packages for six OpenWrt SDK targets.
           - SHA256SUMS supplied for all target archives.
