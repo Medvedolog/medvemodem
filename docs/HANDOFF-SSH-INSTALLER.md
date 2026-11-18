@@ -59,3 +59,10 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - `docs/SSH-INSTALLER.md` installer usage and acceptance checklist.
 - `docs/CHANGELOG.md` (полный русский журнал сохранён и дополнен) and `docs/CHANGELOG.en.md` (English), both updated for r5 and the installer PR. Keep the two histories synchronized for later fixes.
 - `docs/HANDOFF-QMODEM-FM350.md` for QModem lock lifecycle and operator telemetry; do not conflate the two workstreams.
+
+## 7. Second OPiZ3 trial and release highlights (2026-11-18)
+
+- OpenWrt 25.12.5 / aarch64_cortex-a53, apk: GitHub reachable directly, all feeds refreshed (11,060 packages), Telegram bot requested, r5 archive downloaded and SHA256 verified. Before dry-run, package selection failed with `ERROR: duplicate medvemodem package`. Root cause: APK filename selector `medvemodem-*.apk` also matched `medvemodem-bot-*.apk`. Fix `b082728` restricts selected package basename to `NAME-[0-9]*.apk` or `NAME_[0-9]*.ipk`. **The field attempt never executed `apk add`**. Re-test on OPiZ3.
+- User requested English-only installer console output and displayed release highlights **before** any yes/confirmation. The script now prints release tag, firmware/package architecture, link and English highlights before asking about installing the bot; after dependency dry-run it asks a final explicit install confirmation. Noninteractive action flags remain usable.
+- English r5 notes are tracked in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md` on main. Existing release originally lacked highlights; `publish-r5-highlights.yml` was added to upload HIGHLIGHTS.txt and edit GitHub Release notes. Confirm this workflow succeeded before claiming assets exist.
+- No hardware install success yet. Keep main README one-liner and main installation docs gated on real APK/IPK and proxy/rollback verification.
