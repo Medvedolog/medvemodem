@@ -118,10 +118,31 @@ audit_scan() {
             fi
         done
     done
-    # Legitimate supported owners are never blockers.
-    for pkg in qmodem luci-app-qmodem luci-app-qmodem-next modemmanager; do
-        audit_installed "$pkg" && audit_emit INFO compatible "$pkg" 'supported by MedveModem'
+    # QModem core is a supported modem owner, but its optional LuCI frontends
+    # can change the same configuration concurrently with MedveModem's UI.
+    # A frontend is a WARN, not an indication that a modem was stolen.
+    for pkg in qmodem modemmanager; do
+        audit_installed "$pkg" && audit_emit INFO compatible "$pkg" 'supported modem owner'
     done
+    for pkg in luci-app-qmodem luci-app-qmodem-next; do
+        audit_installed "$pkg" && audit_emit WARN frontend "$pkg" 'second UI can modify QModem settings; coordinate changes with MedveModem'
+    done
+    # QModem auto-probe would claim USB modems on its own. MedveModem's
+    # qmodem-install normally disables it. Checking this specific UCI switch
+    # is more reliable than treating every qmodem_network instance as rogue.
+    if [ -z "$ROOT" ] && command -v uci >/dev/null 2>&1; then
+        probe=$(uci -q get qmodem.main.block_auto_probe 2>/dev/null || :)
+        if [ "$probe" = 0 ]; then
+            audit_emit WARN qmodem-auto-probe qmodem.main.block_auto_probe=0 'QModem may independently detect USB modems; review ownership before install'
+        elif [ "$probe" = 1 ]; then
+            audit_emit INFO qmodem-auto-probe qmodem.main.block_auto_probe=1 'automatic QModem claiming is disabled'
+        fi
+        # Active QModem dial sections are not conflicts by themselves:
+        # MedveModem may have delegated the modem to QModem deliberately.
+        if audit_installed qmodem && [ ! -e /etc/config/medvemodem ]; then
+            audit_emit WARN qmodem-existing qmodem 'QModem predates MedveModem; inspect its enabled modem sections before handover'
+        fi
+    fi
 }
 
 if [ "${1:-}" = --audit ]; then
