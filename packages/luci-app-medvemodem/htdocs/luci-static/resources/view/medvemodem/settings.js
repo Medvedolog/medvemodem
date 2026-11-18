@@ -1732,6 +1732,15 @@ return view.extend({
 		var self = this;
 		this.sv = { kv: E('dl', { 'class': 'mm-kv mm-svc-kv' }), procs: E('div', { 'class': 'mm-tablewrap mm-svc-procs', hidden: true }), out: E('p', { 'class': 'mm-faint mm-svc-result', role: 'status' }),
 			box: E('input', { type: 'checkbox', id: 'mm-svc-others' }), boxText: E('span', {}, '') };
+		/* Display preference only: per browser, no daemon or connection changes.
+		 * Default OFF. The dashboard reads it on each regular refresh. */
+		this.sv.ownerBadges = E('input', { type: 'checkbox', id: 'mm-show-owner-badges',
+			change: function() {
+				try { localStorage.setItem('mm:show-owner-badges', self.sv.ownerBadges.checked ? '1' : '0'); }
+				catch (e) {}
+			} });
+		try { this.sv.ownerBadges.checked = localStorage.getItem('mm:show-owner-badges') === '1'; }
+		catch (e) { this.sv.ownerBadges.checked = false; }
 		this.sv.btn = E('button', { type: 'button', 'class': 'mm-btn mm-svc-toggle', click: mm.busy(function() { return self.serviceToggle(); }) }, '');
 		/* the owner, 2026-10-20: «кнопки остановить, запустить» — now only; the switch above decides the boot */
 		this.sv.run = E('button', { type: 'button', 'class': 'mm-btn mm-svc-run', click: mm.busy(function() { return self.serviceRun(self.svRunning ? 'stop' : 'start'); }) }, '');
@@ -1745,6 +1754,10 @@ return view.extend({
 			click: mm.busy(function() { return self.serviceQmodem(true); }) }, _('QModem emergency restart'));
 		var card = this.sec('set-service', _('MedveModem service'), [
 			this.sv.kv, this.sv.procs,
+			E('div', { 'class': 'mm-owner-pref' }, [
+				E('label', { 'class': 'mm-check', 'for': 'mm-show-owner-badges' }, [this.sv.ownerBadges, ' ', _('Show modem manager badges on the Modems overview')]),
+				E('p', { 'class': 'mm-faint' }, _('Off by default. This display preference is saved in this browser; the individual modem page always shows its manager.'))
+			]),
 			E('label', { 'class': 'mm-check mm-svc-box' }, [this.sv.box, ' ', this.sv.boxText]),
 			E('div', { 'class': 'mm-actions' }, [this.sv.run, this.sv.again, this.sv.qm, this.sv.qmHard, this.sv.btn]), this.sv.out,
 			E('p', { 'class': 'mm-faint' }, _('“Stop” and “Start” act now; after a router restart the service starts again if it is switched on. A switched-off service does not start after a restart either, until it is switched on here. Without the box the other modem services keep working and take the modems themselves. With the box they stop too and do not start at boot; “Switch on” with the box starts exactly those stopped here. The modems\' network interfaces are not deleted.'))]);
