@@ -5,6 +5,8 @@ on:
     branches: [feat/ssh-installer]
     paths:
       - 'medvemodem-install.sh'
+      - 'tests/test-luci-frontend.py'
+      - 'packages/luci-app-medvemodem/htdocs/luci-static/resources/**'
       - 'tests/test-ssh-installer.sh'
       - '.github/workflows/ssh-installer-tests.yml'
   pull_request:
@@ -25,3 +27,5 @@ jobs:
         run: |
           sh -n medvemodem-install.sh
           sh tests/test-ssh-installer.sh
+      - name: Verify LuCI module contracts and cache compatibility
+        run: python3 tests/test-luci-frontend.py
