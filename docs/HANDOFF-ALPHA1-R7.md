@@ -63,3 +63,11 @@ wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/
 ## Important caveats
 
 Do not hard-code r6 or r7 as a default release tag. Do not automatically remove third-party modem ownership scripts. Do not claim successful CI merely because tests are in source; inspect GitHub Actions. The user requires changelog, handoff and release highlights for every release and a test for every regression.
+
+## Automatic r7 publication after checks
+
+The main `build` workflow performs LuCI module contract checks and Chromium smoke checks, then builds six SDK targets. `.github/workflows/publish-alpha1-r7-after-build.yml` receives only successful completed `build` runs on `main`. It checks that the exact successful commit is the current main head and has PKG_RELEASE=7, then downloads the original six build artifacts by `workflow_run.id`.
+
+The publisher verifies that every target contains the engine, LuCI, Telegram bot and bot LuCI; repacks six archives, generates SHA256SUMS, creates a **draft** r7 release and downloads all published assets again to verify hashes. Only then does it mark the release public as prerelease. It refuses to overwrite any existing r7 GitHub Release and ignores main builds with newer revisions.
+
+Creating the tag via `gh release create` inside this same workflow is necessary: GitHub Actions releases/tags created with `GITHUB_TOKEN` do not trigger downstream tag-push workflows. Never declare the release complete until the final `Publish ... r7` workflow reports success and the actual Release assets are present.
