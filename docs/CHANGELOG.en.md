@@ -7,6 +7,10 @@
 
 ## Unreleased — SSH installer (PR #6, 2026-11-18)
 
+- **OPiZ3 25.12.5 second trial:** direct GitHub and OpenWrt feeds succeeded, r5 archive SHA256 verified; package selection then wrongly reported `duplicate medvemodem package` because `medvemodem-*.apk` also matched the optional `medvemodem-bot-*.apk`. Corrected to require a numeric version after the exact package name (`b082728`). No APK transaction was run.
+- Display release version, link and **English highlights** before the bot choice; request final installation confirmation only after the dependency dry-run. An r5 highlights document and a dedicated publishing workflow add release metadata and a persistent `HIGHLIGHTS.txt` asset.
+
+
 **Development-only; not yet merged or approved for direct README installation.**
 
 - Add `medvemodem-install.sh`, inspired by BearGuard, for SSH console installation on OpenWrt 24.10.x (`opkg`/IPK) and 25.12.x (`apk`/APK), supported prebuilt architectures `aarch64_cortex-a53`, `aarch64_generic`, `x86_64`.
