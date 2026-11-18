@@ -64,6 +64,13 @@ fi
 grep -Fq 'audit_modem_owners() {' "$script"
 grep -Fq 'NEIGHBOURS_COMMIT=' "$script"
 grep -Fq 'sh "$TMP/neighbours" --audit' "$script"
+# Many 5gmodem hotplug entries represent one conflicting family.
+grep -Fq 'five_count=$((five_count + 1))' "$script"
+grep -Fq 'CONFLICT: 5gmodem family' "$script"
+grep -Fq 'Found $conflicts competing modem families (grouped)' "$script"
+grep -Fq 'head -n 4 "$TMP/5gmodem-evidence"' "$script"
+grep -Fq "Config and hotplug remnants must be reviewed, not blindly deleted." "$script"
+
 grep -Fq "installation paused due to competing modem automation" "$script"
 grep -Fq 'apk del $name' "$script"
 grep -Fq 'opkg remove $name' "$script"
