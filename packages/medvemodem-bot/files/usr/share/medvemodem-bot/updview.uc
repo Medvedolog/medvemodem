@@ -4,7 +4,8 @@ import * as ui from './ui.uc';
 import * as lang from './lang.uc';
 
 const T = lang.T;
-const VER = /^[0-9][0-9A-Za-z.+~-]{0,40}$/;
+// OpenWrt package versions use an underscore before alphaN, while GitHub tags use a hyphen.
+const VER = /^[0-9][0-9A-Za-z._+~-]{0,40}$/;
 
 function installed(st) { return type(st?.installed?.engine) == 'string' && match(st.installed.engine, VER) ? st.installed.engine : '—'; }
 
