@@ -42,6 +42,7 @@ jobs:
           python3 tests/test-luci-frontend.py
           sh tools/check-web-version.sh
           sh tests/test-installer-release-selection.sh
+          sh tests/test-installer-locks.sh
 
   luci-browser:
     name: LuCI Chromium smoke
