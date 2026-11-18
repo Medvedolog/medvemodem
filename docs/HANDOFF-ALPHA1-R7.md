@@ -71,3 +71,12 @@ The main `build` workflow performs LuCI module contract checks and Chromium smok
 The publisher verifies that every target contains the engine, LuCI, Telegram bot and bot LuCI; repacks six archives, generates SHA256SUMS, creates a **draft** r7 release and downloads all published assets again to verify hashes. Only then does it mark the release public as prerelease. It refuses to overwrite any existing r7 GitHub Release and ignores main builds with newer revisions.
 
 Creating the tag via `gh release create` inside this same workflow is necessary: GitHub Actions releases/tags created with `GITHUB_TOKEN` do not trigger downstream tag-push workflows. Never declare the release complete until the final `Publish ... r7` workflow reports success and the actual Release assets are present.
+
+## Post-release field incident: BusyBox `paste` missing (2026-11-19)
+
+- R3S-Himki / OpenWrt 25.12.6 aarch64_generic: root installed the SSH installer from `main`, chose 1 (install/update); after GitHub API selection started, shell reported `line 296: paste: not found` and exited before any package transaction. The existing modem installation was unchanged.
+- Cause: `resolve_latest_release` used the coreutils `paste` command, not guaranteed on minimal OpenWrt. Source/static CI tests imitated the selection algorithm but did not execute the installer's actual command with OpenWrt tool availability; this was a validation gap.
+- Fix: `main` commit `5126a9f` replaces `paste|sort|awk` with BusyBox-compatible `awk` using `getline` on the three JSON-filtered data files, comparing `published_at` values. Fail closed when no valid v* published MedveModem release exists (no fallback to old tags).
+- Regression tests: `tests/test-installer-release-runtime.py` extracts and executes the *actual* awk program with fixtures for unrelated QModem release, drafts, newer stable and prerelease, and empty selection; wired into `tests/test-installer-release-selection.sh` and the release CI gate.
+- Workaround with an old installer already present: `sh /tmp/medvemodem-install.sh --tag v0.16.0-alpha1-r7 --install` bypasses automatic release selection while preserving checksums and preflight. To test the fixed auto-selector, re-download the script from `main` and start again.
+- Post-release script changes do not overwrite published r7 assets. Verify on actual BusyBox ash and jsonfilter before declaring hardware acceptance; the CI fixture is still not a live router test.
