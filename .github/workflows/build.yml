@@ -31,7 +31,33 @@ permissions:
   contents: read
 
 jobs:
+  luci-contracts:
+    name: LuCI frontend compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify frontend API, version and stale-cache safety
+        run: python3 tests/test-luci-frontend.py
+
+  luci-browser:
+    name: LuCI Chromium smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Exercise LuCI modem view in Chromium
+        run: node tests/test-luci-browser.cjs
+
   packages:
+    needs: [luci-contracts, luci-browser]
     name: ${{ matrix.arch }} / OpenWrt ${{ matrix.release }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
