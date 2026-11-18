@@ -7,6 +7,9 @@
 
 ## Unreleased — SSH installer (PR #6, 2026-11-18)
 
+- **In development:** pre-install/upgrade service quiescence for previously running `medvemodemd`, Telegram bot and QModem services. Stop through init scripts, wait for old processes, then targeted TERM/KILL for verified leftovers and restore the original running set after transaction or error. This follows field observation of two daemon PIDs and two bot PIDs after a successful r3→r5 upgrade. **Not yet tested on OPiZ3.** Stopping QModem may disconnect SSH, so require explicit consent; unattended use requires `--allow-disconnect`.
+
+
 - **Third OPiZ3 hardware trial (2026-11-18): SUCCESSFUL INSTALLER TRANSACTION.** OpenWrt 25.12.5 / `aarch64_cortex-a53`, direct GitHub + official feeds (11,060 packages), English r5 highlights displayed, bot + LuCI opted in, release SHA256 verified, APK dependency simulation passed and the operator approved the final install. `apk add` upgraded all four packages (`medvemodem`, its LuCI, bot, bot LuCI) from `0.16.0_alpha1-r3` to `r5`, returning `Installed successfully`. A 25.12.6 SDK-built archive resolved successfully against this particular 25.12.5 system; other patch-level combinations are not certified.
 - APK preserved new configuration variants as `/etc/config/medvemodem.apk-new` and `/etc/config/medvemodem-bot.apk-new`. Runtime/functional verification, same-version reinstall, removal, 24.10/IPK and authenticated proxy **remain untested**.
 
