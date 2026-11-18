@@ -212,7 +212,10 @@ show_release() {
 # QModem may be this router's only WAN path: never stop it without consent.
 svc_running() {
     [ -x "/etc/init.d/$1" ] || return 1
-    /etc/init.d/"$1" status 2>/dev/null | grep -Eq '(^|[[:space:]])running([[:space:]]|$)'
+    # OpenWrt procd's "running" subcommand is more reliable than parsing
+    # distro-specific status text; fall back to status for older init scripts.
+    /etc/init.d/"$1" running >/dev/null 2>&1 ||
+        /etc/init.d/"$1" status 2>/dev/null | grep -Eq '(^|[[:space:]])running([[:space:]]|$)'
 }
 stop_one() {
     service=$1
@@ -382,6 +385,14 @@ install_flow() {
         fi
     fi
     restore_services
+    # A running service must not have inherited duplicated old processes.
+    for family in medvemodemd medvemodem-bot; do
+        count=0
+        for _pid in $(service_pids "$family"); do count=$((count + 1)); done
+        if [ "$count" -gt 1 ]; then
+            say "WARNING: $family has $count processes after upgrade; inspect procd and process parents before killing anything."
+        fi
+    done
     for name in $package_files; do installed "$name" || fail "missing installed $name"; done
     say 'Installed successfully. QModem is managed separately in LuCI.'
 }
