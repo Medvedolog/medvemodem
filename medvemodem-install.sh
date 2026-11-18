@@ -217,7 +217,10 @@ install_flow() {
     [ "$with_bot" = 0 ] || package_files="$package_files medvemodem-bot luci-app-medvemodem-bot"
     for name in $package_files; do
         match=
-        for item in "$TMP"/pkg/"$name"_*."$EXT" "$TMP"/pkg/"$name"-*."$EXT"; do
+        # Package filenames start with the exact name followed by a numeric
+        # version. In particular, medvemodem-* would also match
+        # medvemodem-bot-*.apk and falsely report a duplicate engine.
+        for item in "$TMP"/pkg/"$name"_[0-9]*."$EXT" "$TMP"/pkg/"$name"-[0-9]*."$EXT"; do
             [ -f "$item" ] || continue
             [ -z "$match" ] || fail "duplicate $name package"
             match=$item
