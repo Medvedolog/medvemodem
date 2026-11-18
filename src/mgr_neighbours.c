@@ -167,6 +167,12 @@ json_object *neighbours_of(const char *id)
 
 		if (!jstr(h, "device_id") || strcmp(jstr(h, "device_id"), id))
 			continue;
+		if (jstr(h, "comm") && !strcmp(jstr(h, "comm"), "tom_modem")) {
+			json_object *rec = mm_registry_find(&registry, id);
+			json_object *owner = rec ? json_object_object_get(rec, "owner") : NULL;
+			if (owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem"))
+				continue;
+		}
 		if (!o)
 			o = json_object_new_array();
 		json_object_array_add(o, json_object_get(h));
