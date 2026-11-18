@@ -1,0 +1,32 @@
+# One-shot metadata repair for MedveModem Alpha 1 r5.
+# Publish English highlights as a permanent release asset and release notes.
+name: publish-r5-highlights
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-r5-highlights.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  highlights:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Update r5 release highlights without modifying packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.16.0-alpha1-r5
+          source=docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md
+          test -s "$source"
+          gh release view "$tag" >/dev/null
+          cp "$source" HIGHLIGHTS.txt
+          gh release upload "$tag" HIGHLIGHTS.txt --clobber
+          gh release edit "$tag" --notes-file "$source" --prerelease
