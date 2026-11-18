@@ -73,3 +73,11 @@ Upstream documented APIs (verify availability and JSON schema in pinned installe
 - Upstream QModem runtime source remains pinned at `QMODEM_COMMIT=3196ab787e06f93ef343d0beceadd9758e78ef8b` in Makefile. **No QModem source backports/cherry-picks applied yet**. Before adding them, introduce a tracked overlay/patch manifest and a reproducible application to the pinned source (or an explicitly maintained source fork). Keep source SHA and patch provenance in the release manifest.
 - Next critical implementation: select and test minimal upstream `hang` error-propagation and process-lifecycle changes; reproduce both lock states in a harness; enforce true target-specific termination and exact completion verification. Then integrate the FM350 operator-name fallback (issue #169) only after owner-side AT serialization is confirmed. Avoid global QModem reload on UCI commits where practical.
 
+
+
+### First pinned-source QModem backport staged (2026-11-18)
+
+- `patches/qmodem/0001-bound-stop-and-propagate-errors.patch` (latest patch commit `5fa8f9a`) applies to the exact pinned FUjr/QModem source `3196ab787e06f93ef343d0beceadd9758e78ef8b`: error propagation from `redial` and `reconfigure`, bounded `event.lock` acquisition (8 seconds, `timeout` TERM then KILL), immediate stop on lock timeout before `procd_kill` or `hang`. Its original/context lines were matched byte-for-byte against the pinned source, and old/new unified hunk counts were validated. **Not tested with `git apply` in a real checkout or on OpenWrt** (network access unavailable in the validation container), and not a complete fix for inherited `dial.lock` or orphaned children.
+- `tools/build-qmodem.sh` (`44b844c`) mounts `patches/qmodem` read-only and uses `git apply --check` then `git apply` after pin checkout, before package setup. Builds will fail closed if an overlay becomes incompatible. No build was executed.
+- `dashboard.js` additional correction `85bc141`: reads without data distinguish *pending* versus *failed* and display the QModem-specific unavailable wording. Note that full QModem telemetry verification and normalization remain pending.
+- After these changes, operator-name fallback, QModem locking/child lifecycle correctness, procd verification and deterministic host/device tests remain **open**. No release should be tagged from these commits without validation.
