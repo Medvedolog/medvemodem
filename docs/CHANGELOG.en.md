@@ -7,6 +7,9 @@
 
 ## Unreleased — LuCI fixes after r5 (2026-11-18)
 
+- **Whitelist page localization:** add 20 missing Russian gettext translations and template entries for channel status, full internet, service filters, checks, recent access changes and Telegram help. A new `tools/check-whitelist-i18n.py` validation runs before package builds to catch missing Russian whitelist strings. Not included in published r5.
+
+
 - **Verified r5 field defect on OPiZ3:** individual modem page reported `page r1 / shared module r5` because `modem.js` really still declared `VIEW_VERSION = '0.16.0-alpha1-r1'`. This is not just a stale browser cache. Fix the constant and extend `tools/check-web-version.sh` to validate **all three** LuCI views, including previously omitted `modem.js`.
 - Add informational manager badges **MM** (ModemManager), **QM** (QModem), **MV** (native MedveModem) and WEB (HiLink) on dashboard modem cards, fleet table and **individual modem header**. Based only on the actual resolved owner.
 - Settings → Modems offers a browser-local management-badge switch, **off by default**; no UCI or modem-control side effects.
