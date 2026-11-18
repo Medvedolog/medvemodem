@@ -1,7 +1,7 @@
 diff --git a/application/qmodem/files/etc/init.d/qmodem_network b/application/qmodem/files/etc/init.d/qmodem_network
 --- a/application/qmodem/files/etc/init.d/qmodem_network
 +++ b/application/qmodem/files/etc/init.d/qmodem_network
-@@ -69,52 +69,53 @@
+@@ -69,54 +69,55 @@
  redial()
  {
      qmodem_valid_instance "$1" || return 2
@@ -51,6 +51,8 @@ diff --git a/application/qmodem/files/etc/init.d/qmodem_network b/application/qm
 -    (
 -        mkdir -p "$MODEM_RUNDIR/${1}_dir"
 -        exec 9>"$MODEM_RUNDIR/${1}_dir/event.lock"; flock -x 9
+-        rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
+-    )
 +    hang "$1" || return $?
 +    dial "$1"
 +}
@@ -98,6 +100,8 @@ diff --git a/application/qmodem/files/etc/init.d/qmodem_network b/application/qm
 +        mkdir -p "$MODEM_RUNDIR/${1}_dir"
 +        exec 9>"$MODEM_RUNDIR/${1}_dir/event.lock"
 +        timeout -s TERM -k 2 8 flock -x 9 || exit 124
-         rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
-     )
++        rm -f "$MODEM_RUNDIR/${1}_dir/generation" "$MODEM_RUNDIR/${1}_dir/ipv4.json" "$MODEM_RUNDIR/${1}_dir/backend.json"
++    ) || return $?
      procd_kill $service "modem_$1"
+     /usr/share/qmodem/modem_dial.sh "$1" hang || return $?
+     logger -t qmodem_network "Modem $1 Stop Dial and Hang"
