@@ -29,7 +29,7 @@ if grep -Fq '"$name"-*."$EXT"' "$script"; then
     exit 1
 fi
 
-"$script" --help | grep -q -- '--reinstall'
+sh "$script" --help | grep -q -- '--reinstall'
 
 # Reproduce the OPiZ3 regression with realistic APK/IPK package names.
 # The engine selector must NOT include medvemodem-bot or other packages.
