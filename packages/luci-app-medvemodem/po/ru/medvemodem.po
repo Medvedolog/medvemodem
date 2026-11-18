@@ -12352,3 +12352,83 @@ msgstr "Мой номер"
 #: ussd-codes.json
 msgid "Yota"
 msgstr "Yota"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Full internet"
+msgstr "Полный доступ к интернету"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Checked channels"
+msgstr "Проверено каналов"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Limited access means the main targets did not answer, but the restricted group did. It does not mean the modem has failed."
+msgstr "Ограниченный доступ означает, что основные проверочные адреса не ответили, но адреса из белого списка доступны. Это не означает неисправность модема."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Advanced settings and tools"
+msgstr "Дополнительные настройки и инструменты"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Loading the history…"
+msgstr "Загрузка истории…"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Refresh history"
+msgstr "Обновить историю"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Recent access changes"
+msgstr "Последние изменения доступности"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "No recorded access changes yet."
+msgstr "Изменений доступности пока не зарегистрировано."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Full internet restored"
+msgstr "Полный доступ к интернету восстановлен"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Duration: %d min"
+msgstr "Продолжительность: %d мин"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "The history is unavailable."
+msgstr "История недоступна."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "All services"
+msgstr "Все сервисы"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Unavailable services"
+msgstr "Недоступные сервисы"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "DNS errors"
+msgstr "Ошибки DNS"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "TLS / certificate errors"
+msgstr "Ошибки TLS / сертификатов"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "No results for this filter."
+msgstr "По выбранному фильтру результатов нет."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Channels checked: %d"
+msgstr "Проверено каналов: %d"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Attention: %d"
+msgstr "Требуют внимания: %d"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Possibly limited: %d"
+msgstr "Возможно ограничены: %d"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable."
+msgstr "Настройки уведомлений Telegram и состояние их доставки управляются отдельным ботом. Включённое событие не гарантирует доставку, если Telegram недоступен."

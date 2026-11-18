@@ -547,7 +547,7 @@ function describe(device, status) {
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r5';
+var VIEW_VERSION = '0.16.0-alpha1-r6';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -873,7 +873,8 @@ return view.extend({
 					'aria-label': _('Select “%s”').format(card.titleLink.textContent),
 					change: function(ev) { ev.target.checked ? self.tableSel.add(id) : self.tableSel.delete(id); self.applyTable(); } }))),
 				E('td', { 'class': 'num', 'data-h': '№', title: self.ranked.indexOf(id) >= 0 ? _('Place in the channel priority') : _('No interface: outside the priority') }, String(i + 1)),
-				E('td', { 'data-h': _('Modem') }, [E('a', { href: href }, card.titleLink.textContent),
+								E('td', { 'data-h': _('Modem') }, [E('a', { href: href }, card.titleLink.textContent),
+					card.ownerTag.hidden ? '' : card.ownerTag.cloneNode(true),
 					card.subtitle.hidden ? '' : E('div', { 'class': 'mm-faint' }, card.subtitle.textContent)]),
 				E('td', { 'data-h': _('State') }, [E('span', { 'class': 'mm-row mm-table-state' }, [light, net,
 					card.autofixBadge.hidden ? '' : (function(b) { b.addEventListener('click', function() { card.autofixBadge.click(); self.applyTable(); }); return b; })(card.autofixBadge.cloneNode(true))]),
@@ -979,6 +980,7 @@ return view.extend({
 		var refs = {}, detailsId = 'mm-details-' + ++this.cardSerial, href = L.url('admin/modem/medvemodem/modem') + '#' + encodeURIComponent(id);
 		refs.title = E('h3', { 'class': 'mm-mcard-title' }); refs.subtitle = E('span', { 'class': 'mm-faint mm-tile-sub mm-muted' });
 		refs.state = E('span', { 'class': 'mm-pill' });
+		refs.ownerTag = E('span', { 'class': 'mm-owner-tag', hidden: true });
 		refs.badge = E('span', { 'class': 'mm-badge-slot' });
 		refs.network = E('span'); refs.signal = E('span', { 'class': 'mm-signal mm-q-word' });
 		refs.icon = barsNode(); refs.rates = E('span', { 'class': 'mm-rates mm-faint', hidden: true });
@@ -1156,7 +1158,7 @@ return view.extend({
 		refs.title.appendChild(refs.titleLink);
 		refs.node = E('article', { 'class': 'mm-card mm-mcard mm-tile', 'data-device-id': id }, [
 			E('div', { 'class': 'mm-mcard-top mm-card-head' }, [E('div', { 'class': 'mm-mcard-id' }, [refs.title, refs.subtitle]),
-				E('div', { 'class': 'mm-row mm-mcard-icons' }, [refs.autofixBadge, refs.web, refs.sms, refs.toggle])]),
+				E('div', { 'class': 'mm-row mm-mcard-icons' }, [refs.ownerTag, refs.autofixBadge, refs.web, refs.sms, refs.toggle])]),
 			E('div', {}, refs.state),
 			refs.sum = E('div', { 'class': 'mm-sum mm-network' }, [E('a', { 'class': 'mm-to-radio', href: href.replace('#', '#radio:'),
 				title: _('Network and signal: cells, bands') }, refs.icon), refs.badge, refs.network]),
@@ -1220,6 +1222,7 @@ return view.extend({
 			/* the USB path is no news at the basic level: the model, or nothing */
 			text(card.titleLink, data.name); text(card.subtitle, lv === 'normal' && !words(device.name) ? '' : data.subtitle); text(card.state, data.state);
 			card.subtitle.hidden = !card.subtitle.textContent || card.subtitle.textContent === '—';
+			mmc.setOwnerBadge(card.ownerTag, ((device.owner || {}).control));
 			/* the modem's own web through the router's address (web-forward), the HiLink home by its path */
 			var wc = device.connection || {}, wport = data.present && wc.web_port;
 			card.web.hidden = !wport;

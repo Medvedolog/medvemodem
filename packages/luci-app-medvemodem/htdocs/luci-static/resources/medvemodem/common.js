@@ -9,7 +9,7 @@
 
 /* the stylesheet carries the package version: LuCI versions its own scripts, not an app's
  * <link>, and a browser keeps an old dashboard.css after an upgrade (seen on the bench, 0.7.2) */
-var VERSION = '0.16.0-alpha1-r5';	/* = the engine's version */
+var VERSION = '0.16.0-alpha1-r6';	/* = the engine's version */
 
 /* a value as a list: the module has its own (a view's list is not in its scope; r26 broke the icon on this) */
 function list(v) { return Array.isArray(v) ? v : v == null || v === '' ? [] : [v]; }
@@ -1039,10 +1039,40 @@ function smsOperator(sender) {
 	return !!s && SMS_OPERATORS.test(s);
 }
 
+/* Manager badges are an optional browser presentation preference, off by default.
+ * These only describe the resolved control owner; never infer ownership from
+ * the presence of a QModem/ModemManager process elsewhere on the router. */
+function ownerBadgesEnabled() {
+	try { return localStorage.getItem('mm:owner-badges') === '1'; } catch (e) { return false; }
+}
+function ownerBadgeInfo(owner) {
+	var b = {
+		modemmanager: ['MM', 'ModemManager', 'mm'],
+		qmodem: ['QM', 'QModem', 'qm'],
+		'netifd-qmi': ['MV', 'MedveModem (native QMI)', 'native'],
+		'netifd-mbim': ['MV', 'MedveModem (native MBIM)', 'native'],
+		'medvemodem-at': ['MV', 'MedveModem (native AT)', 'native'],
+		native: ['MV', 'MedveModem (native)', 'native'],
+		medvemodem: ['MV', 'MedveModem', 'native'],
+		hilink: ['WEB', 'Modem web interface (HiLink)', 'web']
+	};
+	return b[owner] || null;
+}
+function setOwnerBadge(node, owner) {
+	var info = ownerBadgesEnabled() ? ownerBadgeInfo(owner) : null;
+	node.hidden = !info;
+	if (!info) { node.textContent = ''; node.removeAttribute('title'); return; }
+	node.textContent = info[0];
+	node.title = info[1];
+	node.setAttribute('aria-label', info[1]);
+	node.className = 'mm-owner-tag is-' + info[2];
+}
+
 return baseclass.extend({
 	smsLinked: smsLinked, smsMatches: smsMatches, smsCode: smsCode, copyText: copyText, smsOperator: smsOperator,
 	busy: busy, speedErr: speedErr,
 	toast: toast, recoveryNotes: recoveryNotes, execLong: execLong, staleWarn: staleWarn,
+	ownerBadgesEnabled: ownerBadgesEnabled, ownerBadgeInfo: ownerBadgeInfo, setOwnerBadge: setOwnerBadge,
 	VERSION: VERSION, plural: plural, LANG: LANG, langArg: langArg, langCode: langCode, num: num, CHAIN_LINKS: CHAIN_LINKS, CHAIN_WHY: CHAIN_WHY, dnsDetail: dnsDetail, reachError: reachError, chainLine: chainLine,
 	text: text,
 	failText: failText,

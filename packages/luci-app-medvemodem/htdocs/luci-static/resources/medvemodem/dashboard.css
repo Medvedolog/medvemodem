@@ -1120,3 +1120,12 @@ details:not([open]) > .mm-pop { display: none; }
 
 /* The same main / backup N label as the failover priority table. */
 .mm-whitelist .mm-wlc-col-role { display: block; font-weight: 600; font-size: 11px; line-height: 1.35; color: var(--text-color-medium, #8b949e); white-space: nowrap; }
+
+/* Optional manager-owner chips: informational only, never imply a conflict. */
+.mm-owner-tag { display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 4px; border: 1px solid var(--border-color-medium, #aab3be); border-radius: 999px; font-size: 10px; line-height: 1.7; font-weight: 700; white-space: nowrap; color: var(--text-color-medium, #59636e); background: var(--background-color-medium, #f4f5f6); }
+.mm-owner-tag[hidden] { display: none !important; }
+.mm-owner-tag.is-qm { border-color: #d4a72c; color: #825e00; }
+.mm-owner-tag.is-mm { border-color: #8a9db8; color: #365779; }
+.mm-owner-tag.is-native { border-color: #52a27b; color: #17683e; }
+.mm-owner-tag.is-web { border-color: #9a85cc; color: #71569b; }
+.mm-hero-name-row .mm-owner-tag { flex: none; }

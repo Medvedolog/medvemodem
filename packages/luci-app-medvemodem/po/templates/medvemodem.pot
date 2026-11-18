@@ -12323,3 +12323,83 @@ msgstr ""
 #: ussd-codes.json
 msgid "Yota"
 msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Full internet"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Checked channels"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Limited access means the main targets did not answer, but the restricted group did. It does not mean the modem has failed."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Advanced settings and tools"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Loading the history…"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Refresh history"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Recent access changes"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "No recorded access changes yet."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Full internet restored"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Duration: %d min"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "The history is unavailable."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "All services"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Unavailable services"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "DNS errors"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "TLS / certificate errors"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "No results for this filter."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Channels checked: %d"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Attention: %d"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Possibly limited: %d"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable."
+msgstr ""
