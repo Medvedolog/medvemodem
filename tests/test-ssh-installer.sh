@@ -4,6 +4,15 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 script="$root/medvemodem-install.sh"
 sh -n "$script"
+# A modem-page rendering error must be visible, not leave a blank mm-wait page.
+modemjs="$root/packages/luci-app-medvemodem/htdocs/luci-static/resources/view/medvemodem/modem.js"
+grep -Fq "Unable to display modem data: %s" "$modemjs"
+grep -Fq "self.root.classList.remove('mm-wait')" "$modemjs"
+grep -Fq "Loading the modem" "$modemjs"
+if grep -Fq "mm-root mm-modem mm-wait' +" "$modemjs"; then
+    echo 'FAIL: modem page hides every card before first device response' >&2
+    exit 1
+fi
 grep -Fq '24.10.*) PM=opkg; EXT=ipk; SDK_RELEASE=24.10.8' "$script"
 grep -Fq '25.12.*) PM=apk; EXT=apk; SDK_RELEASE=25.12.6' "$script"
 grep -Fq 'no_proxy_env "$PM" update' "$script"
