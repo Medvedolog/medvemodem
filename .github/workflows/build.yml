@@ -4,7 +4,7 @@ name: build
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/qmodem-owner-failover-alerts]
     tags:
       - 'v*'
     paths-ignore:
@@ -55,7 +55,7 @@ jobs:
 
   release:
     name: Publish tagged release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/fix/qmodem-owner-failover-alerts' && github.event_name == 'push')
     needs: packages
     runs-on: ubuntu-latest
     permissions:
@@ -71,7 +71,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          tag="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF_NAME" = 'fix/qmodem-owner-failover-alerts' ]; then
+            tag='0.16.0-alpha1-r5-fm350-test'
+          else
+            tag="${GITHUB_REF_NAME#v}"
+          fi
           for dir in package-artifacts/medvemodem-*; do
             [ -d "$dir" ] || { echo "missing artifact directory" >&2; exit 1; }
             [ "$(find "$dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) | wc -l)" -gt 0 ] || { echo "No packages in $dir" >&2; exit 1; }
@@ -84,7 +88,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release-assets/* \
-            --verify-tag --prerelease \
-            --title "MedveModem ${GITHUB_REF_NAME#v}" \
+          tag="${GITHUB_REF_NAME}"
+          if [ "$GITHUB_REF_NAME" = 'fix/qmodem-owner-failover-alerts' ]; then
+            tag='v0.16.0-alpha1-r5-fm350-test'
+          fi
+          gh release create "$tag" release-assets/* \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "MedveModem ${tag#v}" \
             --notes "Pre-release packages for OpenWrt 24.10.8 (IPK) and 25.12.6 (APK), architectures aarch64_cortex-a53, aarch64_generic and x86_64. Each archive includes the MedveModem engine, LuCI, Telegram bot, and optional eSIM/lpac packages. Check SHA256SUMS before installing. Alpha software: maintain independent access to your router."
