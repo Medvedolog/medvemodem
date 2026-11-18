@@ -191,7 +191,8 @@ audit_modem_owners() {
     say 'Checking existing modem managers and hotplug automation...'
     for name in luci-app-5gmodem 5gmodem luci-app-automodem automodem rooter luci-app-rooter modemmanager-auto modem-auto; do
         if installed "$name"; then
-            conflict_line "installed package $name" "Review and remove manually if it controls the same modem: $PM remove $name"
+            if [ "$PM" = apk ]; then remove_cmd="apk del $name"; else remove_cmd="opkg remove $name"; fi
+            conflict_line "installed package $name" "Review and remove manually if it controls the same modem: $remove_cmd"
         fi
     done
     # ROOter may be baked into squashfs without a package database entry.
