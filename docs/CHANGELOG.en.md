@@ -7,6 +7,9 @@
 
 ## Unreleased — SSH installer (PR #6, 2026-11-18)
 
+- Default target changed to r6; release-owned English highlights will be shown once r6 is published. Telegram bot update polling/version validation was audited and the underscore version fix is in r6 PR #9; field confirmation remains pending.
+
+
 - **In development:** pre-install/upgrade service quiescence for previously running `medvemodemd`, Telegram bot and QModem services. Stop through init scripts, wait for old processes, then targeted TERM/KILL for verified leftovers and restore the original running set after transaction or error. This follows field observation of two daemon PIDs and two bot PIDs after a successful r3→r5 upgrade. **Not yet tested on OPiZ3.** Stopping QModem may disconnect SSH, so require explicit consent; unattended use requires `--allow-disconnect`.
 
 
