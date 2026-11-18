@@ -24,3 +24,11 @@ Status: proposed next MedveModem release after r5; not included in published r5.
 - Bump package revision for the next release and change **all** `VIEW_VERSION` / `common.VERSION` values together. Build SDK packages; do not reuse or overwrite r5 assets.
 - Validate on OPiZ3. Update Russian and English changelog once accepted.
 - The same field log also shows two `medvemodemd` processes and two bot processes after upgrading r3 → r5. Work on safe service quiescence/restore is tracked separately under installer PR #6. Do not indiscriminately run `killall` on a live modem router.
+
+## Whitelist Russian localization defect and correction (2026-11-18)
+
+- Field reproduction in a Russian LuCI session: the separate Whitelists page mixed translated content with original English labels and descriptions (`Checked channels`, `Full internet`, `All services`, `Recent access changes`, `Channels checked`, `Attention`, `Possibly limited`, `Telegram notification settings and delivery status…`, among others).
+- Root cause: these source strings already used LuCI `_()`, but **20 entries were missing** from `packages/luci-app-medvemodem/po/ru/medvemodem.po` and `po/templates/medvemodem.pot`. Thus the English originals were rendered by gettext fallback; it is **not a browser cache problem**.
+- Added all 20 Russian translations and template entries. Source remains English in `settings.js` per the project's internationalization policy.
+- Added `tools/check-whitelist-i18n.py` and invoked it from `tools/check-web-version.sh`, preventing package builds if the whitelist page adds strings without populated Russian catalog entries. Static check only; requires CI PASS and one real Russian LuCI rendering after the next coherent package bump.
+- Track PR #8, not published r5. Preserve original `po` history and use gettext compilation into LuCI `.lmo` at build time.
