@@ -57,5 +57,5 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - `medvemodem-install.sh` in `feat/ssh-installer`.
 - `tests/test-ssh-installer.sh` contract tests.
 - `docs/SSH-INSTALLER.md` installer usage and acceptance checklist.
-- `docs/CHANGELOG.en.md` under Unreleased. The existing `docs/CHANGELOG.md` link should be verified and repaired if absent before publication.
+- `docs/CHANGELOG.md` (полный русский журнал сохранён и дополнен) and `docs/CHANGELOG.en.md` (English), both updated for r5 and the installer PR. Keep the two histories synchronized for later fixes.
 - `docs/HANDOFF-QMODEM-FM350.md` for QModem lock lifecycle and operator telemetry; do not conflate the two workstreams.
