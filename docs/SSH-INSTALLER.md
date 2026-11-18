@@ -9,7 +9,7 @@ Supported: **OpenWrt 24.10.x (opkg/IPK)** and **25.12.x (apk/APK)** on `aarch64_
 Download the script, inspect it, and execute it interactively:
 
 ```sh
-wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/medvemodem/main/medvemodem-install.sh
+wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/medvemodem/feat/ssh-installer/medvemodem-install.sh
 sh /tmp/medvemodem-install.sh
 ```
 
@@ -26,7 +26,7 @@ sh /tmp/medvemodem-install.sh --remove-bot
 sh /tmp/medvemodem-install.sh --remove
 ```
 
-The default release tag is `v0.16.0-alpha1-r5`. Change it with `--tag` once a newer release is available; this script **does not** use the GitHub API `latest` endpoint because prereleases may not appear there.
+**While this remains a draft PR, use the branch URL above; do not advertise the `main` one-liner.** The default release tag is `v0.16.0-alpha1-r5`. Change it with `--tag` once a newer release is available; this script **does not** use the GitHub API `latest` endpoint because prereleases may not appear there.
 
 ## Network behavior
 
@@ -56,3 +56,26 @@ sh tests/test-ssh-installer.sh
 ```
 
 Tests are static. Before claiming a production-ready installer, verify actual transactions on OpenWrt 24.10.8 and 25.12.6, both with and without an authenticated proxy, plus the failure cases for missing dependencies and bad checksums. Do not test a disruptive uninstall over the modem link that provides SSH connectivity.
+
+## Field finding and release gating — 2026-11-18
+
+- First real OPiZ3 trial: OpenWrt **25.12.5**, package architecture `aarch64_cortex-a53`, package manager `apk`. The script correctly identified the OpenWrt line and warned that published packages target the **25.12.6 SDK**.
+- The first `--install` attempt failed before package installation: GitHub returned `curl (22)` / **HTTP 404** for `v0.16.0-alpha1-r5/SHA256SUMS` because MedveModem r5 was not yet published. The script incorrectly treated the missing release as a network outage and asked for a proxy. The user did not report a successful installation.
+- A subsequent branch fix (`e50f502`) checks the GitHub API and rejects a missing release instead of automatically requesting an unrelated proxy. **This fix still requires a repeat run on OpenWrt**.
+- The same CI history shows all six MedveModem r5 SDK builds succeeded, but its initial publish job failed due to missing `actions/checkout`. The release workflow was fixed in `main` (`e53e83d`); QModem r2 did publish. Those are release facts, not installer acceptance tests.
+
+### Acceptance checklist before README / published installation instructions
+
+- [ ] Fresh OpenWrt 24.10.x: IPK, feed refresh, dependencies and installation; verify engine + LuCI.
+- [ ] OpenWrt 25.12.5 / 25.12.6: APK with firmware/SDK patch-level mismatch handled safely, all exact dependencies resolvable.
+- [ ] Direct GitHub success, real HTTP 404 rejection and direct network failure are differentiated.
+- [ ] OpenWrt repository inaccessible directly: temporary HTTP/mixed proxy supports `apk update` / `opkg update` and then restores the operator's shell/network configuration.
+- [ ] Proxy authentication works without leaking credentials to logs; test failures and percent-encoded special characters.
+- [ ] SHA256 mismatch, invalid archive, missing package and missing feed dependency fail before modifying packages.
+- [ ] Normal install, newer-version upgrade, same-version forced reinstall (`--force` / `--reinstall`).
+- [ ] Separate opt-in for Telegram bot + LuCI, and unattended `--bot` / `--no-bot`.
+- [ ] Remove bot-only and full stack, preserving configuration where supported; QModem stays installed.
+- [ ] Run `sh -n medvemodem-install.sh` and `sh tests/test-ssh-installer.sh` on a host, then test with a backup management path on a router.
+- [ ] Only after the above: merge PR, add a stable one-liner to `README.md`, `docs/INSTALL.md` and `docs/INSTALL.en.md`.
+
+**Do not run full removal over a management link provided by MedveModem.** The installer and its `--reinstall` path remain alpha until the checklist is completed.
