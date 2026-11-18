@@ -4156,7 +4156,8 @@ return view.extend({
 		h.node.className = 'mm-card mm-hero mm-header is-' + tone;
 		text(h.mark, { ok: '✓', warn: '!', err: '×', off: '–', run: '…' }[tone]);
 		text(h.title, words(d.name) || model);
-		mm.setOwnerBadge(h.ownerTag, ((d.owner || {}).control));
+		if (typeof mm.setOwnerBadge === 'function') mm.setOwnerBadge(h.ownerTag, ((d.owner || {}).control));
+		else { h.ownerTag.hidden = true; h.ownerTag.textContent = ''; }
 		var wc = d.connection || {}, wport = present && wc.web_port;
 		h.web.hidden = !wport;
 		if (wport) {
