@@ -195,6 +195,12 @@ audit_modem_owners() {
             conflict_line "installed package $name" "Review and remove manually if it controls the same modem: $remove_cmd"
         fi
     done
+    # Custom firmware may provide active init scripts without package metadata.
+    for init_name in automodem rooter santa-hotplug santa_hotplug 5gmodem; do
+        if [ -x "/etc/init.d/$init_name" ]; then
+            conflict_line "modem service /etc/init.d/$init_name" "Inspect manually: /etc/init.d/$init_name status; stop/disable only with independent network access."
+        fi
+    done
     # ROOter may be baked into squashfs without a package database entry.
     for marker in /usr/lib/rooter /etc/config/modemmanager-auto; do
         [ -e "$marker" ] || continue
