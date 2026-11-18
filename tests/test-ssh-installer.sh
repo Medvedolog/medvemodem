@@ -51,6 +51,16 @@ grep -Fq 'xmm-modem' "$neighbours"
 grep -Fq 'sms-tool' "$neighbours"
 grep -Fq 'smstools3' "$neighbours"
 grep -Fq 'qmodem' "$neighbours"
+grep -Fq 'luci-app-qmodem' "$neighbours"
+grep -Fq 'luci-app-qmodem-next' "$neighbours"
+grep -Fq 'qmodem.main.block_auto_probe' "$neighbours"
+grep -Fq 'audit_emit WARN frontend' "$neighbours"
+grep -Fq 'audit_emit INFO compatible' "$neighbours"
+# The frontend must not turn an otherwise compatible QModem core into BLOCK.
+if grep -Eq 'audit_emit BLOCK.*(qmodem|luci-app-qmodem)' "$neighbours"; then
+    echo 'FAIL: QModem is not a competing owner' >&2
+    exit 1
+fi
 grep -Fq 'audit_modem_owners() {' "$script"
 grep -Fq 'NEIGHBOURS_COMMIT=' "$script"
 grep -Fq 'sh "$TMP/neighbours" --audit' "$script"
