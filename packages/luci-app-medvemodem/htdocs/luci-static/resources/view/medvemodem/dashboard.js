@@ -536,7 +536,9 @@ function describe(device, status) {
 		reason: words(session.reason) || (['unknown', 'ready', 'ok', 'expected'].indexOf(config.state) < 0 ? list(config.evidence).join('; ') : '') ||
 			chainLine(device.diagnosis) || '—',
 		generation: device.generation,
-		freshness: present && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
+		freshness: present && device.reading_stale ?
+			(owner.control === 'qmodem' ? _('Last QModem reading is stale.') : _('Last modem reading is stale.')) :
+			present && owner.control === 'modemmanager' && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
 	};
 }
 
@@ -1435,6 +1437,11 @@ return view.extend({
 		if (d.modemmanager || d.present !== true || d.frozen || !ctl || ctl === 'modemmanager' || ctl === 'none' || ctl === 'unresolved') return d;
 		if (!this.readings) this.loadReadings();
 		var c = this.readings[id] || (this.readings[id] = {});
+		/* USB re-enumeration or an owner change invalidates prior AT readings;
+		 * an async response from the old generation must not replace them. */
+		if (c.generation !== d.generation || c.owner !== ctl) {
+			c = this.readings[id] = { generation: d.generation, owner: ctl };
+		}
 		/* at most once a minute (QModem's own tool on its port: every 2 min), one request at a time; a refusal (the port
 		 * busy with the modem page's own read) is asked again in 20 s and the last good reading kept up to 10 min (the
 		 * owner, 2026-10-20: «на дашборде оператор пока неизвестен» while the FM350's page named Билайн) */
@@ -1442,6 +1449,7 @@ return view.extend({
 		if (!c.busy && (!c.asked || Date.now() - c.asked > every)) {
 			c.asked = Date.now(); c.busy = true;
 			getMetrics(id, ctl === 'qmodem' ? 120000 : 60000).then(function(r) {
+				if (self.readings[id] !== c) return;
 				if (r && r.metrics) {
 					/* field by field over the last one: a reading without the operator does not wipe it (review 2026-10-22) */
 					/* a reading made of the web's «no SIM / no network» is not built upon: «SIM not found» stayed after the SIM
@@ -1450,7 +1458,8 @@ return view.extend({
 					c.mm = Object.assign({}, old, fresh, { signal: Object.keys(fresh.signal || {}).length ? fresh.signal : old.signal || {} });
 					['operator', 'operator_code', 'registration'].forEach(function(k) { if (!fresh[k] && old[k]) c.mm[k] = old[k]; });
 					if (!(fresh.access_tech || []).length && old.access_tech) c.mm.access_tech = old.access_tech;
-					c.at = Date.now(); c.failed = false;
+					c.at = Date.now() - (typeof r.age_ms === 'number' && r.age_ms >= 0 ? Math.min(600000, r.age_ms) : 0);
+					c.failed = false;
 					self.saveReadings();
 				} else if (r && r.web && (r.web.sim || r.web.network === 'none')) {
 					/* the modem's web says it has no SIM or no network (the tester's M150-4, 2026-11-09: the card said only
@@ -1461,17 +1470,23 @@ return view.extend({
 					self.saveReadings();
 				} else c.failed = true;
 				if (self.lastStatus) self.apply(self.lastStatus, self.lastDevices, self.lastUplink);
-			}, function() { c.failed = true; }).finally(function() { c.busy = false; });
+			}, function() {
+				if (self.readings[id] !== c) return;
+				c.failed = true;
+				if (self.lastStatus) self.apply(self.lastStatus, self.lastDevices, self.lastUplink);
+			}).finally(function() { c.busy = false; });
 		}
 		if (c.mm && Date.now() - c.at > 600000) c.mm = null;
-		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true, reading_age: Math.round((Date.now() - c.at) / 1000) }) :
+		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true,
+			reading_stale: Date.now() - c.at > (ctl === 'qmodem' ? 150000 : 90000),
+			reading_age: Math.round((Date.now() - c.at) / 1000) }) :
 			Object.assign({}, d, { reading_failed: !!c.failed, reading_pending: !!c.busy });
 	},
 
 	/* the readings outlive a reload of the page (sessionStorage, like the page's own cache) */
 	saveReadings: function() {
 		var out = {};
-		Object.keys(this.readings || {}).forEach(function(id) { var c = this.readings[id]; if (c.mm) out[id] = { mm: c.mm, at: c.at }; }, this);
+		Object.keys(this.readings || {}).forEach(function(id) { var c = this.readings[id]; if (c.mm) out[id] = { mm: c.mm, at: c.at, generation: c.generation, owner: c.owner }; }, this);
 		try { sessionStorage.setItem('mm:readings', JSON.stringify(out)); } catch (e) {}
 	},
 
@@ -1481,7 +1496,8 @@ return view.extend({
 		try {
 			var saved = JSON.parse(sessionStorage.getItem('mm:readings') || '{}');
 			Object.keys(saved).forEach(function(id) {
-				if (saved[id] && saved[id].mm && Date.now() - saved[id].at < 600000) self.readings[id] = { mm: saved[id].mm, at: saved[id].at };
+				if (saved[id] && saved[id].mm && Date.now() - saved[id].at < 600000)
+					self.readings[id] = { mm: saved[id].mm, at: saved[id].at, generation: saved[id].generation, owner: saved[id].owner };
 			});
 		} catch (e) {}
 	},
