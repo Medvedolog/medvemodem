@@ -13,7 +13,6 @@ on:
       - 'screenshots/**'
       - 'tools/build-qmodem.sh'
       - '.github/ISSUE_TEMPLATE/**'
-      - '.github/workflows/**'
   pull_request:
     paths-ignore:
       - '**/*.md'
