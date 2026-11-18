@@ -238,7 +238,7 @@ audit_modem_owners() {
         done
         if [ "$five_count" -gt 4 ]; then
             five_more=$((five_count - 4))
-            say "    ... and $five_more more (see $TMP/neighbours.audit during this run)."
+            say "    ... and $five_more more detected files."
         fi
         say '  Config and hotplug remnants must be reviewed, not blindly deleted.'
     fi
