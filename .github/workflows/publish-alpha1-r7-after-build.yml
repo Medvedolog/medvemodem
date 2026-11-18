@@ -101,11 +101,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release create v0.16.0-alpha1-r7 release-assets/* \\
-            --repo "$GITHUB_REPOSITORY" \\
-            --target "${{ github.event.workflow_run.head_sha }}" \\
-            --draft --prerelease \\
-            --title 'MedveModem 0.16.0 Alpha 1 r7' \\
+          gh release create v0.16.0-alpha1-r7 release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "${{ github.event.workflow_run.head_sha }}" \
+            --draft --prerelease \
+            --title 'MedveModem 0.16.0 Alpha 1 r7' \
             --notes-file docs/RELEASE-HIGHLIGHTS-ALPHA1-R7.md
       - name: Verify uploaded archives before making release public
         if: steps.eligibility.outputs.eligible == 'true'
@@ -115,12 +115,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p downloaded
-          gh release download v0.16.0-alpha1-r7 \\
-            --repo "$GITHUB_REPOSITORY" --dir downloaded \\
+          gh release download v0.16.0-alpha1-r7 \
+            --repo "$GITHUB_REPOSITORY" --dir downloaded \
             --pattern '*.tar.gz' --pattern 'SHA256SUMS' --pattern 'HIGHLIGHTS.txt'
           test -s downloaded/HIGHLIGHTS.txt
           [ "$(find downloaded -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 6 ]
           (cd downloaded && sha256sum -c SHA256SUMS)
-          gh release edit v0.16.0-alpha1-r7 \\
+          gh release edit v0.16.0-alpha1-r7 \
             --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=true
           echo 'Published and verified v0.16.0-alpha1-r7'
