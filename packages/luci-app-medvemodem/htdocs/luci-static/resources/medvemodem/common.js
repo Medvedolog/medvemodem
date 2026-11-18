@@ -1039,6 +1039,25 @@ function smsOperator(sender) {
 	return !!s && SMS_OPERATORS.test(s);
 }
 
+/* Actual controlling program, not a requested backend from UCI: a handover can be pending. */
+function ownerBadge(device) {
+	var owner = (device || {}).owner || {}, ctl = owner.control || '', session = owner.session || '';
+	var name = '', kind = '';
+	if (ctl === 'modemmanager') { name = 'ModemManager'; kind = 'mm'; }
+	else if (ctl === 'qmodem') { name = 'QModem'; kind = 'qm'; }
+	else if (ctl === 'native' || ctl === 'medvemodem-at' || ctl === 'netifd-qmi' || ctl === 'netifd-mbim' ||
+		session === 'netifd-qmi' || session === 'netifd-mbim' || session === 'medvemodem-at') {
+		name = 'MedveModem'; kind = 'native';
+	} else if (ctl === 'hilink' || session === 'device') {
+		name = _('Modem router'); kind = 'device';
+	}
+	if (!name) return null; /* an unresolved owner must never be guessed from a setting */
+	var protocol = session === 'netifd-qmi' ? 'QMI' : session === 'netifd-mbim' ? 'MBIM' :
+		session === 'medvemodem-at' ? 'AT' : '';
+	return E('span', { 'class': 'mm-owner-badge is-' + kind,
+		title: _('Active modem manager') + ': ' + name + (protocol ? ' · ' + protocol : '') }, name);
+}
+
 return baseclass.extend({
 	smsLinked: smsLinked, smsMatches: smsMatches, smsCode: smsCode, copyText: copyText, smsOperator: smsOperator,
 	busy: busy, speedErr: speedErr,
@@ -1060,7 +1079,7 @@ return baseclass.extend({
 	fillOf: fillOf,
 	sinrOf: sinrOf,
 	OPS: OPS,
-	opBadge: opBadge,
+	opBadge: opBadge, ownerBadge: ownerBadge,
 	atAsMm: atAsMm,
 	protoOf: protoOf,
 	LEVELS: LEVELS,
