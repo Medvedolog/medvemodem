@@ -30,6 +30,23 @@ if grep -Fq '"$name"-*."$EXT"' "$script"; then
 fi
 
 sh "$script" --help | grep -q -- '--reinstall'
+sh "$script" --help | grep -q -- '--allow-disconnect'
+grep -Fq 'quiesce_for_upgrade() {' "$script"
+grep -Fq 'restore_services() {' "$script"
+grep -Fq 'wait_pids_gone medvemodemd' "$script"
+grep -Fq 'wait_pids_gone medvemodem-bot' "$script"
+grep -Fq 'wait_pids_gone qmodem' "$script"
+grep -Fq "Stopping $service..." "$script" 2>/dev/null || grep -Fq 'say "Stopping $service..."' "$script"
+grep -Fq 'kill -KILL "$pid"' "$script"
+grep -Fq "SSH/mobile internet may disconnect" "$script"
+grep -Fq 'restore_services' "$script"
+# It must finish service shutdown before modifying any packages.
+awk '
+  /quiesce_for_upgrade$/ { seen = 1 }
+  /apk add --allow-untrusted \$files/ { if (!seen) exit 1 }
+  END { if (!seen) exit 1 }
+' "$script"
+
 
 # Reproduce the OPiZ3 regression with realistic APK/IPK package names.
 # The engine selector must NOT include medvemodem-bot or other packages.
