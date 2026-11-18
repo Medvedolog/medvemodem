@@ -6178,7 +6178,7 @@ static void fibocom_operator_from_at(json_object *metrics, const char *raw)
 		if ((unsigned char)p[i] < 0x20 || (unsigned char)p[i] == 0x7f)
 			return;
 	memcpy(name, p, n);
-	name[n] = '\\0';
+	name[n] = '\0';
 	json_object_object_add(metrics, "operator", json_object_new_string(name));
 }
 
