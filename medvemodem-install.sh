@@ -8,9 +8,14 @@ TAG=${MEDVEMODEM_TAG:-v0.16.0-alpha1-r5}
 ACTION=menu
 BOT=ask
 FORCE=0
+ALLOW_DISCONNECT=0
+SERVICE_RESTORE=
+SERVICES_STOPPED=0
 PROXY=${https_proxy:-${HTTPS_PROXY:-}}
 TMP=
-trap '[ -z "$TMP" ] || rm -rf "$TMP"' EXIT
+trap 'installer_exit' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 say() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -18,11 +23,13 @@ usage() {
     cat <<'HELP'
 Usage: sh medvemodem-install.sh [--install|--update|--reinstall|--remove|--remove-bot]
   [--tag v0.16.0-alpha1-r5] [--bot|--no-bot] [--proxy http://host:port] [--force]
+  [--allow-disconnect]
 --install      install or upgrade engine + LuCI
 --update       update an existing installation
 --reinstall    force reinstall of the same version (does not skip checks)
 --remove       remove engine, LuCI and optionally bot
 --remove-bot   remove bot and its LuCI only
+--allow-disconnect  permit service stop that may interrupt SSH and mobile internet
 No persistent proxy, feeds or network configuration is changed.
 HELP
 }
@@ -34,6 +41,7 @@ while [ "$#" -gt 0 ]; do
         --remove) ACTION=remove ;;
         --remove-bot) ACTION=remove-bot ;;
         --force) FORCE=1 ;;
+        --allow-disconnect) ALLOW_DISCONNECT=1 ;;
         --bot) BOT=yes ;;
         --no-bot) BOT=no ;;
         --tag|--proxy)
@@ -199,6 +207,100 @@ show_release() {
     say '============================================================'
     say ''
 }
+# Upgrade transaction guard: package post-upgrade hooks may start extra procd
+# instances. Stop the previously active services first, then start them once.
+# QModem may be this router's only WAN path: never stop it without consent.
+svc_running() {
+    [ -x "/etc/init.d/$1" ] || return 1
+    /etc/init.d/"$1" status 2>/dev/null | grep -Eq '(^|[[:space:]])running([[:space:]]|$)'
+}
+stop_one() {
+    service=$1
+    [ -x "/etc/init.d/$service" ] || return 0
+    say "Stopping $service..."
+    if command -v timeout >/dev/null 2>&1; then
+        timeout -s TERM -k 2 18 "/etc/init.d/$service" stop || say "WARNING: stop of $service timed out or failed"
+    else
+        "/etc/init.d/$service" stop || say "WARNING: stop of $service failed"
+    fi
+}
+# Match processes by their exact service executable/script, never kill generic
+# ucode, curl, sh or all modems' control programs.
+service_pids() {
+    case "$1" in
+        medvemodemd) pidof medvemodemd 2>/dev/null || : ;;
+        medvemodem-bot) ps w | awk '/[u]code \/usr\/share\/medvemodem-bot\/main[.]uc/ { print $1 }' ;;
+        qmodem) ps w | awk '/\/[u]sr\/share\/qmodem\/modem_dial[.]sh/ { print $1 }' ;;
+    esac
+}
+wait_pids_gone() {
+    family=$1
+    n=0
+    while [ "$n" -lt 10 ]; do
+        pids=$(service_pids "$family")
+        [ -z "$pids" ] && return 0
+        sleep 1
+        n=$((n + 1))
+    done
+    say "WARNING: $family has leftover PIDs: $pids"
+    # First TERM, then KILL only exact identified family PIDs that survived.
+    for pid in $pids; do
+        case "$pid" in *[!0-9]*|'') continue ;; esac
+        kill -TERM "$pid" 2>/dev/null || :
+    done
+    sleep 2
+    pids=$(service_pids "$family")
+    [ -z "$pids" ] && return 0
+    say "WARNING: force-stopping leftover $family PIDs: $pids"
+    for pid in $pids; do
+        case "$pid" in *[!0-9]*|'') continue ;; esac
+        kill -KILL "$pid" 2>/dev/null || :
+    done
+    sleep 1
+    [ -z "$(service_pids "$family")" ] || fail "cannot clear old $family instances; refusing package upgrade"
+}
+restore_services() {
+    [ "$SERVICES_STOPPED" = 1 ] || return 0
+    SERVICES_STOPPED=0
+    # Run QModem first, then its optional monitors; engine and bot last.
+    for service in qmodem_network qmodem_monitor qmodem_hc_sim qmodem_init medvemodemd medvemodem-bot; do
+        case " $SERVICE_RESTORE " in
+            *" $service "*) if [ -x "/etc/init.d/$service" ]; then
+                say "Restoring $service..."
+                /etc/init.d/"$service" start || say "WARNING: $service did not restart"
+            fi ;;
+        esac
+    done
+}
+installer_exit() {
+    code=$?
+    trap - EXIT
+    restore_services || :
+    [ -z "$TMP" ] || rm -rf "$TMP"
+    exit "$code"
+}
+quiesce_for_upgrade() {
+    # An SSH session routed over QModem can die here. Require opt-in even
+    # for --force/--reinstall: correctness is more important than uptime.
+    if [ "$ALLOW_DISCONNECT" != 1 ]; then
+        if [ "$TTY" = /dev/null ] || ! ask 'Upgrading stops MedveModem, QModem connections and Telegram bot temporarily. SSH/mobile internet may disconnect. Continue?' no; then
+            fail 'upgrade cancelled; use --allow-disconnect only with a backup management path'
+        fi
+    fi
+    SERVICE_RESTORE=
+    for service in medvemodem-bot medvemodemd qmodem_monitor qmodem_hc_sim qmodem_init qmodem_network; do
+        if svc_running "$service"; then SERVICE_RESTORE="$SERVICE_RESTORE $service"; fi
+    done
+    SERVICES_STOPPED=1
+    for service in medvemodem-bot medvemodemd qmodem_monitor qmodem_hc_sim qmodem_init qmodem_network; do
+        stop_one "$service"
+    done
+    wait_pids_gone medvemodemd
+    wait_pids_gone medvemodem-bot
+    wait_pids_gone qmodem
+    say 'Service stop and old-process checks completed.'
+}
+
 choose_bot() {
     case "$BOT" in yes) return 0 ;; no) return 1 ;; esac
     ask 'Install/update Telegram bot and its LuCI too?' no
@@ -260,7 +362,9 @@ install_flow() {
         opkg install --noaction $files || fail 'missing/conflicting dependencies'
         if [ "$TTY" != /dev/null ]; then
             ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
+        quiesce_for_upgrade
         fi
+        if [ "$TTY" = /dev/null ]; then quiesce_for_upgrade; fi
         if [ "$FORCE" = 1 ]; then
             opkg install --force-reinstall $files || fail 'reinstallation failed'
         else
@@ -270,13 +374,16 @@ install_flow() {
         apk add --simulate --allow-untrusted $files || fail 'missing/conflicting dependencies'
         if [ "$TTY" != /dev/null ]; then
             ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
+        quiesce_for_upgrade
         fi
+        if [ "$TTY" = /dev/null ]; then quiesce_for_upgrade; fi
         if [ "$FORCE" = 1 ]; then
             apk add --force-reinstall --allow-untrusted $files || fail 'reinstallation failed'
         else
             apk add --allow-untrusted $files || fail 'installation failed'
         fi
     fi
+    restore_services
     for name in $package_files; do installed "$name" || fail "missing installed $name"; done
     say 'Installed successfully. QModem is managed separately in LuCI.'
 }
