@@ -518,48 +518,95 @@ return view.extend({
 			});
 		}, Promise.resolve()).then(function() {
 			k.running = false; k.run.disabled = false; k.got = got;
+			k.checkedAt = new Date().toLocaleString(mm.LANG);
 			k.say.hidden = true;
 			self.wlDrawResults();
 		}, function(e) { k.running = false; k.run.disabled = false; text(k.say, failText(e)); });
 	},
+	/* Only a modem's readable name goes in the column. Keep its entire port/USB description in the tooltip. */
+	wlShortChannel: function(g) {
+		var path = list((this.uplinkData || {}).paths).filter(function(p) { return p.device === g.dev; })[0] || {};
+		var device = list(this.devices).filter(function(d) { return d.device_id && d.device_id === path.device_id; })[0] || {};
+		var renamed = '';
+		Object.keys(this.names || {}).forEach(function(k) {
+			var n = this.names[k];
+			if (n && n.device_id === path.device_id && words(n.name)) renamed = words(n.name);
+		}, this);
+		var model = renamed || words(device.name) || words((device.modemmanager || {}).model) ||
+			words(device.product) || String(g.name || '').replace(/\s*\([^)]*\)\s*$/, '');
+		return model.replace(/\s+-\s+(?:QMI|MBIM|NCM|ECM|RNDIS)\s+Composition$/i, '').trim() || g.dev;
+	},
 	wlDrawResults: function() {
 		var k = this.wlc, got = k.got || [];
 		if (!got.length) return;
-		var filter = k.filter.value, pass = function(x) {
+		var filter = k.filter.value;
+		var tone = function(x) {
+			if (!x) return 'idle';
+			return x.verdict === 'ok' ? 'ok' : x.verdict === 'tunnel' || x.verdict === 'other' ? 'warn' :
+				x.verdict === 'blocked' || x.verdict === 'timeout' || x.verdict === 'refused' ||
+				x.verdict === 'reset' || x.verdict === 'dns' || x.verdict === 'tls' || x.verdict === 'cert' ? 'err' : 'warn';
+		};
+		var pass = function(x) {
 			if (filter === 'dns') return x && x.verdict === 'dns';
 			if (filter === 'tls') return x && (x.verdict === 'tls' || x.verdict === 'cert');
 			if (filter === 'failed') return !x || x.verdict !== 'ok';
 			return true;
 		};
-		var first = got.filter(function(g) { return g.res && g.res.length; })[0];
-		var dates = got.map(function(g) {
-			return g.name + ': ' + (g.at ? new Date(g.at * 1000).toLocaleString(mm.LANG) : _('not checked'));
-		});
-		text(k.last, _('Last check: %s').format(dates.join(' · ')));
+		var results = got.filter(function(g) { return g.res && g.res.length; });
+		var first = results[0];
+		text(k.last, _('Checked at %s.').format(k.checkedAt || new Date().toLocaleString(mm.LANG)));
 		if (!first) {
-			k.out.replaceChildren(E('p', { 'class': 'mm-faint' }, got.map(function(g) { return g.name + ': ' + (g.err || _('no answer')); }).join('; ')));
-			k.verdict.hidden = true; return;
+			k.out.replaceChildren(E('p', { 'class': 'mm-faint' }, got.map(function(g) {
+				return g.name + ': ' + (g.err || _('no answer'));
+			}).join('; ')));
+			k.verdict.hidden = true;
+			return;
 		}
-		var headers = E('tr', {}, [E('th', {}, _('Service'))].concat(got.map(function(g) {
-			return E('th', { title: g.name }, g.name);
+		var names = got.map(this.wlShortChannel.bind(this));
+		var head = E('tr', {}, [E('th', { scope: 'col' }, _('Service'))].concat(got.map(function(g, i) {
+			return E('th', { scope: 'col', title: g.name + ' · ' + g.dev }, [
+				E('span', { 'class': 'mm-wlc-col-name' }, names[i]),
+				E('span', { 'class': 'mm-wlc-col-if mm-faint' }, g.dev)
+			]);
 		})));
 		var rows = first.res.filter(function(x) {
-			return got.some(function(g) { var y = g.res && g.res.filter(function(z) { return z.id === x.id; })[0]; return pass(y); });
+			return got.some(function(g) {
+				var y = g.res && g.res.filter(function(z) { return z.id === x.id; })[0];
+				return pass(y);
+			});
 		}).map(function(x) {
-			return E('tr', {}, [E('th', { 'scope': 'row' }, mm.ncName(x))].concat(got.map(function(g) {
+			return E('tr', {}, [E('th', { scope: 'row', title: mm.ncName(x) }, [
+				E('span', { 'class': 'mm-wlc-service-name' }, String(mm.ncName(x)).split(' · ')[0])
+			])].concat(got.map(function(g) {
 				var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null;
-				var cell = y ? mm.ncCell(y) : { text: g.err || '—', tone: '' };
-				return E('td', { 'class': cell.tone ? 'mm-nc-' + cell.tone : 'mm-faint',
-					title: y ? (y.verdict || '') : (g.err || '') }, cell.text);
+				var cell = y ? mm.ncCell(y) : { text: g.err || '—', tone: '' }, state = tone(y);
+				return E('td', { title: y ? (mm.ncName(x) + ': ' + cell.text + (y.ms ? ' · ' + y.ms + ' ms' : '')) :
+					(g.err || _('not checked')) }, [
+					E('span', { 'class': 'mm-light is-' + state + ' mm-wlc-result' }, [
+						E('i', { 'aria-hidden': 'true' }), E('span', {}, cell.text)
+					])
+				]);
 			})));
 		});
 		k.out.replaceChildren(E('div', { 'class': 'mm-table-scroll mm-wlc-scroll' }, [
-			E('table', { 'class': 'mm-table mm-wlc-table' }, [E('thead', {}, headers),
-				E('tbody', {}, rows.length ? rows : [E('tr', {}, E('td', { colspan: got.length + 1 }, _('No results for this filter.')))])])
+			E('table', { 'class': 'mm-table mm-wlc-table' }, [E('thead', {}, head),
+				E('tbody', {}, rows.length ? rows :
+					[E('tr', {}, E('td', { colspan: got.length + 1 }, _('No results for this filter.')))])])
 		]));
-		var summaries = got.filter(function(g) { return g.res; }).map(function(g) { return g.name + ': ' + ncSummary(g.res, g.dev); });
-		k.verdict.hidden = !summaries.length;
-		if (summaries.length) k.verdict.replaceChildren.apply(k.verdict, summaries.map(function(t) { return E('div', {}, t); }));
+		var affected = got.filter(function(g) {
+			return !g.res || g.res.some(function(x) { return x.group === 'open' && x.verdict !== 'ok'; });
+		}).length;
+		var restricted = got.filter(function(g) {
+			if (!g.res) return false;
+			var open = g.res.filter(function(x) { return x.group === 'open'; });
+			var compare = g.res.filter(function(x) { return x.group === 'list'; });
+			return open.length && compare.length && open.every(function(x) { return x.verdict !== 'ok'; }) &&
+				compare.some(function(x) { return x.verdict === 'ok'; });
+		}).length;
+		/* Do not restate the same Russia/known-services paragraph six times. Only actionable counts. */
+		k.verdict.hidden = false;
+		k.verdict.replaceChildren(E('span', {}, _('Channels checked: %d').format(got.length) + ' · ' +
+			_('Attention: %d').format(affected) + ' · ' + _('Possibly limited: %d').format(restricted)));
 	},
 
 	/* the whitelist alert (its rows of the SMS alerts card, saved by that card's own save) and the bot's own */
