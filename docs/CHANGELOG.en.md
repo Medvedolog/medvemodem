@@ -1,5 +1,12 @@
 # MedveModem — Release History (English)
 
+## Unreleased — r6 LuCI regression fix and release QA gates (2026-11-19)
+
+- Fix the blank modem detail page caused by `mm.setOwnerBadge is not a function` with a stale browser-cached shared module; optional owner badge now fails safely.
+- Show RPC/render exceptions instead of hiding all modem panels on initial load.
+- Add frontend API/version contract checks and Chromium smoke tests as mandatory package-build and release gates; real router acceptance remains separate.
+- Pending merge; published r6 artifacts are unchanged.
+
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!NOTE]
