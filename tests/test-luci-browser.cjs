@@ -23,6 +23,8 @@ async function run() {
       const result = await page.evaluate(async ({ source, failureMode }) => {
         const failures = [];
         window.addEventListener('error', e => failures.push(e.message));
+        // LuCI extends String.prototype with format(); the real view uses it in error messages.
+        String.prototype.format = function (...args) { let i = 0; return this.replace(/%[sd]/g, () => String(args[i++] ?? '')); };
         const _ = str => str;
         const E = (tag, attrs, children) => {
           if (attrs == null || typeof attrs !== 'object' || Array.isArray(attrs) || attrs instanceof Node)
