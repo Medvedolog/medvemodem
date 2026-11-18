@@ -49,7 +49,9 @@ var PKG_NAMES = { modemmanager: ['ModemManager', _('manages most modems; without
 	rndis_host: [_('Driver %s').format('rndis_host'), _('modems in RNDIS mode and Android phones as a modem')],
 	ipheth: [_('Driver %s and %s').format('ipheth', 'usbmuxd'), _('an iPhone as a modem over USB (usbmuxd: for “Trust this computer”)')],
 	/* MedveModem's own pinned lpac (the owner, 2026-11-15), from its release, not from the router's feeds */
-	lpac: ['lpac (eSIM)', _('reads the eSIM chip and switches its profiles; MedveModem\'s own build, from its release on GitHub')] };
+	lpac: ['lpac (eSIM)', _('reads the eSIM chip and switches its profiles; MedveModem\'s own build, from its release on GitHub')],
+	bot: ['MedveModem Telegram bot', _('Bot core: notifications, modem status and Telegram commands; installs from the MedveModem release, even if not installed before')],
+	'bot-luci': ['LuCI for Telegram bot', _('Web setup and bot controls; installs the bot core too when missing, from the MedveModem release')] };
 var PKG_WHY = { running: _('an installation is already running'), 'no package manager': _('the router has no package manager'), 'install failed': _('the installation failed'),
 	'install failed: lpac': _('lpac did not install: the release was not reached or has no build for this router') };
 function pkgState(c) {
@@ -1962,8 +1964,8 @@ return view.extend({
 		this.pk = { rows: E('dl', { 'class': 'mm-kv mm-pkg-rows' }), out: E('p', { 'class': 'mm-faint mm-pkg-result', role: 'status' }),
 			pre: E('pre', { 'class': 'mm-pre mm-pkg-text' }, '') };
 		this.pk.log = E('details', { 'class': 'mm-pkg-log', hidden: '' }, [E('summary', {}, _('Installation log')), this.pk.pre]);
-		var card = this.sec('set-pkg', _('Drivers and ModemManager'), [this.pk.rows, this.pk.out, this.pk.log,
-			E('p', { 'class': 'mm-faint' }, _('The packages come from the router\'s feeds (apk or opkg). First a dry run: if something is not in the feeds, nothing is installed. Kernel modules need a repository that matches this firmware\'s kernel; on a SNAPSHOT the packages for an older build may be gone. A driver is bound at once, without a restart. An installed ModemManager is enabled and started; one already working is not restarted. Packages are removed by OpenWrt\'s own means.'))]);
+		var card = this.sec('set-pkg', _('Drivers and components'), [this.pk.rows, this.pk.out, this.pk.log,
+			E('p', { 'class': 'mm-faint' }, _('Driver packages come from the router\'s feeds (apk or opkg); optional lpac and Telegram bot packages come from the matching MedveModem GitHub release with SHA256 validation. A dry run checks dependencies before installation. Kernel modules need a repository that matches this firmware\'s kernel; on a SNAPSHOT the packages for an older build may be gone. A driver is bound at once, without a restart. An installed ModemManager is enabled and started; one already working is not restarted. Packages are removed by OpenWrt\'s own means.'))]);
 		card.id = 'components';
 		this.pkGist = card.querySelector('.mm-sec-gist');
 		this.pkgsRefresh();
@@ -1985,7 +1987,7 @@ return view.extend({
 		clearTimeout(this.pkTimer);
 		return fs.exec(PKG, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			var running = j.state === 'running', comps = list(j.components).filter(function(c) { return c && PKG_NAMES[c.id]; });
-			/* lpac is for an eSIM only: not counted as missing, not in «install everything» */
+			/* optional release add-ons (lpac and Telegram bot) are not treated as missing mandatory drivers */
 			var missing = comps.filter(function(c) { return c.state === 'missing' && c.kind !== 'ours'; });
 			k.rows.replaceChildren.apply(k.rows, [].concat.apply([], comps.map(function(c) {
 				var n = PKG_NAMES[c.id], b = (c.state === 'missing' || c.state === 'other') && j.supported ? E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-pkg-one',
