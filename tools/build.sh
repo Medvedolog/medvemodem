@@ -17,6 +17,7 @@ arch=$1
 release=$2
 root=$(pwd)
 [ -f "$root/Makefile" ] && [ -d "$root/packages/luci-app-medvemodem" ] || { echo "run it from the repository root" >&2; exit 2; }
+sh "$root/tools/check-web-version.sh"
 out="$root/dist/$arch-$release"
 mkdir -p "$out"
 chmod 0777 "$out"
