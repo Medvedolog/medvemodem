@@ -1022,7 +1022,7 @@ return view.extend({
 		this.rowLevel = {};
 		this.stageRows = {};
 		this.lastSuccess = null;
-		this.error = E('div', { 'class': 'mm-callout is-err mm-notice', role: 'status', hidden: true });
+		this.error = E('div', { 'class': 'mm-callout is-info mm-notice', role: 'status' }, _('Loading the modem\'s data…'));
 		this.message = E('div', { 'class': 'mm-callout is-info mm-message', role: 'status', hidden: true });
 		this.notices = E('div', { 'class': 'mm-notices', 'aria-live': 'polite' });
 		/* a port another program holds: said while it lasts, not as a one-off notice */
@@ -1073,7 +1073,7 @@ return view.extend({
 		strip.appendChild(this.tabs.settings.tab);
 		this.tabs.at.tab.hidden = this.level === 'normal';		/* the AT console from «Подробный» */
 		this.esimShow();						/* a modem with an eSIM only, at every level */
-		this.root = E('div', { 'class': 'mm-root mm-modem mm-wait' + (this.level === 'normal' ? ' is-basic' : '') }, [
+		this.root = E('div', { 'class': 'mm-root mm-modem' + (this.level === 'normal' ? ' is-basic' : '') }, [
 			E('link', { rel: 'stylesheet', href: L.resource('medvemodem/dashboard.css') + '?v=' + CSS_VERSION }),
 			pageHead(_('Modem'), this.headSub, function(k) { self.level = k; if (self.data) self.apply(self.data); }, ''),
 			E('div', {}, E('a', { href: L.url('admin/modem/medvemodem/dashboard'), 'class': 'mm-btn is-quiet mm-back' }, _('← All modems'))),
@@ -5242,12 +5242,18 @@ return view.extend({
 			self.failing = false; self.failCount = 0;
 			self.error.hidden = true; self.root.classList.remove('mm-stale');
 			cacheSet('mm:dev:' + self.id, d);
-			try { self.applyAll(d, false); } catch (e) { if (window.console) console.error('MedveModem page:', e); }
+			try { self.applyAll(d, false); } catch (e) {
+				self.error.hidden = false;
+				self.error.className = 'mm-callout is-err mm-notice';
+				text(self.error, _('Unable to display modem data: %s').format(failText(e)));
+				self.root.classList.remove('mm-wait');
+				if (window.console) console.error('MedveModem page:', e);
+			}
 		}, function(e) {
 			var why = String((e && e.message) || e), gone = /code 4\b|Not ?found/i.test(why) && !/timed? ?out/i.test(why);
 			self.failing = true;
 			self.failCount = (self.failCount || 0) + 1;
-			self.error.hidden = false; self.root.classList.add('mm-stale');
+			self.error.hidden = false; self.root.classList.add('mm-stale'); self.root.classList.remove('mm-wait');
 			self.error.className = 'mm-callout ' + (self.lastSuccess || self.failCount < 3 ? 'is-info' : 'is-err') + ' mm-notice';
 			text(self.error, self.lastSuccess ? _('Refresh error. The last received data is shown, retrying…') :
 				gone ? _('The modem is not found: the MedveModem service has no such modem (disconnected from USB or removed).') :
