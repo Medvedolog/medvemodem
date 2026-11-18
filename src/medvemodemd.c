@@ -9734,8 +9734,11 @@ static void holders_note(json_object *before, json_object *after)
 		 */
 		if (!strncmp(w, "tom_modem (", 11)) {
 			json_object *rec = mm_registry_find(&registry, id);
-			json_object *owner = rec ? json_object_object_get(rec, "owner") : NULL;
-			if (owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem"))
+			json_object *srv = rec ? served(rec) : NULL;
+			json_object *owner = srv ? json_object_object_get(srv, "owner") : NULL;
+			bool managed = owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem");
+			json_object_put(srv);
+			if (managed)
 				continue;
 		}
 		/*
