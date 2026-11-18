@@ -324,7 +324,7 @@ function describe(device, status) {
 	var mmFresh = !!device.reading_fresh ||
 		(!ownReading && owner.control === 'modemmanager' && (status.modemmanager || {}).backend === 'available' &&
 		 typeof mmAge === 'number' && mmAge <= 30);
-	var readingPending = present && ownReading;
+	var readingPending = present && ownReading && !device.reading_failed;
 	/* taken down and kept down: by the operator («Деактивировать»), or netifd gave up (the owner, 2026-10-16) */
 	var paused = present && state !== 'connected' && (device.connection || {}).deactivated || null;
 	/* «Приостановить управление» (the owner, 2026-10-19): no service touches it until «Возобновить управление» */
@@ -1464,7 +1464,8 @@ return view.extend({
 			}, function() { c.failed = true; }).finally(function() { c.busy = false; });
 		}
 		if (c.mm && Date.now() - c.at > 600000) c.mm = null;
-		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true, reading_age: Math.round((Date.now() - c.at) / 1000) }) : d;
+		return c.mm ? Object.assign({}, d, { modemmanager: c.mm, reading_fresh: true, reading_age: Math.round((Date.now() - c.at) / 1000) }) :
+			Object.assign({}, d, { reading_failed: !!c.failed, reading_pending: !!c.busy });
 	},
 
 	/* the readings outlive a reload of the page (sessionStorage, like the page's own cache) */
