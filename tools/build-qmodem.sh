@@ -18,6 +18,7 @@ mkdir -p "$out"
 chmod 0777 "$out"
 docker run --rm \
   -v "$out:/out" \
+  -v "$root/patches/qmodem:/qmodem-patches:ro" \
   -e JOBS="${JOBS:-$(nproc)}" -e QMODEM_VERSION="$version" -e QMODEM_COMMIT="$commit" \
   -e FEEDS_GITHUB="${FEEDS_GITHUB:-}" ${DOCKER_ARGS:-} \
   "openwrt/sdk:$arch-$release" /bin/bash -c '
@@ -28,6 +29,13 @@ cd /builder
 git clone -q https://github.com/FUjr/QModem.git qmodem-src
 git -C qmodem-src checkout -q --detach "$QMODEM_COMMIT"
 [ "$(git -C qmodem-src rev-parse HEAD)" = "$QMODEM_COMMIT" ]
+# Reproducible MedveModem backports on the immutable upstream pin.
+# Reject a stale or conflicting patch rather than silently discarding it.
+for patch in /qmodem-patches/*.patch; do
+  [ -f "$patch" ] || continue
+  git -C qmodem-src apply --check "$patch"
+  git -C qmodem-src apply "$patch"
+done
 # Upstream application Makefiles include ../../version.mk. Feed symlinks change
 # their apparent location, so point them at the checked-out, pinned version.
 sed -i "s/^QMODEM_VERSION:=.*/QMODEM_VERSION:=$QMODEM_VERSION/;s/^QMODEM_RELEASE:=.*/QMODEM_RELEASE:=1/" qmodem-src/version.mk
