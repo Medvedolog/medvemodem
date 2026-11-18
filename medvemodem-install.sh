@@ -13,10 +13,46 @@ SERVICE_RESTORE=
 SERVICES_STOPPED=0
 PROXY=${https_proxy:-${HTTPS_PROXY:-}}
 TMP=
+# Lock the entire SSH installer session, and serialize package-manager writes
+# with LuCI's pkg-install/self-update. Locks are kept under /tmp (OpenWrt).
+INSTALL_LOCK=${MEDVEMODEM_INSTALL_LOCK:-/tmp/medvemodem/ssh-installer.lock}
+PM_LOCK=${MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock}
+INSTALL_HELD=0
+PM_HELD=0
 trap 'installer_exit' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# mkdir is the lock acquisition operation. Never delete a lock held by a
+# living process, including the interval between mkdir and writing owner.
+take_lock() {
+    lock_dir=$1
+    mkdir -p "${lock_dir%/*}"
+    if mkdir "$lock_dir" 2>/dev/null; then
+        echo $ > "$lock_dir/owner"
+        return 0
+    fi
+    owner=$(cat "$lock_dir/owner" 2>/dev/null || :)
+    if [ -n "$owner" ]; then
+        case "$owner" in *[!0-9]*|'') return 1 ;; esac
+        kill -0 "$owner" 2>/dev/null && return 1
+    else
+        # Another process might still be writing its PID.
+        [ -n "$(find "$lock_dir" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+    fi
+    mv "$lock_dir" "$lock_dir.stale.$" 2>/dev/null || return 1
+    rm -rf "$lock_dir.stale.$"
+    mkdir "$lock_dir" 2>/dev/null || return 1
+    echo $ > "$lock_dir/owner"
+}
+release_lock() {
+    [ "$(cat "$1/owner" 2>/dev/null || :)" = "$" ] && rm -rf "$1"
+    return 0
+}
+take_package_lock() {
+    take_lock "$PM_LOCK" || fail 'another MedveModem package operation is running'
+    PM_HELD=1
+}
 say() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 usage() {
@@ -73,6 +109,8 @@ command -v tar >/dev/null 2>&1 || fail 'tar required'
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || fail 'curl or wget required'
 TMP=$(mktemp -d /tmp/medvemodem-inst.XXXXXX) || fail 'cannot create temp dir'
 chmod 700 "$TMP"
+take_lock "$INSTALL_LOCK" || fail 'another SSH installer is already running'
+INSTALL_HELD=1
 TTY=/dev/tty
 [ -r "$TTY" ] || TTY=/dev/null
 ask() {
@@ -140,6 +178,7 @@ remove_packages() {
         if installed "$name"; then selected="$selected $name"; fi
     done
     [ -n "$selected" ] || { say 'Nothing to remove'; return 0; }
+    take_package_lock
     say "Removing:$selected"
     if [ "$PM" = opkg ]; then opkg remove $selected; else apk del $selected; fi
 }
@@ -280,6 +319,8 @@ installer_exit() {
     code=$?
     trap - EXIT
     restore_services || :
+    if [ "$PM_HELD" = 1 ]; then release_lock "$PM_LOCK"; PM_HELD=0; fi
+    if [ "$INSTALL_HELD" = 1 ]; then release_lock "$INSTALL_LOCK"; INSTALL_HELD=0; fi
     [ -z "$TMP" ] || rm -rf "$TMP"
     exit "$code"
 }
@@ -318,6 +359,7 @@ install_flow() {
     if [ "$REL" != "$SDK_RELEASE" ]; then
         say "WARNING: firmware and package SDK patch version differ; dependency dry-run must succeed."
     fi
+    take_package_lock
     prepare_network
     show_release
     with_bot=0
