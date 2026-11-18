@@ -15,6 +15,25 @@
 - Shared LuCI/installer `neighbours` treats orphaned `/etc/config/5gmodem` as a warning rather than an installed manager; live hotplug and packages remain conflicts.
 - Added release-specific English highlights; GitHub Actions publishes only explicit version tags, not main pushes.
 
+- Installer lock ownership regression: earlier root installer wrote literal `# HANDOFF — MedveModem Alpha 1 r7 release
+
+**Date:** 2026-11-19  
+**Release branch:** `release/alpha1-r7` — PR #12 to main.  
+**Status:** Release candidate, NOT published. Do not tag or announce r7 until CI is green, packages are built and assets have been verified.
+
+## Changes
+
+- Synchronized `0.16.0_alpha1-r7` in engine, LuCI, Telegram bot and bot LuCI packages and `0.16.0-alpha1-r7` in the shared/browser JavaScript.
+- Corrected r6 blank modem page when a cached common.js lacks `mm.setOwnerBadge`: optional badge fails safely; RPC and rendering failures produce visible messages.
+- Added shared frontend API/version contracts and Chromium smoke tests before OpenWrt SDK builds and publication.
+- Added `medvemodem-install.sh` in the repository root and an SSH one-liner plus safety comments in the main README.
+- Installer selects newest *published* MedveModem v* release, stable OR prerelease, filtering out QModem releases and drafts by publication timestamp. Explicit `--tag` pins a version. No hard-coded older-version fallback.
+- Installer verifies archive SHA256, package architecture and dependencies before changing packages; warns about disconnects and checks foreign modem controllers.
+- Shared LuCI/installer `neighbours` treats orphaned `/etc/config/5gmodem` as a warning rather than an installed manager; live hotplug and packages remain conflicts.
+- Added release-specific English highlights; GitHub Actions publishes only explicit version tags, not main pushes.
+
+ rather than the shell PID into lock owner files. Corrected to `$`; `tests/test-installer-locks.sh` executes live/contended/stale/release lock flows as a release gate.
+
 ## Release gates
 
 - [ ] `sh tools/check-web-version.sh`.
