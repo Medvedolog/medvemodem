@@ -72,7 +72,7 @@ jobs:
           set -euo pipefail
           mkdir -p release-assets
           if [ "$GITHUB_REF_NAME" = 'main' ]; then
-            tag='0.16.0-alpha1-r5'
+            tag='0.16.0-alpha1-r6'
           else
             tag="${GITHUB_REF_NAME#v}"
           fi
@@ -90,7 +90,7 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME}"
           if [ "$GITHUB_REF_NAME" = 'main' ]; then
-            tag='v0.16.0-alpha1-r5'
+            tag='v0.16.0-alpha1-r6'
           fi
           gh release create "$tag" release-assets/* \
             --target "$GITHUB_SHA" --prerelease \
