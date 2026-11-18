@@ -30,4 +30,34 @@ if grep -Fq '"$name"-*."$EXT"' "$script"; then
 fi
 
 "$script" --help | grep -q -- '--reinstall'
-echo 'PASS: SSH installer syntax and feature contracts'
+
+# Reproduce the OPiZ3 regression with realistic APK/IPK package names.
+# The engine selector must NOT include medvemodem-bot or other packages.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT HUP INT TERM
+for ext in apk ipk; do
+    mkdir -p "$tmp/$ext"
+    if [ "$ext" = apk ]; then
+        : > "$tmp/$ext/medvemodem-0.16.0_alpha1-r5.apk"
+        : > "$tmp/$ext/medvemodem-bot-0.16.0_alpha1-r5.apk"
+        : > "$tmp/$ext/luci-app-medvemodem-0.16.0_alpha1-r5.apk"
+        : > "$tmp/$ext/luci-app-medvemodem-bot-0.16.0_alpha1-r5.apk"
+    else
+        : > "$tmp/$ext/medvemodem_0.16.0_alpha1-r5_aarch64_cortex-a53.ipk"
+        : > "$tmp/$ext/medvemodem-bot_0.16.0_alpha1-r5_all.ipk"
+        : > "$tmp/$ext/luci-app-medvemodem_0.16.0_alpha1-r5_all.ipk"
+        : > "$tmp/$ext/luci-app-medvemodem-bot_0.16.0_alpha1-r5_all.ipk"
+    fi
+    for name in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot; do
+        count=0
+        for item in "$tmp/$ext/$name"_[0-9]*."$ext" "$tmp/$ext/$name"-[0-9]*."$ext"; do
+            [ -f "$item" ] || continue
+            count=$((count + 1))
+        done
+        [ "$count" -eq 1 ] || {
+            echo "FAIL: expected one exact $name.$ext, got $count" >&2
+            exit 1
+        }
+    done
+done
+echo 'PASS: SSH installer syntax, package selection, and feature contracts'
