@@ -1,6 +1,6 @@
 # HANDOFF: SSH installer, connectivity, proxy and release lifecycle
 
-**Date:** 2026-11-18. **Status:** draft implementation, GitHub PR [#6](https://github.com/Medvedolog/medvemodem/pull/6); no successful router installation demonstrated yet. This is separate from QModem's AT/lifecycle handoff. Keep the installer out of the root README and public installation one-liners until acceptance checks pass.
+**Date:** 2026-11-18. **Status:** draft implementation, GitHub PR [#6](https://github.com/Medvedolog/medvemodem/pull/6); first successful four-package APK upgrade demonstrated on OPiZ3; service/runtime acceptance, IPK, proxy, reinstall and removal tests remain open. This is separate from QModem's AT/lifecycle handoff. Keep the installer out of the root README and public installation one-liners until acceptance checks pass.
 
 ## 1. Scope
 
@@ -45,7 +45,7 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 
 - [ ] Host shell syntax + static regression test `sh tests/test-ssh-installer.sh` actually executed.
 - [ ] Fully simulate 404, failed DNS/connectivity, proxy auth rejection and SHA256 mismatch before any package mutations.
-- [ ] Validate an actual OPiZ3 25.12.5 installation/update and feed dependency resolution; monitor modem continuity.
+- [x] Validate the APK installer transaction on actual OPiZ3 25.12.5 (r3 → r5, four packages, dependency dry-run successful). Modem continuity and runtime validation still open.
 - [ ] Validate 24.10 IPK and 25.12 APK installations, normal upgrade, same-version reinstall, bot optional choice, removals.
 - [ ] Confirm mixed HTTP proxy is temporary for BOTH `opkg`/`apk` (no UCI/feed changes), credentials not logged.
 - [ ] Confirm successful GitHub release publication of target r5 and distinct QModem r2 artifacts.
@@ -66,3 +66,14 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - User requested English-only installer console output and displayed release highlights **before** any yes/confirmation. The script now prints release tag, firmware/package architecture, link and English highlights before asking about installing the bot; after dependency dry-run it asks a final explicit install confirmation. Noninteractive action flags remain usable.
 - English r5 notes are tracked in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md` on main. Existing release originally lacked highlights; `publish-r5-highlights.yml` was added to upload HIGHLIGHTS.txt and edit GitHub Release notes. Confirm this workflow succeeded before claiming assets exist.
 - No hardware install success yet. Keep main README one-liner and main installation docs gated on real APK/IPK and proxy/rollback verification.
+
+## 8. Successful OPiZ3 APK field installation — 2026-11-18
+
+- User executed the fresh SSH script on OPiZ3 running OpenWrt **25.12.5**, `aarch64_cortex-a53`, using `apk`. Released package archive was SDK **25.12.6**; mismatch warning displayed, dependency simulation proved the package set installable on this router.
+- **Direct** GitHub download and all configured feeds succeeded, including the user-maintained WLAN backport feed; `apk update` reported **11,060** available packages. No temporary proxy was necessary (proxy behavior not tested).
+- Available r5 release, URL and **English HIGHLIGHTS.txt** appeared **before** the Telegram bot consent prompt. User opted in to bot + bot LuCI.
+- `medvemodem-0.16.0-alpha1-r5-aarch64_cortex-a53-25.12.6.tar.gz` downloaded and SHA256 was verified. Exact APK file selection succeeded after numeric-version matching fix. `apk add --simulate --allow-untrusted` reported upgrades for all four packages, `r3 → r5`, no dependency conflicts.
+- User approved the final install confirmation. Actual `apk add --allow-untrusted` upgraded `medvemodem`, `luci-app-medvemodem`, `medvemodem-bot`, `luci-app-medvemodem-bot` to `0.16.0_alpha1-r5`; all four package hooks ran; transaction returned `Installed successfully`.
+- `apk` wrote **`/etc/config/medvemodem.apk-new`** and **`/etc/config/medvemodem-bot.apk-new`** rather than replacing existing UCI files. Compare configuration differences and test runtime; **do not blindly overwrite live config or apply defaults**.
+- **Accepted:** online fetch, release highlights, selection/consent, hash verification, dependency dry-run, APK upgrade. **Not yet accepted:** daemon and LuCI live operation, bot runtime, modem stability, 24.10/opkg, forced reinstall, removals, disconnected feeds/GitHub, temporary authenticated mixed proxy.
+- Do not merge PR #6 or claim complete cross-version support until the remaining test matrix passes; root README and install docs remain gated.
