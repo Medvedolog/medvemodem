@@ -53,8 +53,17 @@ static void tell(json_object *was, json_object *now)
 		json_object *a = json_object_object_get(now, lists[l]), *b = json_object_object_get(was, lists[l]);
 
 		for (size_t i = 0; a && i < json_object_array_length(a); i++) {
-			const char *k = jstr(json_object_array_get_idx(a, i), keys[l]);
+			json_object *entry = json_object_array_get_idx(a, i);
+			const char *k = jstr(entry, keys[l]);
 			bool seen = false;
+			/* A QModem-owned AT port held by its own tom_modem is expected,
+			 * not an unauthorized third-party modem helper. */
+			if (l == 1 && k && !strcmp(k, "tom_modem") && jstr(entry, "device_id")) {
+				json_object *rec = mm_registry_find(&registry, jstr(entry, "device_id"));
+				json_object *owner = rec ? json_object_object_get(rec, "owner") : NULL;
+				if (owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem"))
+					continue;
+			}
 
 			for (size_t j = 0; k && b && j < json_object_array_length(b); j++)
 				seen = seen || (jstr(json_object_array_get_idx(b, j), keys[l]) &&
