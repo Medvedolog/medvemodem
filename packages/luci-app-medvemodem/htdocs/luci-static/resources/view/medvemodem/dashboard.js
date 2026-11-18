@@ -317,10 +317,14 @@ function describe(device, status) {
 	/* ModemManager's freshness says nothing about a modem it does not hold (review 2026-10-22: a HiLink with no reading yet
 	 * read «Оператор пока неизвестен» and «Сигнал: нет данных» because ModemManager was fresh); before its first reading
 	 * such a modem says it is being read */
-	var ownReading = !!owner.control && owner.control !== 'modemmanager' && !device.reading_fresh && !device.modemmanager;
-	var mmFresh = !!device.reading_fresh || (!ownReading && (status.modemmanager || {}).backend === 'available' && typeof mmAge === 'number' && mmAge <= 30);
-	var readingPending = present && ownReading && !device.reading_fresh;
 	var present = device.present === true, state = present ? session.state : 'absent';
+	/* Only this modem's owner can establish reading freshness; the global
+	 * ModemManager timestamp does not validate QModem/native AT telemetry. */
+	var ownReading = !!owner.control && owner.control !== 'modemmanager' && !device.reading_fresh;
+	var mmFresh = !!device.reading_fresh ||
+		(!ownReading && owner.control === 'modemmanager' && (status.modemmanager || {}).backend === 'available' &&
+		 typeof mmAge === 'number' && mmAge <= 30);
+	var readingPending = present && ownReading;
 	/* taken down and kept down: by the operator («Деактивировать»), or netifd gave up (the owner, 2026-10-16) */
 	var paused = present && state !== 'connected' && (device.connection || {}).deactivated || null;
 	/* «Приостановить управление» (the owner, 2026-10-19): no service touches it until «Возобновить управление» */
@@ -508,7 +512,9 @@ function describe(device, status) {
 		phone: phone,
 		network: phone ? (sharing ? _('The phone shares its internet over USB') : _('Phone over USB')) :
 			readingPending ? _('Reading the modem\'s data…') : present && mmFresh ? [words(mm.operator), techWords(mm.access_tech)].filter(Boolean).join(' · ') ||
-			(denied ? _('registration refused') : unregistered ? _('not registered in a network') : _('The operator is not known yet')) : _('The operator\'s data is unavailable'),
+			(denied ? _('registration refused') : unregistered ? _('not registered in a network') : _('The operator is not known yet')) :
+			!present ? _('Modem disconnected from USB') :
+			owner.control === 'qmodem' ? _('QModem telemetry is unavailable') : _('The operator\'s data is unavailable'),
 		readingPending: readingPending,
 		readingAge: device.reading_age,
 		quality: quality !== null && quality >= 0 && quality <= 100 ? quality : null,
