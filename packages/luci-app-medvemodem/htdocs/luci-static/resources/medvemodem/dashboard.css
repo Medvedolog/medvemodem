@@ -1120,3 +1120,27 @@ details:not([open]) > .mm-pop { display: none; }
 
 /* The same main / backup N label as the failover priority table. */
 .mm-whitelist .mm-wlc-col-role { display: block; font-weight: 600; font-size: 11px; line-height: 1.35; color: var(--text-color-medium, #8b949e); white-space: nowrap; }
+
+
+/* Actual modem owner: beside the existing route-role pill, never a replacement for it. */
+.mm-hero-badges, .mm-mcard-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.mm-owner-badge-slot { display: inline-flex; max-width: 100%; }
+.mm-owner-badge { display: inline-flex; align-items: center; gap: 5px; min-height: 23px; padding: 1px 9px;
+  border: 1px solid; border-radius: 999px; font-size: 12px; line-height: 1.4; font-weight: 650; white-space: nowrap; }
+.mm-owner-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  flex: 0 0 7px; background: currentColor; }
+.mm-owner-badge.is-native { color: #aa784e; border-color: #a77954; background: rgba(177,128,78,.11); }
+.mm-owner-badge.is-mm { color: #3489d4; border-color: #4b9ce5; background: rgba(61,136,217,.11); }
+.mm-owner-badge.is-qm { color: #ae8800; border-color: #d9b32d; background: rgba(217,179,45,.11); }
+.mm-owner-badge.is-device { color: var(--text-color-medium, #7d8590); border-color: var(--border-color-medium, #777);
+  background: var(--background-color-medium, transparent); }
+.mm-owner-pref { display: grid; gap: 4px; margin: 8px 0 14px; }
+.mm-owner-pref p { margin: 0 0 0 24px; font-size: 12px; }
+@media (prefers-color-scheme: dark) {
+  .mm-owner-badge.is-native { color: #d9ab83; }
+  .mm-owner-badge.is-mm { color: #77baff; }
+  .mm-owner-badge.is-qm { color: #f0cb53; }
+}
+:root[data-darkmode="true"] .mm-owner-badge.is-native { color: #d9ab83; }
+:root[data-darkmode="true"] .mm-owner-badge.is-mm { color: #77baff; }
+:root[data-darkmode="true"] .mm-owner-badge.is-qm { color: #f0cb53; }
