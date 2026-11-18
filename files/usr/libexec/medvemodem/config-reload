@@ -109,12 +109,12 @@ qm_apply() {
 		return 127
 	fi
 	if qm_reconfigure; then
-		timeout -s TERM -k 3 20 "$INITD/qmodem_network" reconfigure "$1" >/dev/null 2>&1
+		timeout -s TERM -k 3 45 "$INITD/qmodem_network" reconfigure "$1" >/dev/null 2>&1
 		rc=$?
 	else
 		# Older QModem only offers a global reload, so do not pretend it
 		# affects exactly one instance; this path is compatibility only.
-		timeout -s TERM -k 3 20 "$INITD/qmodem_network" reload >/dev/null 2>&1
+		timeout -s TERM -k 3 45 "$INITD/qmodem_network" reload >/dev/null 2>&1
 		rc=$?
 	fi
 	if [ "$rc" -ne 0 ]; then
