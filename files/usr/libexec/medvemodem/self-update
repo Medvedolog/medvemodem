@@ -151,9 +151,10 @@ running() { local pid; pid=$(cat "$RUN/pid" 2>/dev/null); [ -n "$pid" ] && kill 
 # Encode JSON safely: keep UTF-8 bytes, remove ASCII control characters,
 # and escape backslashes/quotes rather than removing most of the string.
 jstr() {
-	printf '%s' "$1" | LC_ALL=C tr -d '\000-\037' | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g'
+	printf '%s' "$1" | LC_ALL=C tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 jtext() { jstr "$1"; }
+
 
 status() {
 	local eng luci bot lbot state=idle result= c latest= tag= at=0 err= newer=false
