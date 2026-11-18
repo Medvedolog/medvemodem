@@ -60,9 +60,12 @@ static void tell(json_object *was, json_object *now)
 			 * not an unauthorized third-party modem helper. */
 			if (l == 1 && k && !strcmp(k, "tom_modem") && jstr(entry, "device_id")) {
 				json_object *rec = mm_registry_find(&registry, jstr(entry, "device_id"));
-				json_object *owner = rec ? json_object_object_get(rec, "owner") : NULL;
-				if (owner && jstr(owner, "control") && !strcmp(jstr(owner, "control"), "qmodem"))
+				json_object *owner = NULL;
+				/* QModem's attached section is the authoritative owner for the
+				 * tool process. A raw registry record has no resolved owner field. */
+				if (rec && qmodem_section_of(rec))
 					continue;
+
 			}
 
 			for (size_t j = 0; k && b && j < json_object_array_length(b); j++)
