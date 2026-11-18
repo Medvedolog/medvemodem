@@ -111,4 +111,19 @@ for ext in apk ipk; do
         }
     done
 done
+# Exercise the canonical detector in a fake root, without modifying host services.
+mkdir -p "$tmp/mock/etc/init.d" "$tmp/mock/etc/hotplug.d/usb"
+: > "$tmp/mock/etc/init.d/automodem"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/mock" sh "$neighbours" --audit > "$tmp/audit"
+grep -Fq "$(printf 'BLOCK\tmarker\tautomodem\t/etc/init.d/automodem')" "$tmp/audit"
+: > "$tmp/mock/etc/hotplug.d/usb/90-santa-hotplug"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/mock" sh "$neighbours" --audit > "$tmp/audit"
+grep -Fq "$(printf 'BLOCK\thotplug\t90-santa-hotplug')" "$tmp/audit"
+# A supported QModem hotplug must not be classified as a competing controller.
+: > "$tmp/mock/etc/hotplug.d/usb/12-qmodem-helper"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/mock" sh "$neighbours" --audit > "$tmp/audit"
+if grep -Fq 'BLOCK' "$tmp/audit" && grep -Fq 'qmodem' "$tmp/audit"; then
+    echo 'FAIL: QModem was classified as competing owner' >&2
+    exit 1
+fi
 echo 'PASS: SSH installer syntax, package selection, and feature contracts'
