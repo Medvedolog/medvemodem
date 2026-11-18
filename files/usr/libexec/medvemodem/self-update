@@ -144,6 +144,32 @@ highlights() {
 	printf ']'
 }
 
+# Atomic directory locks: never remove a live owner's lock. Fresh locks without
+# an owner are protected for one minute against the mkdir/write-PID race.
+take_lock() {
+	local dir="$1" owner
+	if mkdir "$dir" 2>/dev/null; then echo $ > "$dir/owner"; return 0; fi
+	owner=$(cat "$dir/owner" 2>/dev/null)
+	if [ -n "$owner" ]; then
+		kill -0 "$owner" 2>/dev/null && return 1
+	else
+		[ -n "$(find "$dir" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+	fi
+	mv "$dir" "$dir.stale.$" 2>/dev/null || return 1
+	rm -rf "$dir.stale.$"
+	mkdir "$dir" 2>/dev/null || return 1
+	echo $ > "$dir/owner"
+}
+# Serialize apk/opkg operations across self-update and pkg-install. The lock
+# is held only during the package transaction, not during GitHub downloads.
+PM_LOCK=${MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock}
+pm_lock() {
+	mkdir -p "${PM_LOCK%/*}"
+	take_lock "$PM_LOCK"
+}
+pm_unlock() {
+	[ "$(cat "$PM_LOCK/owner" 2>/dev/null)" = "$" ] && rm -rf "$PM_LOCK"
+}
 put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
 running() { local pid; pid=$(cat "$RUN/pid" 2>/dev/null); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }
 # BusyBox tr may treat [:print:] as literal letters. It previously changed
@@ -178,6 +204,7 @@ finish() {
 	printf '%s\n%s\n' "$1" "$2" > "$RUN/result"
 	rm -f "$RUN/pid"
 	rm -rf "$RUN/lock" "$RUN/work"
+	pm_unlock
 	logger -t medvemodem "self-update: $1: $2" 2>/dev/null
 	exit 0
 }
@@ -207,7 +234,7 @@ addon() {
 	local kind="$1" latest tag url sums pkgs out rc wanted core ui
 	case "$kind" in lpac|bot|bot-luci) ;; *) echo "usage: self-update addon lpac|bot|bot-luci" >&2; exit 2 ;; esac
 	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
-	fail() { say "$(T ERROR ОШИБКА): $1"; rm -rf "$RUN/work"; exit 1; }
+	fail() { say "$(T ERROR ОШИБКА): $1"; pm_unlock; rm -rf "$RUN/work"; exit 1; }
 	RUN="$RUN/addon"; mkdir -p "$RUN"; CHECK="$RUN/check"
 	say "$(T "Asking the releases of $REPO for $kind" "Запрос выпусков $REPO: пакет $kind")"
 	# Explicitly select a published MedveModem release; bench artifacts are not
@@ -238,6 +265,7 @@ addon() {
 	# All archive assets have been SHA256 checked; simulate dependencies before
 	# replacing anything. Do not force APK dependencies or change the modem owner.
 	say "$(T "Checking package dependencies (dry run)" "Проверка зависимостей пакетов")"
+	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --simulate --allow-untrusted $pkgs 2>&1); rc=$? ;;
 		opkg) out=$(cd "$RUN/work" && opkg install --noaction $pkgs 2>&1); rc=$? ;;
@@ -250,6 +278,7 @@ addon() {
 		opkg) out=$(cd "$RUN/work" && opkg install $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
+	pm_unlock
 	rm -rf "$RUN/work"
 	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; exit 1; }
 	say "$(T "Installed: $kind. Configure the Telegram token separately." "Установлено: $kind. Токен Telegram настраивается отдельно.")"
@@ -258,7 +287,8 @@ addon() {
 run() {
 	local c latest tag url sums f got want pkgs out rc
 	mkdir -p "$RUN"
-	put_pid $$
+	put_pid $
+	echo $ > "$RUN/lock/owner"
 	exec >>"$LOG" 2>&1
 	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
 	say "$(T "Router: OpenWrt ${REL:-?} ($ARCH), packages: $PM; installed: $(installed_version medvemodem)" "Роутер: OpenWrt ${REL:-?} ($ARCH), пакеты: $PM; установлено: $(installed_version medvemodem)")"
@@ -278,11 +308,13 @@ run() {
 	esac
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"
 	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
+	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
 		opkg) out=$(cd "$RUN/work" && opkg install --force-reinstall $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
+	pm_unlock
 	[ "$rc" -eq 0 ] || fail "$(T "the installation failed (code $rc)" "установка не прошла (код $rc)")"
 	say "$(T "Done: MedveModem $latest. LuCI reloads its pages in a moment." "Готово: MedveModem $latest. LuCI перезагрузит страницы через несколько секунд.")"
 	# rpcd reads the new ACL and LuCI's menu: after the log is written, the page asks again
@@ -294,8 +326,8 @@ start() {
 	[ -n "$PM" ] || { echo '{"ok":false,"error":"no package manager"}'; exit 1; }
 	[ -L "$RUN" ] && { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
 	mkdir -p "$RUN" || { echo '{"ok":false,"error":"cannot write the run directory"}'; exit 1; }
-	mkdir "$RUN/lock" 2>/dev/null || { running && { echo '{"ok":false,"error":"running"}'; exit 1; }; rm -rf "$RUN/lock"; mkdir "$RUN/lock"; }
-	put_pid $$
+	take_lock "$RUN/lock" || { echo '{"ok":false,"error":"running"}'; exit 1; }
+	put_pid $
 	rm -f "$RUN/result"
 	: > "$LOG"
 	case "$1" in --lang=ru) echo ru ;; *) echo en ;; esac > "$LANG_FILE"
