@@ -362,9 +362,8 @@ install_flow() {
         opkg install --noaction $files || fail 'missing/conflicting dependencies'
         if [ "$TTY" != /dev/null ]; then
             ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
-        quiesce_for_upgrade
         fi
-        if [ "$TTY" = /dev/null ]; then quiesce_for_upgrade; fi
+        quiesce_for_upgrade
         if [ "$FORCE" = 1 ]; then
             opkg install --force-reinstall $files || fail 'reinstallation failed'
         else
@@ -374,9 +373,8 @@ install_flow() {
         apk add --simulate --allow-untrusted $files || fail 'missing/conflicting dependencies'
         if [ "$TTY" != /dev/null ]; then
             ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
-        quiesce_for_upgrade
         fi
-        if [ "$TTY" = /dev/null ]; then quiesce_for_upgrade; fi
+        quiesce_for_upgrade
         if [ "$FORCE" = 1 ]; then
             apk add --force-reinstall --allow-untrusted $files || fail 'reinstallation failed'
         else
