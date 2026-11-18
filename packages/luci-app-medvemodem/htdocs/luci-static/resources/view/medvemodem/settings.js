@@ -536,6 +536,25 @@ return view.extend({
 			words(device.product) || String(g.name || '').replace(/\s*\([^)]*\)\s*$/, '');
 		return model.replace(/\s+-\s+(?:QMI|MBIM|NCM|ECM|RNDIS)\s+Composition$/i, '').trim() || g.dev;
 	},
+	/* Same ordering as Settings -> Channel priority, including wired WAN in the backup numbers.
+	 * A matrix column represents a physical link (g.dev); never infer backup rank from column position.
+	 */
+	wlChannelRole: function(g) {
+		var order = (this.prio && this.prio.order) || [];
+		var path = list((this.uplinkData || {}).paths).filter(function(p) {
+			return p && p.device === g.dev;
+		})[0] || {};
+		var key = path.device_id || (path.interface ? 'iface:' + path.interface : '');
+		if (!key) {
+			var dev = list(this.devices).filter(function(d) {
+				return d && d.connection && d.connection.device === g.dev;
+			})[0];
+			if (dev) key = dev.device_id;
+		}
+		if (!key && path.interface) key = 'iface:' + path.interface;
+		var i = order.indexOf(key);
+		return i === 0 ? _('main') : i > 0 ? _('backup %d').format(i) : '';
+	},
 	wlDrawResults: function() {
 		var k = this.wlc, got = k.got || [];
 		if (!got.length) return;
@@ -562,10 +581,12 @@ return view.extend({
 			k.verdict.hidden = true;
 			return;
 		}
-		var names = got.map(this.wlShortChannel.bind(this));
+		var self = this, names = got.map(this.wlShortChannel.bind(this));
 		var head = E('tr', {}, [E('th', { scope: 'col' }, _('Service'))].concat(got.map(function(g, i) {
-			return E('th', { scope: 'col', title: g.name + ' · ' + g.dev }, [
+			var role = self.wlChannelRole(g);
+			return E('th', { scope: 'col', title: g.name + ' · ' + g.dev + (role ? ' · ' + role : '') }, [
 				E('span', { 'class': 'mm-wlc-col-name' }, names[i]),
+				role ? E('span', { 'class': 'mm-wlc-col-role' }, role) : '',
 				E('span', { 'class': 'mm-wlc-col-if mm-faint' }, g.dev)
 			]);
 		})));
