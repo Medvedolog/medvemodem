@@ -293,9 +293,25 @@ resolve_latest_release() {
         fail 'cannot parse release publication dates'
     jsonfilter -i "$TMP/releases.json" -e '@[*].draft' > "$TMP/release-drafts" ||
         fail 'cannot parse release draft statuses'
-    TAG=$(paste "$TMP/release-dates" "$TMP/release-tags" "$TMP/release-drafts" |
-        LC_ALL=C sort -r |
-        awk -F '\t' '$1 ~ /^20[0-9][0-9]-/ && $2 ~ /^v[0-9][0-9A-Za-z._-]*$/ && $3 == "false" {print $2; exit}')
+    # BusyBox OpenWrt has awk but may not have paste (coreutils).
+    # getline reads the corresponding fields in lockstep without extra tools.
+    TAG=$(awk '
+        BEGIN {
+            while ((getline stamp < ARGV[1]) > 0) {
+                if ((getline tag < ARGV[2]) <= 0 ||
+                    (getline draft < ARGV[3]) <= 0) exit 2
+                if (stamp ~ /^20[0-9][0-9]-/ &&
+                    tag ~ /^v[0-9][0-9A-Za-z._-]*$/ &&
+                    draft == "false" && stamp > newest) {
+                    newest = stamp
+                    selected = tag
+                }
+            }
+            if (selected != "") print selected
+            exit
+        }
+    ' "$TMP/release-dates" "$TMP/release-tags" "$TMP/release-drafts") ||
+        fail 'cannot correlate GitHub release metadata'
     [ -n "$TAG" ] || fail 'no published MedveModem v* release found in GitHub API; no older-version fallback'
     say "Newest published MedveModem release: $TAG"
 }
