@@ -1,8 +1,7 @@
 MedveModem v0.16.0-alpha1-r3
 
-Release request marker. The build workflow publishes this prerelease only on the exact commit message below.
-
-Package revisions: 0.16.0_alpha1-r3 for medvemodem, luci-app-medvemodem, medvemodem-bot and luci-app-medvemodem-bot.
-Platforms: aarch64_cortex-a53, aarch64_generic, x86_64; OpenWrt 24.10.8 and 25.12.6.
-
-Main changes: compact whitelist LuCI status, filtering and pinned labels in service matrix, event history and SMS delivery status; pending SIM rename fixes.
+Published prerelease: https://github.com/Medvedolog/medvemodem/releases/tag/v0.16.0-alpha1-r3
+Package revisions: 0.16.0_alpha1-r3 for medvemodem, luci-app-medvemodem, medvemodem-bot, luci-app-medvemodem-bot.
+Targets: aarch64_cortex-a53, aarch64_generic, x86_64; OpenWrt 24.10.8 (IPK) and 25.12.6 (APK).
+Highlights: compact whitelist LuCI status; filtered service matrix; existing access event history; SMS delivery diagnostics.
+The one-shot publisher completed successfully. The ordinary build workflow independently checks current main and provides the README status badge.
