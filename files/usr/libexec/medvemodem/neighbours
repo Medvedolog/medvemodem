@@ -27,8 +27,9 @@ PROC=${MEDVEMODEM_NEIGHBOURS_PROC:-/proc}
 # Additional signatures from third-party OpenWrt modem ecosystems. The
 # display and SSH preflight share this file, rather than maintaining lists in
 # two separate installers. These are evidence markers, not removal orders.
+# Do not treat /etc/config/5gmodem as an installed program: OpenWrt preserves UCI on removal.
 # id|files (the first that is there names the package; any listed may be)|init scripts|process names|cron word
-KNOWN='5gmodem|/etc/hotplug.d/usb/21-5gmodem-usbmode-extra /etc/hotplug.d/usb/62-5gmodem-fastboot-rescue /etc/hotplug.d/usb/55-5gmodem-usbports /etc/hotplug.d/iface/60-5gmodem-health /etc/hotplug.d/tty/26-5gmodem-mmreserve /etc/config/5gmodem|5gmodem-sessionwatch 5gmodem-mm-inhibit 5gmodem-sms-notify 5gmodem-usbports 5gmodem-antenna||5gmodem
+KNOWN='5gmodem|/etc/hotplug.d/usb/21-5gmodem-usbmode-extra /etc/hotplug.d/usb/62-5gmodem-fastboot-rescue /etc/hotplug.d/usb/55-5gmodem-usbports /etc/hotplug.d/iface/60-5gmodem-health /etc/hotplug.d/tty/26-5gmodem-mmreserve|5gmodem-sessionwatch 5gmodem-mm-inhibit 5gmodem-sms-notify 5gmodem-usbports 5gmodem-antenna||5gmodem
 usb-reinit|/etc/hotplug.d/usb/99-modems /etc/init.d/fix-modem-reinit /etc/init.d/fix-usb-reinit /usr/bin/modem-init|fix-modem-reinit fix-usb-reinit||
 modeminfo|/etc/config/modeminfo /usr/share/modeminfo|||modeminfo
 smstools3|/etc/init.d/smstools3 /usr/sbin/smsd|smstools3|smsd|
@@ -176,6 +177,14 @@ ours_file() {
 echo "$KNOWN" | while IFS='|' read -r id files inits procs cron; do
 	found=
 	for f in $files; do [ -e "$ROOT$f" ] && found="$found $f"; done
+	# Check the package database as well as installed files. The 5gmodem
+	# frontend can be present without the particular historical hotplug
+	# signatures; a saved UCI file alone must never be evidence.
+	if [ "$id" = 5gmodem ]; then
+		if audit_installed luci-app-5gmodem || audit_installed 5gmodem; then
+			[ -n "$found" ] || found=' (installed-package)'
+		fi
+	fi
 	[ -n "$found" ] || continue
 	run=false
 	for i in $inits; do ls "$ROOT"/etc/rc.d/S[0-9][0-9]"$i" >/dev/null 2>&1 && run=true; done
