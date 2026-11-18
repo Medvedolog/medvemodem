@@ -219,14 +219,33 @@ audit_modem_owners() {
             esac
         done
     done
-    # Name the compatible controllers and passive Polish packages separately.
+    # koshev-msk modemfeed: xmm-modem supplies its own dial scripts, but
+    # modeminfo/mmconfig/atinout/qtools are tools, not always-on orchestrators.
+    if installed xmm-modem; then
+        conflict_line 'installed xmm-modem dial package (koshev-msk/modemfeed)' \
+            "Inspect its netifd/connection ownership before proceeding; disable/remove its active dial configuration manually if it targets the same modem."
+    fi
+    # smstools3 holds a serial AT port only while smsd is running. The package
+    # alone (like sms-tool) does not justify blocking installation.
+    if installed smstools3 || installed luci-app-smstools3; then
+        if pidof smsd >/dev/null 2>&1; then
+            conflict_line 'smstools3 SMS daemon is running and may own a modem AT port' \
+                'Inspect /etc/init.d/smstools3 status; stop/disable manually if it uses a MedveModem port.'
+        else
+            say 'NOTICE: smstools3 installed but smsd not running (review configured serial port).'
+        fi
+    fi
+    # Name supported controllers and passive/interactive utilities separately.
     for name in qmodem luci-app-qmodem luci-app-qmodem-next modemmanager; do
         installed "$name" && say "COMPATIBLE: $name (MedveModem can coordinate this owner; keep installed)"
     done
     for name in luci-app-3ginfo-lite 3ginfo-lite luci-app-modemdata modemdata \
                 luci-app-modemband modemband luci-app-sms-tool-js \
-                luci-app-sms-manager sms-tool; do
-        installed "$name" && say "NOTICE: $name installed (diagnostic/control utility; review AT/cron polling, not an automatic blocker)"
+                luci-app-sms-manager sms-tool luci-app-sms-tool \
+                luci-app-modeminfo modeminfo modeminfo-qmi modeminfo-serial-xmm \
+                luci-app-mmconfig luci-app-atinout atinout luci-app-cellled cellled \
+                qminfo qtools luci-app-smstools3; do
+        installed "$name" && say "NOTICE: $name installed (modem utility; review AT/cron polling, not an automatic blocker)"
     done
     if [ "$conflicts" -gt 0 ]; then
         say "Found $conflicts potential competing modem controllers/hotplug handlers."
