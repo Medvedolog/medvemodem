@@ -128,6 +128,19 @@ for ext in apk ipk; do
         }
     done
 done
+# LuCI's normal JSON mode must not list a 5gmodem removed with residual UCI.
+mkdir -p "$tmp/luci-leftover/etc/config"
+: > "$tmp/luci-leftover/etc/config/5gmodem"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/luci-leftover" MEDVEMODEM_NEIGHBOURS_PROC="$tmp/luci-leftover/proc" sh "$neighbours" > "$tmp/luci-leftover.json"
+if grep -Fq '"id":"5gmodem"' "$tmp/luci-leftover.json"; then
+    echo 'FAIL: LuCI lists old 5gmodem config as an installed manager' >&2
+    exit 1
+fi
+# A real 5gmodem hotplug must still be shown on LuCI.
+mkdir -p "$tmp/luci-leftover/etc/hotplug.d/usb"
+: > "$tmp/luci-leftover/etc/hotplug.d/usb/21-5gmodem-usbmode-extra"
+MEDVEMODEM_NEIGHBOURS_ROOT="$tmp/luci-leftover" MEDVEMODEM_NEIGHBOURS_PROC="$tmp/luci-leftover/proc" sh "$neighbours" > "$tmp/luci-leftover.json"
+grep -Fq '"id":"5gmodem"' "$tmp/luci-leftover.json"
 # A saved UCI file must not block installation after 5gmodem is removed.
 mkdir -p "$tmp/leftover/etc/config"
 : > "$tmp/leftover/etc/config/5gmodem"
