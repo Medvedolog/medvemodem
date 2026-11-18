@@ -92,6 +92,8 @@ jobs:
           cat > release-assets/HIGHLIGHTS.txt <<'EOF'
           ## 0.16.0-alpha1-r4
           - Fix: align LuCI display version with engine and normalize underscore/hyphen package versions.
+          - Whitelist diagnostics: compact status lights, short modem headings, non-overlapping service labels and failover backup numbering.
+          - Condensed results: remove repeated per-channel paragraphs and show a single concise summary.
           - Installer pinned to permanent QModem 3.3.0_p20261108-r1 GitHub Release.
           - MedveModem engine, LuCI, Telegram bot, bot LuCI, and lpac packages for six OpenWrt SDK targets.
           - SHA256SUMS supplied for all target archives.
