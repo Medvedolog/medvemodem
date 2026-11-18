@@ -172,6 +172,63 @@ installed() {
         apk info -e "$1" >/dev/null 2>&1
     fi
 }
+# Preflight audit: conflicting modem owners/hotplug actors are not removed by
+# this installer. Read-only checks; QModem/ModemManager are supported owners.
+# The names below are signatures, not a blanket ban on SMS/diagnostic tools.
+conflicts=0
+conflict_line() {
+    conflicts=$((conflicts + 1))
+    say "CONFLICT: $1"
+    say "  $2"
+}
+installed_any() {
+    for candidate in "$@"; do
+        if installed "$candidate"; then echo "$candidate"; fi
+    done
+}
+audit_modem_owners() {
+    conflicts=0
+    say 'Checking existing modem managers and hotplug automation...'
+    for name in luci-app-5gmodem 5gmodem luci-app-automodem automodem rooter luci-app-rooter modemmanager-auto modem-auto; do
+        if installed "$name"; then
+            conflict_line "installed package $name" "Review and remove manually if it controls the same modem: $PM remove $name"
+        fi
+    done
+    # ROOter may be baked into squashfs without a package database entry.
+    for marker in /usr/lib/rooter /etc/config/modem /etc/config/modemmanager-auto; do
+        [ -e "$marker" ] || continue
+        conflict_line "modem automation marker $marker" 'Inspect firmware-owned services and hotplug handlers; do not delete firmware files blindly.'
+    done
+    # Santa/RR custom hotplug deployments are often not installed as packages.
+    # Inspect only dedicated name signatures; generic usbmode/netifd hooks stay.
+    for dir in /etc/hotplug.d/usb /etc/hotplug.d/tty /etc/hotplug.d/net /etc/hotplug.d/iface; do
+        [ -d "$dir" ] || continue
+        for file in "$dir"/*; do
+            [ -f "$file" ] || continue
+            case "${file##*/}" in
+                *santa*|*Santa*|*automodem*|*rooter*|*ROOter*|*5gmodem*|*qmi-autoconnect*|*modem-auto*)
+                    conflict_line "custom hotplug handler $file" 'Inspect, disable, or remove its owning package/script manually before installing.'
+                    ;;
+            esac
+        done
+    done
+    # Name the compatible controllers and passive Polish packages separately.
+    for name in qmodem luci-app-qmodem luci-app-qmodem-next modemmanager; do
+        installed "$name" && say "COMPATIBLE: $name (MedveModem can coordinate this owner; keep installed)"
+    done
+    for name in luci-app-3ginfo-lite 3ginfo-lite luci-app-modemdata modemdata \
+                luci-app-modemband modemband luci-app-sms-tool-js \
+                luci-app-sms-manager sms-tool; do
+        installed "$name" && say "NOTICE: $name installed (diagnostic/control utility; review AT/cron polling, not an automatic blocker)"
+    done
+    if [ "$conflicts" -gt 0 ]; then
+        say "Found $conflicts potential competing modem controllers/hotplug handlers."
+        say "No packages, services or hotplug files were changed."
+        say "Back up configuration and remove/disable conflicts manually, then rerun this installer."
+        fail 'installation paused due to competing modem automation'
+    fi
+    say 'Modem ownership preflight: no named conflicts detected.'
+}
 remove_packages() {
     selected=
     for name in "$@"; do
@@ -360,6 +417,7 @@ install_flow() {
         say "WARNING: firmware and package SDK patch version differ; dependency dry-run must succeed."
     fi
     take_package_lock
+    audit_modem_owners
     prepare_network
     show_release
     with_bot=0
