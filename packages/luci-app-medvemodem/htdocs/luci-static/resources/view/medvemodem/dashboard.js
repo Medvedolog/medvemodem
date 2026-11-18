@@ -1405,7 +1405,8 @@ return view.extend({
 		this.empty.hidden = devices.length !== 0;
 		/* one version for both; a page left from another build says so */
 		/* the engine knows its version without the release (0.15.0), the page with it (0.15.0-r69): one version when they agree */
-		var same = status.version === APP_VERSION || status.version === String(APP_VERSION).replace(/-r\d+$/, '');
+		var engineVersion = String(status.version || '').replace(/_/g, '-');
+		var same = engineVersion === APP_VERSION || engineVersion === String(APP_VERSION).replace(/-r\d+$/, '');
 		text(this.version, 'MedveModem ' + (same ? APP_VERSION : _('%s · web interface %s (another version)').format(status.version, APP_VERSION)));
 		this.lastSuccess = new Date();
 		text(this.updated, _('updated at %s').format(this.lastSuccess.toLocaleTimeString(LANG)));
