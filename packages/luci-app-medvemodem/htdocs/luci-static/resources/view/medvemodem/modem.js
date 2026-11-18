@@ -1998,6 +1998,7 @@ return view.extend({
 		h.title = E('h2', { 'class': 'mm-hero-name' });
 		h.model = E('span', { 'class': 'mm-faint' });
 		h.pill = E('span', { 'class': 'mm-pill' });
+		h.ownerBadge = E('span', { 'class': 'mm-owner-badge-slot', hidden: true });
 		h.sayB = E('b'); h.sayText = E('span');
 		h.badge = E('span', { 'class': 'mm-badge-slot' });
 		h.net = E('span'); h.bars = barsNode(); h.sig = E('span');
@@ -2031,7 +2032,7 @@ return view.extend({
 		var nm = this.nameEditor();
 		h.node = E('section', { 'class': 'mm-card mm-hero mm-header' }, [
 			E('div', { 'class': 'mm-hero-top' }, [h.mark, E('div', { 'class': 'mm-hero-id' }, [E('div', { 'class': 'mm-hero-name-row' }, [h.title, nm.open, h.web]),
-				h.model, h.pill])]),
+				h.model, E('div', { 'class': 'mm-hero-badges' }, [h.pill, h.ownerBadge])])]),
 			nm.box,
 			E('div', { 'class': 'mm-hero-say' }, [h.sayB, h.sayText]),
 			h.chain = E('ol', { 'class': 'mm-chain', 'aria-label': _('Diagnosis by chain'), hidden: '' }),
@@ -4168,6 +4169,9 @@ return view.extend({
 		text(h.pill, running ? _('Recovery…') : !present ? _('Disconnected from USB') : connected ? ROLES[role] || _('Connected') : _('No internet connection'));
 		/* a working backup in its own colour, not the main one's green (the owner, 2026-10-19) */
 		h.pill.className = 'mm-pill ' + (tone === 'ok' && role === 'backup_ready' && !running && present ? 'is-backup' : TONE_PILL[tone]);
+		var ownerLabel = present ? mmc.ownerBadge(d) : null;
+		h.ownerBadge.replaceChildren.apply(h.ownerBadge, ownerLabel ? [ownerLabel] : []);
+		h.ownerBadge.hidden = !ownerLabel;
 		text(h.sayB, b); text(h.sayText, say);
 		this.applyChain(d.diagnosis);
 		var badge = present ? opBadge(mm.operator_code, words(mm.operator), (d.sim_operator || {}).code) : null;
