@@ -4,7 +4,7 @@
 set -eu
 
 REPO=https://github.com/Medvedolog/medvemodem
-TAG=${MEDVEMODEM_TAG:-v0.16.0-alpha1-r5}
+TAG=${MEDVEMODEM_TAG:-v0.16.0-alpha1-r6}
 ACTION=menu
 BOT=ask
 FORCE=0
@@ -22,7 +22,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 usage() {
     cat <<'HELP'
 Usage: sh medvemodem-install.sh [--install|--update|--reinstall|--remove|--remove-bot]
-  [--tag v0.16.0-alpha1-r5] [--bot|--no-bot] [--proxy http://host:port] [--force]
+  [--tag v0.16.0-alpha1-r6] [--bot|--no-bot] [--proxy http://host:port] [--force]
   [--allow-disconnect]
 --install      install or upgrade engine + LuCI
 --update       update an existing installation
@@ -194,8 +194,8 @@ show_release() {
     # GitHub release description. r5 has a standalone English summary.
     if fetch "$REPO/releases/download/$TAG/HIGHLIGHTS.txt" "$TMP/highlights" >/dev/null 2>&1 && [ -s "$TMP/highlights" ]; then
         cat "$TMP/highlights"
-    elif [ "$TAG" = 'v0.16.0-alpha1-r5' ] &&
-         fetch "https://raw.githubusercontent.com/Medvedolog/medvemodem/main/docs/RELEASE-HIGHLIGHTS-ALPHA1-R5.md" "$TMP/highlights" >/dev/null 2>&1 &&
+    elif [ "$TAG" = 'v0.16.0-alpha1-r6' ] &&
+         fetch "https://raw.githubusercontent.com/Medvedolog/medvemodem/release/r6/docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md" "$TMP/highlights" >/dev/null 2>&1 &&
          [ -s "$TMP/highlights" ]; then
         cat "$TMP/highlights"
     elif command -v jsonfilter >/dev/null 2>&1 &&
