@@ -20,4 +20,5 @@ for page in dashboard modem settings; do
   grep -Fq "var VIEW_VERSION = '$browser';" "$path" || { echo "$path: expected $browser" >&2; exit 1; }
 done
 python3 "$root/tools/check-whitelist-i18n.py" || exit 1
+sh "$root/tests/test-bot-update-versions.sh" || exit 1
 echo "LuCI version matches engine: $browser"
