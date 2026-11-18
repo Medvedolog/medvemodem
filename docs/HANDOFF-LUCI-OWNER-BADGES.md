@@ -32,3 +32,9 @@ Status: proposed next MedveModem release after r5; not included in published r5.
 - Added all 20 Russian translations and template entries. Source remains English in `settings.js` per the project's internationalization policy.
 - Added `tools/check-whitelist-i18n.py` and invoked it from `tools/check-web-version.sh`, preventing package builds if the whitelist page adds strings without populated Russian catalog entries. Static check only; requires CI PASS and one real Russian LuCI rendering after the next coherent package bump.
 - Track PR #8, not published r5. Preserve original `po` history and use gettext compilation into LuCI `.lmo` at build time.
+
+## r6 promotion and bot-update validation (2026-11-18)
+
+- Release branch `release/r6` includes the full PR #8 fix, increments all four package revisions to r6 and all LuCI `VIEW_VERSION` strings to `0.16.0-alpha1-r6`. A draft PR #9 is used for six-target CI and controlled promotion to main.
+- Telegram update audit identified an `updview.uc` version regex omitting `_`, although OpenWrt uses `0.16.0_alpha1-r5`. This incorrectly rendered installed versions as `—`; fixed in r6. Bot's `update.uc` reads state from `self-update`, checks twice per day (first at about 5 min after startup), and relays a notification once per available tag. The new r6 `HIGHLIGHTS.txt` uses a `## 0.16.0-alpha1-r6` heading to satisfy `self-update` parsing. Need field verification of real GitHub release detection and one notification; do not claim this is device-tested.
+- Installer defaults to r6 on `feat/ssh-installer` and must not be tested for an actual upgrade until r6 release assets exist. Full quiescence tests remain pending and the installer is separately gated in PR #6.
