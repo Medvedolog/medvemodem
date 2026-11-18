@@ -1,5 +1,13 @@
 # MedveModem — Release History (English)
 
+## Unreleased — r6 stability and LuCI release gates (2026-11-19)
+
+- **r6 regression fix:** an older cached `common.js` could lack `mm.setOwnerBadge()` and blank a modem detail page. Owner badges are optional; missing API now hides the badge without stopping the page.
+- The modem detail page keeps panels visible and reports RPC/rendering failures rather than hiding the whole page behind `mm-wait`.
+- **Release-gating CI:** shared LuCI module API/version checks, stale-cache fallback checks and a Chromium smoke test exercising the actual modem view with mocked RPC failures, rendering exceptions and absent badge API. OpenWrt package builds and publication depend on the LuCI gates.
+- The common `neighbours` detector no longer mistakes orphaned `/etc/config/5gmodem` settings for an installed modem controller.
+- **Status:** fixes are in PR #6, not in the published r6 release. Browser CI is a smoke test; on-router acceptance remains necessary.
+
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!NOTE]
