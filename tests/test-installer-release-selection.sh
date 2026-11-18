@@ -16,7 +16,7 @@ grep -Fq 'opkg install --noaction' medvemodem-install.sh
 grep -Fq 'take_package_lock' medvemodem-install.sh
 grep -Fq 'audit_modem_owners' medvemodem-install.sh
 ! grep -q 'TAG=${MEDVEMODEM_TAG:-v0.16' medvemodem-install.sh
-! grep -Fq '/releases/latest' medvemodem-install.sh
+! grep -Fq 'fetch "$REPO/releases/latest"' medvemodem-install.sh
 ! grep -Fq 'RELEASE-HIGHLIGHTS-ALPHA1-R6.md' medvemodem-install.sh
 grep -Fq 'raw.githubusercontent.com/Medvedolog/medvemodem/main/medvemodem-install.sh' README.md
 
