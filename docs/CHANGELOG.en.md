@@ -5,6 +5,26 @@
 > [!NOTE]
 > English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
 
+## Unreleased — SSH installer (PR #6, 2026-11-18)
+
+**Development-only; not yet merged or approved for direct README installation.**
+
+- Add `medvemodem-install.sh`, inspired by BearGuard, for SSH console installation on OpenWrt 24.10.x (`opkg`/IPK) and 25.12.x (`apk`/APK), supported prebuilt architectures `aarch64_cortex-a53`, `aarch64_generic`, `x86_64`.
+- Detect firmware and package SDK patch-level differences, check official OpenWrt package feeds and GitHub Releases, verify released archive SHA256 and use dependency dry-run before any package installation.
+- Offer a temporary HTTP(S) mixed proxy (including optional credentials) when direct connectivity fails. Proxy environment is scoped to downloads and installer subprocesses; no permanent UCI/feed/routing edits.
+- Support initial installation, upgrades, forced same-version reinstall without disabling checksum/dependency checks, bot + LuCI as a separate opt-in, bot-only removal and full MedveModem removal. QModem is not automatically removed.
+- Add `tests/test-ssh-installer.sh` and `docs/SSH-INSTALLER.md` with installation and validation instructions.
+- **OPiZ3 field regression:** the first OpenWrt 25.12.5 attempt saw `curl (22)` / HTTP 404 because `v0.16.0-alpha1-r5` had not been published. The original script falsely prompted for a proxy. The draft fix checks GitHub API reachability/release existence; this needs retesting on hardware before shipping.
+- **Remaining:** execute the installer test script, verify 24.10/25.12 install/update/reinstall/remove paths, simulate failure cases and confirm authenticated temporary proxy behavior. Do not advertise a `main` one-liner or imply hardware success until these pass.
+
+## 0.16.0-alpha1-r5 — 2026-11-18
+
+- QModem owner-managed FM350 operator telemetry via `AT+GTCURCAR?`; retain standard cell-info operator fallback. LuCI now distinguishes pending, failed and stale owner readings and invalidates cache on USB generation/owner changes.
+- Address bounded QModem lock handling, section-specific dial verification and guarded orphan-process recovery, as reviewed in `docs/HANDOFF-QMODEM-FM350.md`. Hardware acceptance remains outstanding.
+- Bump MedveModem, LuCI, Telegram bot and bot LuCI to package release `r5`, with QModem installation source pointing at independent `qmodem-3.3.0_p20261108-r2`.
+- CI: all six MedveModem SDK build jobs succeeded in run `44303904480`, but its initial publication failed because publish job lacked `actions/checkout`. Corrected in `main` commit `e53e83d`, with another CI run to confirm. QModem r2's six builds and publication succeeded.
+- Check the live GitHub Release before assuming r5 is published; build success does not imply release availability.
+
 ## 0.16.0-alpha1-r4 — 2026-11-18
 
 Alpha 1 r4 hotfix for an incorrect web-interface version displayed after installing r3 packages.
