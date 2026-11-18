@@ -172,88 +172,46 @@ installed() {
         apk info -e "$1" >/dev/null 2>&1
     fi
 }
-# Preflight audit: conflicting modem owners/hotplug actors are not removed by
-# this installer. Read-only checks; QModem/ModemManager are supported owners.
-# The names below are signatures, not a blanket ban on SMS/diagnostic tools.
-conflicts=0
-conflict_line() {
-    conflicts=$((conflicts + 1))
-    say "CONFLICT: $1"
-    say "  $2"
-}
-installed_any() {
-    for candidate in "$@"; do
-        if installed "$candidate"; then echo "$candidate"; fi
-    done
-}
+# Use the SAME detector as LuCI (files/usr/libexec/medvemodem/neighbours).
+# On a clean router that file is not installed yet. Fetch the canonical script
+# from an immutable repository commit rather than maintaining a second catalog.
+# This is a read-only audit: only explicit controller evidence blocks install.
+NEIGHBOURS_COMMIT=be44067c4ef339a9eaee3d8552af15611b6834ad
 audit_modem_owners() {
-    conflicts=0
-    say 'Checking existing modem managers and hotplug automation...'
-    for name in luci-app-5gmodem 5gmodem luci-app-automodem automodem rooter luci-app-rooter modemmanager-auto modem-auto; do
-        if installed "$name"; then
-            if [ "$PM" = apk ]; then remove_cmd="apk del $name"; else remove_cmd="opkg remove $name"; fi
-            conflict_line "installed package $name" "Review and remove manually if it controls the same modem: $remove_cmd"
-        fi
-    done
-    # Custom firmware may provide active init scripts without package metadata.
-    for init_name in automodem rooter santa-hotplug santa_hotplug 5gmodem; do
-        if [ -x "/etc/init.d/$init_name" ]; then
-            conflict_line "modem service /etc/init.d/$init_name" "Inspect manually: /etc/init.d/$init_name status; stop/disable only with independent network access."
-        fi
-    done
-    # ROOter may be baked into squashfs without a package database entry.
-    for marker in /usr/lib/rooter /etc/config/modemmanager-auto; do
-        [ -e "$marker" ] || continue
-        conflict_line "modem automation marker $marker" 'Inspect firmware-owned services and hotplug handlers; do not delete firmware files blindly.'
-    done
-    # Santa/RR custom hotplug deployments are often not installed as packages.
-    # Inspect only dedicated name signatures; generic usbmode/netifd hooks stay.
-    for dir in /etc/hotplug.d/usb /etc/hotplug.d/tty /etc/hotplug.d/net /etc/hotplug.d/iface; do
-        [ -d "$dir" ] || continue
-        for file in "$dir"/*; do
-            [ -f "$file" ] || continue
-            case "${file##*/}" in
-                *santa*|*Santa*|*automodem*|*rooter*|*ROOter*|*5gmodem*|*qmi-autoconnect*|*modem-auto*)
-                    conflict_line "custom hotplug handler $file" 'Inspect, disable, or remove its owning package/script manually before installing.'
-                    ;;
-            esac
-        done
-    done
-    # koshev-msk modemfeed: xmm-modem supplies its own dial scripts, but
-    # modeminfo/mmconfig/atinout/qtools are tools, not always-on orchestrators.
-    if installed xmm-modem; then
-        conflict_line 'installed xmm-modem dial package (koshev-msk/modemfeed)' \
-            "Inspect its netifd/connection ownership before proceeding; disable/remove its active dial configuration manually if it targets the same modem."
-    fi
-    # smstools3 holds a serial AT port only while smsd is running. The package
-    # alone (like sms-tool) does not justify blocking installation.
-    if installed smstools3 || installed luci-app-smstools3; then
-        if pidof smsd >/dev/null 2>&1; then
-            conflict_line 'smstools3 SMS daemon is running and may own a modem AT port' \
-                'Inspect /etc/init.d/smstools3 status; stop/disable manually if it uses a MedveModem port.'
-        else
-            say 'NOTICE: smstools3 installed but smsd not running (review configured serial port).'
-        fi
-    fi
-    # Name supported controllers and passive/interactive utilities separately.
-    for name in qmodem luci-app-qmodem luci-app-qmodem-next modemmanager; do
-        installed "$name" && say "COMPATIBLE: $name (MedveModem can coordinate this owner; keep installed)"
-    done
-    for name in luci-app-3ginfo-lite 3ginfo-lite luci-app-modemdata modemdata \
-                luci-app-modemband modemband luci-app-sms-tool-js \
-                luci-app-sms-manager sms-tool luci-app-sms-tool \
-                luci-app-modeminfo modeminfo modeminfo-qmi modeminfo-serial-xmm \
-                luci-app-mmconfig luci-app-atinout atinout luci-app-cellled cellled \
-                qminfo qtools luci-app-smstools3; do
-        installed "$name" && say "NOTICE: $name installed (modem utility; review AT/cron polling, not an automatic blocker)"
-    done
+    local level kind name evidence conflicts=0
+    say 'Checking existing modem controllers using MedveModem neighbours detector...'
+    detector="https://raw.githubusercontent.com/Medvedolog/medvemodem/$NEIGHBOURS_COMMIT/files/usr/libexec/medvemodem/neighbours"
+    fetch "$detector" "$TMP/neighbours" ||
+        fail 'cannot download the shared modem audit; refusing to install without preflight'
+    # Fetching from a full immutable commit avoids mismatches between branch
+    # snapshots; no executable content comes from arbitrary package feeds.
+    sh "$TMP/neighbours" --audit > "$TMP/neighbours.audit" ||
+        fail 'shared modem audit failed; no packages were changed'
+    while IFS="$(printf '\t')" read -r level kind name evidence; do
+        case "$level" in
+            BLOCK)
+                conflicts=$((conflicts + 1))
+                say "CONFLICT: $kind $name ($evidence)"
+                if [ "$kind" = package ]; then
+                    if [ "$PM" = apk ]; then
+                        say "  Review and remove manually if conflicting: apk del $name"
+                    else
+                        say "  Review and remove manually if conflicting: opkg remove $name"
+                    fi
+                else
+                    say '  Inspect its owner, disable or remove manually with independent access.'
+                fi ;;
+            WARN)
+                say "NOTICE: $kind $name ($evidence). Check modem port access and cron jobs." ;;
+            INFO)
+                say "INFO: $kind $name ($evidence)." ;;
+        esac
+    done < "$TMP/neighbours.audit"
     if [ "$conflicts" -gt 0 ]; then
-        say "Found $conflicts potential competing modem controllers/hotplug handlers."
-        say "No packages, services or hotplug files were changed."
-        say "Back up configuration and remove/disable conflicts manually, then rerun this installer."
+        say "Found $conflicts potential conflicting owners; no services or packages were changed."
         fail 'installation paused due to competing modem automation'
     fi
-    say 'Modem ownership preflight: no named conflicts detected.'
+    say 'No confirmed competing modem orchestrators found.'
 }
 remove_packages() {
     selected=
@@ -443,8 +401,8 @@ install_flow() {
         say "WARNING: firmware and package SDK patch version differ; dependency dry-run must succeed."
     fi
     take_package_lock
-    audit_modem_owners
     prepare_network
+    audit_modem_owners
     show_release
     with_bot=0
     choose_bot && with_bot=1
