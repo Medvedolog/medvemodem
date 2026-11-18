@@ -10,6 +10,8 @@
 - Improve SSH installer safety with checksum verification, dependency simulation, serialized package operations and clear warnings about disconnecting the active mobile WAN.
 - Update Russian/English changelogs, release handoff and the README one-line installation command.
 
+- Fix installer lock ownership (write the actual shell PID, prevent concurrent install races and recover stale locks); exercise lock behaviour in CI.
+
 **Alpha warning:** back up your router configuration and keep a wired/serial recovery path before upgrading. The installer does not silently remove other modem controllers. QModem builds remain separately managed.
 
 Release: https://github.com/Medvedolog/medvemodem/releases/tag/v0.16.0-alpha1-r7
