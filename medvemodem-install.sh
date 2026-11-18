@@ -151,9 +151,18 @@ prepare_network() {
     if fetch_direct "$manifest" "$TMP/SHA256SUMS"; then
         say 'GitHub direct OK'
     else
-        say 'GitHub direct unavailable'
+        # HTTP 404 from a published release asset means "not found", not a
+        # connectivity failure. Check the release API via a direct route first,
+        # before prompting for a proxy that cannot fix a missing tag.
+        if fetch_direct "https://api.github.com/repos/Medvedolog/medvemodem/releases/tags/$TAG" "$TMP/release-info"; then
+            fail "GitHub is reachable, but SHA256SUMS is missing for $TAG. Check release assets."
+        fi
+        if fetch_direct "https://api.github.com" "$TMP/api-probe"; then
+            fail "GitHub is reachable, but $TAG is not published (or not accessible). Select an existing --tag; a proxy cannot fix HTTP 404."
+        fi
+        say 'GitHub direct unavailable (network or API inaccessible)'
         select_proxy
-        fetch "$manifest" "$TMP/SHA256SUMS" || fail 'GitHub not reachable via proxy'
+        fetch "$manifest" "$TMP/SHA256SUMS" || fail 'GitHub release or SHA256SUMS missing/inaccessible via proxy'
     fi
     say 'Checking OpenWrt feeds directly...'
     if no_proxy_env "$PM" update; then
