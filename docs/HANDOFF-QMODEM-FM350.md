@@ -81,3 +81,9 @@ Upstream documented APIs (verify availability and JSON schema in pinned installe
 - `tools/build-qmodem.sh` (`44b844c`) mounts `patches/qmodem` read-only and uses `git apply --check` then `git apply` after pin checkout, before package setup. Builds will fail closed if an overlay becomes incompatible. No build was executed.
 - `dashboard.js` additional correction `85bc141`: reads without data distinguish *pending* versus *failed* and display the QModem-specific unavailable wording. Note that full QModem telemetry verification and normalization remain pending.
 - After these changes, operator-name fallback, QModem locking/child lifecycle correctness, procd verification and deterministic host/device tests remain **open**. No release should be tagged from these commits without validation.
+
+## eSIM ownership policy — final decision, 2026-11-18
+
+**Scope:** eSIM/EUICC operations are allowed when **MedveModem natively owns the required transport** or when **ModemManager explicitly permits a supported, safely shared transport** (such as MBIM through the correct proxy under existing owner-aware rules). **QModem-owned devices are intentionally excluded:** `src/esim.c:mm_esim_target()` must retain `owner_busy` for `owner.control=qmodem`. Do **not** create a QModem-mediated CCHO/CGLA/CCHC bridge, open QModem/tom_modem tty ports directly, forcibly claim the port, or stop QModem merely to read a profile.
+
+This decision supersedes the earlier proposal for r6. Issue [#7](https://github.com/Medvedolog/medvemodem/issues/7) was closed as **not planned**. The Fildunsky bridge investigation is retained as a technical reference, not an implementation requirement. r5's operator/CA telemetry via QModem does not change eSIM eligibility. Maintain clear eSIM UI explanations of allowed ModemManager access and unavailable QModem access. No unsupported promises in the README or release notes.
