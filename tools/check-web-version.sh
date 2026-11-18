@@ -15,7 +15,7 @@ common="$root/packages/luci-app-medvemodem/htdocs/luci-static/resources/medvemod
 grep -Fqx "var VERSION = '$browser';	/* = the engine's version */" "$common" || {
   grep -Fq "var VERSION = '$browser';" "$common" || { echo "common.js: expected $browser" >&2; exit 1; }
 }
-for page in dashboard settings; do
+for page in dashboard modem settings; do
   path="$root/packages/luci-app-medvemodem/htdocs/luci-static/resources/view/medvemodem/$page.js"
   grep -Fq "var VIEW_VERSION = '$browser';" "$path" || { echo "$path: expected $browser" >&2; exit 1; }
 done
