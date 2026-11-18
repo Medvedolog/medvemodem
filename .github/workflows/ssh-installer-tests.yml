@@ -1,0 +1,27 @@
+name: ssh-installer-tests
+
+on:
+  push:
+    branches: [feat/ssh-installer]
+    paths:
+      - 'medvemodem-install.sh'
+      - 'tests/test-ssh-installer.sh'
+      - '.github/workflows/ssh-installer-tests.yml'
+  pull_request:
+    paths:
+      - 'medvemodem-install.sh'
+      - 'tests/test-ssh-installer.sh'
+      - '.github/workflows/ssh-installer-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  shell-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check BusyBox-compatible syntax and package-selection regressions
+        run: |
+          sh -n medvemodem-install.sh
+          sh tests/test-ssh-installer.sh
