@@ -83,3 +83,9 @@ Tests are static. Before claiming a production-ready installer, verify actual tr
 - [ ] Only after the above: merge PR, add a stable one-liner to `README.md`, `docs/INSTALL.md` and `docs/INSTALL.en.md`.
 
 **Do not run full removal over a management link provided by MedveModem.** The installer and its `--reinstall` path remain alpha until the checklist is completed.
+
+## Verified field upgrade — OPiZ3, 2026-11-18
+
+The SSH installer successfully upgraded four packages from **r3 to r5** on an Orange Pi Zero 3 running **OpenWrt 25.12.5 / aarch64_cortex-a53 / apk**. The script used the **25.12.6 SDK archive**, warned about the firmware patch-level difference and passed the dependency dry-run against the router's own 25.12.5 feeds. GitHub and feeds were directly accessible (11,060 packages), English release highlights were displayed, the operator chose the optional Telegram bot and approved the final install, SHA256 matched and `apk add` completed successfully for engine, LuCI, bot and bot LuCI.
+
+The package manager preserved new configuration files as `/etc/config/medvemodem.apk-new` and `/etc/config/medvemodem-bot.apk-new`; inspect differences rather than replacing the existing UCI config blindly. This validates one real **APK upgrade transaction**, not the complete installer: daemon/LuCI/bot function, 24.10/opkg, forced reinstall, removal and mixed proxy authentication have **not** yet been field-tested.
