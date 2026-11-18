@@ -1117,3 +1117,6 @@ details:not([open]) > .mm-pop { display: none; }
   .mm-whitelist .mm-wlc-table tr > :first-child { width: 116px; min-width: 116px; max-width: 116px; }
   .mm-whitelist .mm-wlc-table tr > :not(:first-child) { width: 112px; min-width: 112px; max-width: 112px; }
 }
+
+/* The same main / backup N label as the failover priority table. */
+.mm-whitelist .mm-wlc-col-role { display: block; font-weight: 600; font-size: 11px; line-height: 1.35; color: var(--text-color-medium, #8b949e); white-space: nowrap; }
