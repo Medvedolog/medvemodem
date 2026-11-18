@@ -85,3 +85,10 @@ The user stopped at the proxy prompt; no successful installation was reported. T
 - Wait up to 10 seconds for the engine, bot, and QModem dial processes to disappear. If stop fails, TERM **identified process IDs**, then SIGKILL **only IDs that remain**. Never `killall ucode`, `killall sh`, or kill unrelated ModemManager/other user processes.
 - On installer exit or package transaction error, perform best-effort restore; the explicit `--allow-disconnect` is required for unattended installations. Without confirmation/flag, do not touch running services.
 - **Not field tested**: service stop/restart sequencing, QModem lock lifetime, procd respawn and SSH connectivity. Testing requires wired/serial or independent non-QModem management access. Once validated, test repeated r5 reinstall and single-instance behavior, including process ancestry and `ubus call service list`.
+
+## 10. r6 candidate and bot release metadata (2026-11-18)
+
+- The SSH installer branch now defaults to `v0.16.0-alpha1-r6` instead of r5. Fallback English highlights point to `docs/RELEASE-HIGHLIGHTS-ALPHA1-R6.md` in the `release/r6` candidate branch. Once the r6 Release exists, it should download the immutable release-owned `HIGHLIGHTS.txt` instead.
+- The r6 package candidate is PR #9, combining PR #8 fixes and the bot update-version regex correction. Release CI must publish all six SDK tarballs, `SHA256SUMS` and `HIGHLIGHTS.txt`; until then, an installer 404 is expected.
+- User requested verifying Telegram update checks: `update.uc` consumes `self-update status`, checks every 12 hours, then notifies once for a newer version; `updview.uc` did not accept underscores in APK version strings. r6 corrects this. No bot hardware verification for r6 has been completed.
+- Never claim the new installer lifecycle is tested because the previous r3→r5 successful upgrade happened **before** quiescence was added.
