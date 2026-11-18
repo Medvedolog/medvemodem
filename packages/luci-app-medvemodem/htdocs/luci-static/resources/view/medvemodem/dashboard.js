@@ -2047,8 +2047,11 @@ return view.extend({
 		var self = this;
 		if (devices) this.nbDevices = devices;
 		return getNeighbours(false).then(function(n) {
-			var rows = [], names = {};
-			(self.nbDevices || []).forEach(function(d) { names[d.device_id] = d.name || d.model || d.device_id; });
+			var rows = [], names = {}, owners = {};
+			(self.nbDevices || []).forEach(function(d) {
+				names[d.device_id] = d.name || d.model || d.device_id;
+				owners[d.device_id] = (d.owner || {}).control || '';
+			});
 			list(n && n.packages).forEach(function(p) {
 				var w = NEIGHBOUR[p.id] || [p.id, ''];
 				rows.push(E('li', {}, [E('strong', {}, w[0]), w[1] ? ' — ' + w[1] : '',
@@ -2056,6 +2059,8 @@ return view.extend({
 					E('br'), E('span', { 'class': 'mm-faint is-mono' }, list(p.files).join(' '))]));
 			});
 			list(n && n.holders).forEach(function(h) {
+				/* QModem's tom_modem legitimately holds its own modem's AT node. */
+				if (h.device_id && owners[h.device_id] === 'qmodem' && h.comm === 'tom_modem') return;
 				rows.push(E('li', {}, _('%s (PID %d) holds %s').format(h.comm, h.pid, h.node) +
 					(h.device_id ? ' · ' + _('modem “%s”: no AT command goes to that port while it is held').format(names[h.device_id] || h.device_id) : '')));
 			});
