@@ -151,3 +151,13 @@ Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inh
 - Repeat runs are idempotent: when every selected package already has the version represented by the selected release tag, the installer exits successfully before downloading the archive or opening an install confirmation. `--force` / `--reinstall` deliberately bypasses this no-op check. APK versions are read from `/lib/apk/db/installed`; opkg versions from package status.
 - Added regression assertions to `tests/test-installer-release-selection.sh` for automatic bot carry-forward, the single final confirmation, warning text and dry-run/confirm/stop ordering.
 - This changes the raw `main` SSH installer used by future runs; it does not modify the already published r8 package archive. No SDK build or release was triggered. GitHub Actions execution of the updated test has not yet been observed.
+
+
+## R9 source changes — updater and settings UX (2026-11-19)
+
+- Fixed the LuCI updater's version model: engine, engine LuCI, Telegram bot and bot LuCI are compared independently against the selected release. A stale bot package now offers an update even when the engine is current. The updater installs the engine/LuCI pair and, when either bot package is present, the bot/LuCI pair.
+- Added a persistent UCI `core.update_channel` setting with `release` as the default and explicit `bench` opt-in. LuCI offers the choice through the common Save/Revert form. Check cache entries now include their channel; an old-channel result is not presented as current. Error checks are timestamped and stale/channel-mismatched results are retried.
+- Updater status now lists all four installed package versions, the available release, channel and check time; known no-build errors are translated into Russian.
+- Moved the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the common Save dirty state; localStorage is updated only after Save succeeds. It remains a browser-local preference and does not change modem ownership or UCI engine behavior.
+- Bumped root engine and all three dependent package Makefiles to r9; shared LuCI and all three page view versions are aligned to r9. Added Russian PO/POT entries and regression assertions; the manual build workflow now runs `tests/test-bot-update-versions.sh`.
+- Release highlights for r9 are staged in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R9.md`. **No r9 SDK build, release publication or physical router acceptance has been performed.** Published r8 remains immutable.
