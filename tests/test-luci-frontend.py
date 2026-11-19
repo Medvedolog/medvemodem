@@ -88,7 +88,6 @@ for token in (
     "this.selects.update_channel = u.channel",
     "update_channel: f.update_channel === 'bench' ? 'bench' : 'release'",
     "row(_('LuCI Telegram bot'), ins.luci_bot)",
-    "needs_update",
     "Save the selected update channel first.",
 ):
     if token not in settings:
