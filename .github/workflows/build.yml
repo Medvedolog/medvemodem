@@ -1,6 +1,6 @@
 # Public OpenWrt package builds.
 # Run only by explicit workflow_dispatch. No push, PR or tag-triggered SDK builds.
-# Use the publish_release switch explicitly with a version tag to publish.
+# Manual publish_release=true plus release_tag creates a verified prerelease from main.
 name: build
 
 on:
@@ -11,6 +11,11 @@ on:
         type: boolean
         required: true
         default: false
+      release_tag:
+        description: 'Version to publish from main after all six builds (for example v0.16.0-alpha1-r8)'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: packages-${{ github.ref }}
@@ -30,6 +35,7 @@ jobs:
         run: |
           python3 tests/test-luci-frontend.py
           python3 tests/test-ep06-temperature.py
+          python3 tests/test-ep06-cell-lock.py
           sh tools/check-web-version.sh
           sh tests/test-installer-release-selection.sh
           sh tests/test-installer-locks.sh
@@ -71,7 +77,7 @@ jobs:
 
   release:
     name: Publish tagged release
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && (startsWith(github.ref, 'refs/tags/v') || startsWith(inputs.release_tag, 'v'))
     needs: packages
     runs-on: ubuntu-latest
     permissions:
@@ -85,31 +91,52 @@ jobs:
           merge-multiple: false
       - name: Pack all six targets and checksums
         shell: bash
+        env:
+          SELECTED_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
+          tag="$SELECTED_TAG"
+          [ -n "$tag" ] || tag="$GITHUB_REF_NAME"
+          expected="v$(sed -n 's/^PKG_VERSION:=//p' Makefile | tr '_' '-')-r$(sed -n 's/^PKG_RELEASE:=//p' Makefile)"
+          [ "$tag" = "$expected" ] || { echo "Release tag $tag does not match package version $expected" >&2; exit 1; }
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
           mkdir -p release-assets
-          tag="${GITHUB_REF_NAME#v}"
+          archive_version="${tag#v}"
           for dir in package-artifacts/medvemodem-*; do
             [ -d "$dir" ] || { echo "missing artifact directory" >&2; exit 1; }
             [ "$(find "$dir" -maxdepth 1 -type f \( -name '*.apk' -o -name '*.ipk' \) | wc -l)" -gt 0 ] || { echo "No packages in $dir" >&2; exit 1; }
             target="${dir##*/medvemodem-}"
-            tar -C "$dir" -czf "release-assets/medvemodem-${tag}-${target}.tar.gz" .
+            tar -C "$dir" -czf "release-assets/medvemodem-${archive_version}-${target}.tar.gz" .
           done
           [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          revision="${GITHUB_REF_NAME##*-}"
+          revision="${tag##*-}"
           notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
           [ -s "$notes" ] || { echo "Release highlights missing: $notes" >&2; exit 1; }
           cp "$notes" release-assets/HIGHLIGHTS.txt
-      - name: Publish GitHub Release
+      - name: Publish draft and verify GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          tag="${GITHUB_REF_NAME}"
+          set -euo pipefail
+          tag="$RELEASE_TAG"
           revision="${tag##*-}"
           notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
           [ -s "$notes" ] || { echo "Release notes missing: $notes" >&2; exit 1; }
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Refusing to overwrite existing release $tag" >&2
+            exit 1
+          fi
+          (cd release-assets && sha256sum -c SHA256SUMS)
           gh release create "$tag" release-assets/* \
-            --target "$GITHUB_SHA" --prerelease \
+            --target "$GITHUB_SHA" --draft --prerelease \
             --title "MedveModem ${tag#v}" \
             --notes-file "$notes"
+          mkdir -p downloaded
+          gh release download "$tag" --dir downloaded --pattern '*.tar.gz' --pattern SHA256SUMS --pattern HIGHLIGHTS.txt
+          [ -s downloaded/HIGHLIGHTS.txt ] || { echo "Missing uploaded release highlights" >&2; exit 1; }
+          [ "$(find downloaded -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 6 ] ||
+            { echo "Expected exactly six uploaded archives" >&2; exit 1; }
+          (cd downloaded && sha256sum -c SHA256SUMS)
+          gh release edit "$tag" --draft=false --prerelease=true
