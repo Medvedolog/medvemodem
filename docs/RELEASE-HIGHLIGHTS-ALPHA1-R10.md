@@ -9,4 +9,4 @@
 - **Keep the preference optional:** the existing browser-local badge preference remains off by default and is saved through the common Save/Revert control.
 - **Release consistency:** bump engine, LuCI, bot and bot LuCI package counters and all LuCI browser module versions to r10. Add frontend regression contracts for the lower-right placement and absence of the redundant WEB chip.
 
-**Validation:** JavaScript syntax and source-level layout contracts are checked before the six-target SDK matrix. No release archive is published until the manual build workflow completes all six targets and verifies SHA256SUMS.
+**Validation:** LuCI source contracts, Chromium regressions for T99W175 native-QMI availability and EP06 owner handover, installer release-selection/idempotency checks, and SHA256 validation run before the six-target SDK matrix. No release archive is published until all six targets complete.
