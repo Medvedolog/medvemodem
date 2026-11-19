@@ -59,7 +59,7 @@ For a future implementation: **detect this exact modem and firmware**, require c
 | `AT+USBSWITCH=<PID>` | **Reboots module** and changes its USB composition; 62 reported profiles including 90D5 MBIM and 9091 QMI. **Never auto-switch**, especially while PCIe remains connected. |
 | `AT+CUSTOMER`, `AT+FEATURE`, `AT+DIAG_ENABLE`, `AT+URRXTX`, `AT+SDC_UNLOCK` | OEM/NV/USB/security operations; many need two-step SDC authorization, reload settings or reboot. No automatic SDC unlocking or writes. |
 | `AT+FCC_LOCK=0`, `ftm unlock_fcc` | Change/clear an internal flag, **not a valid substitute for authenticated host-side QMI FCC unlock**. No "one-command universal unlock" claims. |
-| `AT+CA_ENABLE=<value>`, `AT+MCFG=<index>`, `AT+SWITCH_SLOT=<0|1>`, `AT+SIMDECPIN`, `AT+DPR=rm_all` | CA flag inversion, MBN/SIM operational changes, or destructive DPR erase. Read their own current states first; no profile-driven writes. |
+| `AT+CA_ENABLE=<value>`, `AT+MCFG=<index>`, `AT+SWITCH_SLOT=<0|1>`, `AT+DPR=rm_all` | CA flag inversion, MBN/SIM operational changes, or destructive DPR erase. Read their own current states first; no profile-driven writes. |
 | `AT+EDL`, `AT+PCIE_EDL`, `AT+FASTBOOT`, `AT+EFS_ERASE`, `AT+ERASE_IMEI`, `AT+CRASH`, `AT+RESET` | Bootloader/EDL/erase/crash/reboot hazards. No "recovery" or diagnostic preset may invoke them automatically. |
 | `AT+NV`, `AT+EFS`, `AT+FOXNV`, `AT+NV_UNLOCK` | Raw NV/EFS; arguments and read/write switches are **not interchangeable**, access may be protected. Keep reference-only, never automatic. |
 
