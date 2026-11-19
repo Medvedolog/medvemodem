@@ -43,4 +43,18 @@ awk '
     END { if (!dry || !confirm || !stop || dry >= confirm || confirm >= stop) exit 1 }
 ' medvemodem-install.sh
 
-echo 'PASS: installer release selection and confirmation-flow contracts'
+
+
+# A repeat run against the same selected release is a no-op unless forced.
+grep -Fq 'installed_version() {' medvemodem-install.sh
+grep -Fq "sed 's/-alpha/_alpha/'" medvemodem-install.sh
+grep -Fq 'All selected packages already match $TAG; no package transaction is needed.' medvemodem-install.sh
+awk '
+    /expected_version=.*TAG/ { version = NR }
+    /All selected packages already match/ { noop = NR }
+    /Downloading \$archive/ { download = NR }
+    END { if (!version || !noop || !download || version >= noop || noop >= download) exit 1 }
+' medvemodem-install.sh
+grep -Fq '[ "$all_current" = 1 ] && [ "$FORCE" != 1 ]' medvemodem-install.sh
+
+echo 'PASS: installer release selection, idempotency and confirmation-flow contracts'
