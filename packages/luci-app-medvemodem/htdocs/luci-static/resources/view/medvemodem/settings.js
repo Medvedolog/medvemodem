@@ -680,9 +680,9 @@ return view.extend({
 		var self = this, box = E('input', { type: 'checkbox', id: 'mm-owner-badges-pref', change: function() { self.dirty(); } });
 		this.boxes.owner_badges = box;
 		box.checked = mm.ownerBadgesEnabled();
-		return this.sec('set-owner-badges', _('Отображение бейджей управления'), [
-			E('label', { 'for': 'mm-owner-badges-pref', 'class': 'mm-check' }, [box, ' ', _('Показывать бейдж управления на карточке и странице каждого модема')]),
-			E('p', { 'class': 'mm-faint' }, _('Показывает, кто управляет модемом: ModemManager, QModem или MedveModem. Настройка сохраняется кнопкой «Сохранить» только в этом браузере.'))], '', false);
+		return this.sec('set-owner-badges', _('Modem management badges'), [
+			E('label', { 'for': 'mm-owner-badges-pref', 'class': 'mm-check' }, [box, ' ', _('Show a management badge on each modem card and modem page')]),
+			E('p', { 'class': 'mm-faint' }, _('Shows whether ModemManager, QModem or MedveModem controls the modem. This browser-only preference is saved with Save.'))], '', false);
 	},
 
 	/* a group of switches inside a card, under its own small heading (the owner, 2026-11-09: «тематически визуально
