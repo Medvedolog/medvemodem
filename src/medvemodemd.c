@@ -5838,7 +5838,7 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
 				snprintf(err, size, "cannot create QModem RPC pipe");
 			break;
 		}
-		argv[0] = "ubus"; argv[1] = "-t"; argv[2] = timeout; argv[3] = "call";
+		argv[0] = "/bin/ubus"; argv[1] = "-t"; argv[2] = timeout; argv[3] = "call";
 		argv[4] = "qmodem"; argv[5] = method; argv[6] = (char *)payload; argv[7] = NULL;
 		ULOG_INFO("%s: QModem RPC %s started\n", section, method);
 		pid = fork();
@@ -5857,7 +5857,7 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
 			}
 			for (fd = 3; fd < 1024; fd++)
 				close(fd);
-			execvp(argv[0], argv);
+			execv(argv[0], argv);
 			_exit(127);
 		}
 		close(fds[1]);
