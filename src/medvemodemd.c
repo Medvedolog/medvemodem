@@ -4993,7 +4993,7 @@ static bool bringup_go(json_object *rec, json_object *o)
 		char script[300];
 		const char *argv[] = { script, "remove", sec, NULL };
 		json_object *g = NULL;
-		bool have_section = sec[0] != '\\0';
+		bool have_section = sec[0] != '\0';
 
 		if (have_section) {
 			snprintf(script, sizeof(script), "%s/modem_scan.sh", qmodem_dir);
