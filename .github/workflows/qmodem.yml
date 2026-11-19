@@ -1,22 +1,16 @@
 # Standalone QModem SDK builds and persistent GitHub prerelease assets.
+# SDK jobs are manual-only (workflow_dispatch). No push/PR builds.
 # QModem has its own release series: no MedveModem SDK rebuild or CI-artifact dependency.
 name: qmodem
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'tools/build-qmodem.sh'
-      - '.github/workflows/qmodem.yml'
-      - 'Makefile'
-      - 'patches/qmodem/**'
-      - '.github/workflows/qmodem.yml'
-  pull_request:
-    paths:
-      - 'tools/build-qmodem.sh'
-      - '.github/workflows/qmodem.yml'
-      - 'Makefile'
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish release assets as well as building packages'
+        type: boolean
+        required: true
+        default: false
 
 concurrency:
   group: qmodem-${{ github.ref }}
@@ -49,7 +43,7 @@ jobs:
 
   publish:
     name: Publish QModem prerelease
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish_release == true
     needs: packages
     runs-on: ubuntu-latest
     permissions:
