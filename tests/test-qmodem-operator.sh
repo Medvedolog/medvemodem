@@ -51,7 +51,12 @@ int main(void)
         "{\"key\":\"RSRP\",\"value\":\"-98\"},"
         "{\"key\":\"RSRQ\",\"value\":\"-12.5\"},"
         "{\"key\":\"RSSNR\",\"value\":\"16.5\"},"
-        "{\"key\":\"RSSI\",\"value\":\"-67\"}]}}";
+        "{\"key\":\"RSSI\",\"value\":\"-67\"},"
+        "{\"key\":\"Physical Cell ID (CA)\",\"value\":\"123 / 456\",\"extra_info\":\"CA-LTE\"},"
+        "{\"key\":\"EARFCN (CA)\",\"value\":\"1650 / 1800\",\"extra_info\":\"CA-LTE\"},"
+        "{\"key\":\"Band (CA)\",\"value\":\"B3 / B7\",\"extra_info\":\"CA-LTE\"},"
+        "{\"key\":\"UL Bandwidth (CA)\",\"value\":\"10M / 20M\",\"extra_info\":\"CA-LTE\"},"
+        "{\"key\":\"DL Bandwidth (CA)\",\"value\":\"20M / 20M\",\"extra_info\":\"CA-LTE\"}]}}";
     const char *nsa =
         "{\"cell_info\":{\"modem_info\":["
         "{\"key\":\"network_mode\",\"value\":\"EN-DC Mode\"},"
@@ -75,6 +80,12 @@ int main(void)
     if (json_object_get_double(json_object_object_get(m, "rsrq_db")) != -12.5 ||
         json_object_get_double(json_object_object_get(m, "sinr_db")) != 16.5 ||
         json_object_get_double(json_object_object_get(m, "bandwidth_mhz")) != 20.0) return 2;
+    json_object *ca = json_object_object_get(m, "ca");
+    json_object *cells = json_object_object_get(ca, "cells");
+    if (!cells || json_object_array_length(cells) != 2) return 5;
+    json_object *scc = json_object_array_get_idx(cells, 1);
+    if (!number(scc, "band", 7) || !number(scc, "pci", 456) || !number(scc, "earfcn", 1800) ||
+        json_object_get_double(json_object_object_get(scc, "bandwidth_mhz")) != 20.0) return 6;
     json_object_put(raw); json_object_put(m);
 
     raw = json_tokener_parse(nsa); m = mm_qmodem_metrics(raw);
