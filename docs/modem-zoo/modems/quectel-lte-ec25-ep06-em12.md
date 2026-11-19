@@ -4,6 +4,32 @@
 
 These generations share a recognizable Quectel command vocabulary, but **not one universal mask table or mode encoding**. Zoo therefore documents the common grammar and the important per-model differences.
 
+## Live EP06-E router report — 19 November 2026
+
+Observed on a physical EP06-E, **firmware `EP06ELAR04A06M4G`**, OpenWrt 25.12.6 / Linux 6.12.112, Rockchip armv8 (`aarch64_generic`), MedveModem r8. The diagnostic profile export was privacy-redacted.
+
+| Role | Discovered USB function | Kernel node / active path |
+| --- | --- | --- |
+| DIAG / unknown | `2-1:1.0`, `option` | `/dev/ttyUSB3` (ModemManager ignores it; do **not** treat as AT) |
+| GNSS | `2-1:1.1`, `option` | `/dev/ttyUSB4` |
+| AT / possibly PPP | `2-1:1.2`, `option` | `/dev/ttyUSB5`; `pppd` previously occupied it |
+| AT preferred by MM | `2-1:1.3`, `option` | `/dev/ttyUSB6` |
+| QMI control and data | `2-1:1.4`, `qmi_wwan` | `/dev/cdc-wdm1` and `wwan1` |
+
+**Verified current behaviour:** the `quectel-ep06` profile is an exact match; ModemManager `quectel` plugin owns control, AT and session. The `mm5` netifd interface is connected to MTS RUS over LTE; the profile report contains `connection.backend: "auto"` and **not** `"native"`. Current signal: LTE RSRP −82 dBm, RSRQ −12 dB and SINR 3.4 dB; IPv4 data and an independent reachability probe through `wwan1` both work. The modem is a backup-ready uplink, not the router's active Ethernet WAN.
+
+At **09:08:40** the LuCI operator briefly froze this modem, inhibiting MM and disconnecting `mm5`; at **09:08:42** the operator unfroze it and released inhibition. MM reacquired the device and netifd reconnected it at **09:08:59**. This is a freeze/unfreeze event, **not evidence of a successful native QMI handover**; no native `uqmi` session or `AT+QNWLOCK` response is contained in the report.
+
+**Implications for MedveModem:**
+
+- The hardware is **native-QMI eligible by topology** (`qmi_wwan` plus actual `cdc-wdm1` and matching `wwan1`). The r8 LuCI owner-selection and save-confirmation defects are application problems, not missing USB driver support.
+- **The precise reason the r8 Save choice was not persisted is not observable from this report** (no browser RPC trace/UCI commit event); the `backend=auto` readback is dispositive only that native was not saved at capture. Source-level post-r8 toast/UCI-readback/owner-poll fixes exist in `main` but have not been deployed in a new release or tested here.
+- The firmware was connected using MM and its QMI control port; `mm5` also used `pppd` during an earlier episode when `qmi_wwan` was being installed. Do not infer transport protocol exclusively from the presence of `qmi_wwan`; check the actual netifd proto and control ownership.
+- An earlier driver bind and ModemManager object churn temporarily disrupted the connection, but the modem later stabilised; **avoid automatic USB rebind/reset**.
+- EP06 overrides the generic Quectel QModem-first owner policy with **MM first**, native QMI or QModem only by explicit selection. Never run direct AT or `uqmi` while MM still owns the port.
+- **Still untested:** successful `backend=native`, native data session, QNWLOCK dialect readback, LTE cell list/lock/rollback, AT temperature and antenna reports after a properly controlled handover.
+
+
 ## Historical and current evidence
 
 ### EP06
