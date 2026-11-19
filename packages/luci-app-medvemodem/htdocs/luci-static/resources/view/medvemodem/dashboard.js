@@ -874,7 +874,6 @@ return view.extend({
 					change: function(ev) { ev.target.checked ? self.tableSel.add(id) : self.tableSel.delete(id); self.applyTable(); } }))),
 				E('td', { 'class': 'num', 'data-h': '№', title: self.ranked.indexOf(id) >= 0 ? _('Place in the channel priority') : _('No interface: outside the priority') }, String(i + 1)),
 								E('td', { 'data-h': _('Modem') }, [E('a', { href: href }, card.titleLink.textContent),
-					card.ownerTag.hidden ? '' : card.ownerTag.cloneNode(true),
 					card.subtitle.hidden ? '' : E('div', { 'class': 'mm-faint' }, card.subtitle.textContent)]),
 				E('td', { 'data-h': _('State') }, [E('span', { 'class': 'mm-row mm-table-state' }, [light, net,
 					card.autofixBadge.hidden ? '' : (function(b) { b.addEventListener('click', function() { card.autofixBadge.click(); self.applyTable(); }); return b; })(card.autofixBadge.cloneNode(true))]),
