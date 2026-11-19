@@ -136,7 +136,7 @@ MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C d
 **Интерфейсы**
 - **LuCI** («Модем» → «MedveModem»): обзор модемов [карточками](screenshots/01-modems-cards.png) или [таблицей](screenshots/11-modems-table.png) с действиями над выбранными, [страница модема с вкладками](screenshots/02-modem-overview.png), настройки, три уровня подробности, переключатель «Скрыть идентификаторы», строка на модем
   в [«Статус» → «Обзор»](screenshots/10-openwrt-status.png).
-- **Telegram-бот** (отдельный пакет, [описание](packages/medvemodem-bot/README.md)):
+- **Telegram-бот** (отдельный пакет, [описание](packages/medvemodem-bot/README.md), [архитектура и макеты экранов](docs/BOT-ARCHITECTURE.md)):
   оповещения и сводка за сутки, карточки модемов, входящие SMS, тест блокировок, журнал файлом; по желанию —
   управление модемами. Ходит в Telegram напрямую, через прокси (в том числе podkop) или через любой модем и при
   блокировке переключает маршрут.
