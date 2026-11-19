@@ -4590,8 +4590,9 @@ return view.extend({
 			ch.state === 'rolling_back' ? _('the previous lock is being put back…') : (wl && typeof wl === 'object' ?
 				_('being written: %s').format(lockText(wl)) : _('the removal is being written')) + ' · ' +
 				(rs.dialect === 'foxconn-sdx' ? _('the modem takes it after its restart, about a minute') : _('the modem takes it after flight mode'))));
-		else if (!lockable) text(r.rs_lock, '');
-		else r.rs_lock.replaceChildren.apply(r.rs_lock, cl ? [E('span', {}, lockText(cl)), ' ',
+		else if (!lockable) text(r.rs_lock, rs.dialect === 'quectel-ep06' && rs.via === 'modemmanager' ?
+			_('For EP06 cell locking, manually select MedveModem native QMI management. ModemManager reserves its AT port.') : '');
+		else r.rs_lock.replaceChildren.apply(r.rs_lock, cl ? [E('span', {}, lockText(cl) + (cl.count > 1 ? ' · ' + _('%d cells locked').format(cl.count) : '')), ' ',
 			E('button', Object.assign({ type: 'button', 'class': 'mm-link mm-rs-unlock', click: mm.busy(this.lockCell.bind(this, null)) },
 				rs.writable && this.present ? {} : { disabled: '' }), _('Remove'))] :
 			[E('span', { 'class': 'mm-faint' }, _('none: the modem picks its cells itself. «Lock» beside a cell holds the modem on it.'))]);
@@ -4638,7 +4639,7 @@ return view.extend({
 
 	/* spec 26.1 step 3: QMI's CA info lists an SDX55's secondaries without levels; its AT^DEBUG? has them */
 	wantsLevels: function(d, mm) {
-		return ['foxconn-sdx', 'quectel'].indexOf((d.radio_settings || {}).dialect) >= 0 && list((mm.ca || {}).cells).some(function(c) {
+		return ['foxconn-sdx', 'quectel', 'quectel-ep06'].indexOf((d.radio_settings || {}).dialect) >= 0 && list((mm.ca || {}).cells).some(function(c) {
 			return c && c.role === 'secondary' && typeof c.rsrp !== 'number'; });
 	},
 
@@ -4677,7 +4678,8 @@ return view.extend({
 	askCells: function(d, mm) {
 		var self = this, dialect = (d.radio_settings || {}).dialect, now = Date.now();
 		var levels = list(mm.cells).length > 0 && this.wantsLevels(d, mm);
-		if (this.current !== 'radio' || d.present !== true || (list(mm.cells).length && !levels) || ['foxconn-sdx', 'foxconn-t77', 'fibocom-mtk', 'quectel'].indexOf(dialect) < 0 ||
+		if (this.current !== 'radio' || d.present !== true || (dialect === 'quectel-ep06' && ((d.owner || {}).control !== 'native')) ||
+			(list(mm.cells).length && !levels) || ['foxconn-sdx', 'foxconn-t77', 'fibocom-mtk', 'quectel', 'quectel-ep06'].indexOf(dialect) < 0 ||
 			this.cellsBusy || (this.cellsAsked && now - this.cellsAsked < 30000)) return;
 		this.cellsAsked = now; this.cellsBusy = true;
 		(levels ? getCells(this.id, true) : getCells(this.id)).then(function(r) {
@@ -4864,7 +4866,7 @@ return view.extend({
 	lockButton: function(c) {
 		if (!this.canLock(c)) return '';
 		var rs = this.rsLast || {}, cl = rs.cell_lock, ch = c.type === '5gnr' ? c.nrarfcn : c.earfcn;
-		if (cl && Number(cl.arfcn) === Number(ch) && (cl.pci == null || String(cl.pci) === String(c.pci)))
+		if (cl && (!cl.count || cl.count === 1) && Number(cl.arfcn) === Number(ch) && (cl.pci == null || String(cl.pci) === String(c.pci)))
 			return E('span', { 'class': 'mm-tag mm-locked' }, _('locked'));
 		return E('button', { type: 'button', 'class': 'mm-link mm-lock', click: mm.busy(this.lockCell.bind(this, c)) }, _('Lock'));
 	},
@@ -4894,11 +4896,12 @@ return view.extend({
 		this.rsKeep.hidden = !(st === 'waiting' || st === 'applied');
 		this.rsBack.hidden = !(st === 'waiting' || st === 'applied' || st === 'kept');
 		var busy = st === 'applying' || st === 'waiting' || st === 'rolling_back';
-		this.rsOpen.hidden = !rs.writable || !this.rsForm.hidden;
+		this.rsOpen.hidden = !rs.writable || !!rs.cell_lock_only || !this.rsForm.hidden;
 		this.rsOpen.disabled = busy || !this.present;
-		text(this.rsRO, rs.writable === false && rs.via !== 'none' && rs.why_read_only ? _('The change is unavailable: %s.').format(why(rs.why_read_only)) : '');
+		text(this.rsRO, rs.cell_lock_only && rs.writable ? _('Only cell locking is available on EP06-E. Network modes and band masks are read-only.') :
+			(rs.writable === false && rs.via !== 'none' && rs.why_read_only ? _('The change is unavailable: %s.').format(why(rs.why_read_only)) : ''));
 		this.rsRO.hidden = !this.rsRO.textContent;
-		if (!rs.writable && !this.rsForm.hidden) this.radioEditClose();
+		if ((!rs.writable || rs.cell_lock_only) && !this.rsForm.hidden) this.radioEditClose();
 	},
 
 	readRadioSettings: function(refresh) {
