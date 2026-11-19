@@ -12516,3 +12516,11 @@ msgstr "Настройки сохранены, но запуск модема о
 #: modem.js
 msgid "Saving or switching error: %s"
 msgstr "Ошибка сохранения или переключения программы управления: %s"
+
+#: modem.js
+msgid "MedveModem directly (native QMI, without ModemManager)"
+msgstr "MedveModem напрямую (native QMI, без ModemManager)"
+
+#: modem.js
+msgid "MedveModem directly (native MBIM, without ModemManager)"
+msgstr "MedveModem напрямую (native MBIM, без ModemManager)"
