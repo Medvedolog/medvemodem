@@ -2538,6 +2538,103 @@ static json_object *cells_gstatus(const char *raw)
 	return cells;
 }
 
+/* EP06: QENG serving and neighbours. The cell lock selector needs
+ * actual EARFCN+PCI, not the LTE band or CGI from another RAT. */
+static int ep06_band(long earfcn)
+{
+	static const struct { long lo, hi; int band; } b[] = {
+		{ 0, 599, 1 }, { 600, 1199, 2 }, { 1200, 1949, 3 },
+		{ 1950, 2399, 4 }, { 2400, 2649, 5 }, { 2650, 2749, 6 },
+		{ 2750, 3449, 7 }, { 3450, 3799, 8 }, { 3800, 4149, 9 },
+		{ 6150, 6449, 20 }, { 9210, 9659, 28 }, { 9920, 10359, 32 },
+		{ 37750, 38249, 38 }, { 38650, 39649, 40 },
+		{ 39650, 41589, 41 }
+	};
+	size_t i;
+	for (i = 0; i < sizeof(b) / sizeof(b[0]); i++)
+		if (earfcn >= b[i].lo && earfcn <= b[i].hi)
+			return b[i].band;
+	return 0;
+}
+
+static json_object *cells_ep06(const char *raw)
+{
+	json_object *cells = cells_qca(raw), *primary = NULL;
+	const char *p = raw;
+	long serving_earfcn = -1, serving_pci = -1;
+	size_t i;
+
+	for (i = 0; i < json_object_array_length(cells); i++) {
+		json_object *c = json_object_array_get_idx(cells, i);
+		if (!strcmp(json_object_get_string(json_object_object_get(c, "role")), "primary")) {
+			const char *pci = json_object_get_string(json_object_object_get(c, "pci"));
+			primary = c;
+			serving_earfcn = json_object_get_int64(json_object_object_get(c, "earfcn"));
+			serving_pci = pci ? strtol(pci, NULL, 10) : -1;
+			break;
+		}
+	}
+	/* A QENG line is a distinct record. Never consume command echo as data. */
+	while (p && (p = strstr(p, "+QENG:"))) {
+		char buf[768], *f[24] = { NULL };
+		long earfcn, pci, value;
+		int n = fields_after(p, "+QENG:", buf, sizeof(buf), f, 24);
+		bool serving = n >= 17 && !strcmp(f[0], "\"servingcell\"") && !strcmp(f[2], "\"LTE\"");
+		bool neighbour = n >= 7 && (!strcmp(f[0], "\"neighbourcell intra\"") ||
+					     !strcmp(f[0], "\"neighbourcell inter\"")) &&
+					     !strcmp(f[1], "\"LTE\"");
+		json_object *c;
+		p += 6;
+		if (!serving && !neighbour)
+			continue;
+		if (!qca_num(serving ? f[8] : f[2], 0, 262143, &earfcn) ||
+		    !qca_num(serving ? f[7] : f[3], 0, 503, &pci))
+			continue;
+		if (neighbour && serving_earfcn == earfcn && serving_pci == pci)
+			continue;
+		if (serving) {
+			if (primary && (serving_earfcn != earfcn || serving_pci != pci))
+				continue; /* QCA primary and QENG from different snapshots */
+			c = primary ? primary : new_cell(cells, "lte", "primary");
+			if (!primary) {
+				primary = c;
+				json_object_object_add(c, "earfcn", json_object_new_int64(earfcn));
+				serving_earfcn = earfcn;
+				serving_pci = pci;
+				json_object_object_add(c, "pci", json_object_new_string(f[7]));
+			}
+			put_int(c, "band", f[9], 1, 255);
+			if (!json_object_object_get(c, "rsrp"))
+				put_int(c, "rsrp", f[13], -156, -31);
+			if (!json_object_object_get(c, "rsrq"))
+				put_int(c, "rsrq", f[14], -43, 20);
+			if (!json_object_object_get(c, "rssi"))
+				put_int(c, "rssi", f[15], -130, 0);
+			if (!json_object_object_get(c, "sinr"))
+				put_int(c, "sinr", f[16], -23, 40); /* already dB */
+			if (!json_object_object_get(c, "bandwidth") &&
+			    qca_num(f[11], 0, 5, &value)) {
+				static const double mhz[] = { 1.4, 3, 5, 10, 15, 20 };
+				json_object_object_add(c, "bandwidth", json_object_new_double(mhz[value]));
+			}
+			continue;
+		}
+		c = json_object_new_object();
+		json_object_object_add(c, "type", json_object_new_string("lte"));
+		json_object_object_add(c, "serving", json_object_new_boolean(false));
+		json_object_object_add(c, "role", json_object_new_string("neighbour"));
+		json_object_object_add(c, "earfcn", json_object_new_int64(earfcn));
+		json_object_object_add(c, "pci", json_object_new_string(f[3]));
+		if ((value = ep06_band(earfcn)) > 0)
+			json_object_object_add(c, "band", json_object_new_int((int)value));
+		put_int(c, "rsrq", f[4], -43, 20); /* RSRQ before RSRP */
+		put_int(c, "rsrp", f[5], -156, -31);
+		put_int(c, "rssi", f[6], -130, 0);
+		json_object_array_add(cells, c);
+	}
+	return cells;
+}
+
 json_object *mm_cells_from_at(const char *dialect, const char *raw)
 {
 	json_object *cells, *o;
@@ -2546,7 +2643,9 @@ json_object *mm_cells_from_at(const char *dialect, const char *raw)
 		return NULL;
 	if (!strcmp(dialect, "fibocom-mtk"))
 		cells = cells_gtcc(raw);
-	else if (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06"))
+	else if (!strcmp(dialect, "quectel-ep06"))
+		cells = cells_ep06(raw);
+	else if (!strcmp(dialect, "quectel"))
 		cells = cells_qca(raw);
 	else if (!strcmp(dialect, "simcom"))
 		cells = cells_cpsi(raw);
