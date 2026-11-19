@@ -291,8 +291,12 @@ static json_object *quectel(json_object *r, bool ep06)
 		bool oklte = ep06_lock_read(lte, "common/lte", savelte, sizeof(savelte), &heldlte, &nlte);
 		const char *form = NULL, *restore = NULL;
 
-		/* Prefer an already active dialect; never overwrite two active forms. */
-		if (!(ok4 && oklte && n4 && nlte)) {
+		/* Refuse any malformed / pending reply, even if the other dialect
+		 * looked valid: two overlapping lock mechanisms must not race. */
+		bool ambiguous = (four && strstr(four, "+QNWLOCK:") && !ok4) ||
+				 (lte && strstr(lte, "+QNWLOCK:") && !oklte) ||
+				 (ok4 && oklte && n4 && nlte);
+		if (!ambiguous) {
 			if (ok4 && (!oklte || n4 || !nlte)) {
 				form = "common/4g"; restore = save4; held = held4; held4 = NULL;
 			} else if (oklte) {
