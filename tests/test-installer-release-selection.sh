@@ -25,3 +25,21 @@ grep -Fq 'raw.githubusercontent.com/Medvedolog/medvemodem/main/medvemodem-instal
 # arrays, rather than copying its filtering logic into the regression test.
 python3 tests/test-installer-release-runtime.py
 echo 'PASS: BusyBox syntax, latest stable/prerelease selection, manifest and README contracts'
+
+# Existing bot packages are carried forward automatically; only first-time
+# optional bot installs need a separate choice.
+grep -Fq 'if installed medvemodem-bot || installed luci-app-medvemodem-bot; then' medvemodem-install.sh
+grep -Fq 'Existing Telegram bot detected; it will be upgraded together with MedveModem.' medvemodem-install.sh
+grep -Fq "ask 'Install Telegram bot and its LuCI too? (optional, first-time install)' no" medvemodem-install.sh
+
+# One final confirmation includes the running services and disconnect warning.
+grep -Fq 'if ! confirm_installation; then' medvemodem-install.sh
+grep -Fq 'warning="This will temporarily stop:$SERVICE_RESTORE. SSH/mobile internet may disconnect."' medvemodem-install.sh
+! grep -Fq "ask 'Upgrading stops MedveModem" medvemodem-install.sh
+! grep -Fq 'ask "Install $TAG packages now?' medvemodem-install.sh
+awk '
+    /apk add --simulate --allow-untrusted \$files/ { dry = NR }
+    /if ! confirm_installation/ { confirm = NR }
+    /^    quiesce_for_upgrade$/ { stop = NR }
+    END { if (!dry || !confirm || !stop || dry >= confirm || confirm >= stop) exit 1 }
+' medvemodem-install.sh
