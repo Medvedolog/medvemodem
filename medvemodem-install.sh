@@ -58,7 +58,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 usage() {
     cat <<'HELP'
 Usage: sh medvemodem-install.sh [--install|--update|--reinstall|--remove|--remove-bot]
-  [--tag v0.16.0-alpha1-r7] [--bot|--no-bot] [--proxy http://host:port] [--force]
+  [--tag v0.16.0-alpha1-r8] [--bot|--no-bot] [--proxy http://host:port] [--force]
   [--allow-disconnect]
 --install      install or upgrade engine + LuCI
 --update       update an existing installation
