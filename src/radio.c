@@ -22,6 +22,9 @@ static const char *const quectel_cmds[] = {
 	"AT+QNWPREFCFG=\"mode_pref\"", "AT+QNWPREFCFG=\"lte_band\"", "AT+QNWPREFCFG=\"nsa_nr5g_band\"",
 	"AT+QNWPREFCFG=\"nr5g_band\"", "AT+QCFG=\"nwscanmode\"", "AT+QCFG=\"band\"", NULL };
 /* the reading, then what the firmware accepts, then the cell lock (an older firmware answers ERROR: no lock) */
+static const char *const ep06_cmds[] = {
+	"AT+QCFG=\"nwscanmode\"", "AT+QCFG=\"band\"",
+	"AT+QNWLOCK=\"common/4g\"", "AT+QNWLOCK=\"common/lte\"", NULL };
 static const char *const gtact_cmds[] = { "AT+GTACT?", "AT+GTACT=?", "AT+EMMCHLCK?", NULL };
 static const char *const xact_cmds[] = { "AT+XACT?", NULL };
 /* ^SYSCFG first: the older sticks (E171, E1550, E173) know only it, and one that does not answer ^SYSCFGEX
@@ -40,6 +43,8 @@ const char *const *mm_radio_commands(const char *dialect)
 {
 	if (!dialect)
 		return NULL;
+	if (!strcmp(dialect, "quectel-ep06"))
+		return ep06_cmds;
 	if (!strcmp(dialect, "quectel"))
 		return quectel_cmds;
 	if (!strcmp(dialect, "fibocom-mtk"))
@@ -142,9 +147,78 @@ static json_object *block(json_object *allowed, const char *preferred, json_obje
 	return o;
 }
 
+/* EP06: read QNWLOCK replies strictly. Restore the complete multi-cell snapshot. */
+static json_object *cell_lock(const char *rat, long arfcn, long pci);
+static bool ep06_lock_read(const char *raw, const char *form, char *save, size_t cap, json_object **held, int *count)
+{
+	char prefix[64], line[512], *cur, *end;
+	long v[17];
+	int n = 0, i;
+	bool multi = !strcmp(form, "common/4g");
+	*held = NULL;
+	*count = 0;
+	snprintf(prefix, sizeof(prefix), "+QNWLOCK: \"%s\",", form);
+	if (!line_after(raw, prefix, line, sizeof(line)) || !*line)
+		return false;
+	for (cur = line; cur && *cur; cur = end) {
+		char *next = strchr(cur, ','), *stop;
+		long value;
+		if (n >= 17)
+			return false;
+		if (next)
+			*next = '\0';
+		cur += strspn(cur, " \t");
+		value = strtol(cur, &stop, 10);
+		while (*stop == ' ' || *stop == '\t')
+			stop++;
+		if (stop == cur || *stop || value < 0 || value > 3279165)
+			return false;
+		v[n++] = value;
+		end = next ? next + 1 : NULL;
+		if (next && !*end)
+			return false;
+	}
+	if (!n)
+		return false;
+	if (multi) {
+		if (v[0] > 8 || n != 1 + 2 * v[0])
+			return false;
+		for (i = 0; i < v[0]; i++)
+			if (v[1 + 2 * i] > 262143 || v[2 + 2 * i] > 503)
+				return false;
+		*count = (int)v[0];
+		if (*count)
+			*held = cell_lock("lte", v[1], v[2]);
+	} else {
+		if (v[0] > 2 || (v[0] == 0 && n != 1 && n != 4) ||
+		    (v[0] != 0 && n != 3 && n != 4))
+			return false;
+		if (n >= 3 && (v[1] > 262143 || v[2] > 503))
+			return false;
+		if (n == 4 && v[3] != 0)
+			return false; /* still pending; never write during a transition */
+		*count = v[0] ? 1 : 0;
+		if (*count)
+			*held = cell_lock("lte", v[1], v[0] == 2 ? v[2] : -1);
+	}
+	save[0] = '\0';
+	for (i = 0; i < n; i++) {
+		size_t len = strlen(save);
+		if (len + 16 >= cap) {
+			json_object_put(*held);
+			*held = NULL;
+			return false;
+		}
+		snprintf(save + len, cap - len, "%s%ld", i ? "," : "", v[i]);
+	}
+	if (*held && *count > 1)
+		json_object_object_add(*held, "count", json_object_new_int(*count));
+	return true;
+}
+
 /* ---- Quectel: QNWPREFCFG (5G generation), QCFG nwscanmode / band (LTE generation) ---- */
 
-static json_object *quectel(json_object *r)
+static json_object *quectel(json_object *r, bool ep06)
 {
 	json_object *allowed = json_object_new_array(), *bands = json_object_new_array(), *out = NULL, *raw = json_object_new_object();
 	char buf[512];
@@ -207,12 +281,48 @@ static json_object *quectel(json_object *r)
 				any = mask_bands(lte + 1, bands, "eutran") >= 60;
 		}
 	}
+	if (ep06) {
+		const char *four = json_object_get_string(json_object_object_get(r, "AT+QNWLOCK=\"common/4g\""));
+		const char *lte = json_object_get_string(json_object_object_get(r, "AT+QNWLOCK=\"common/lte\""));
+		char save4[256], savelte[256];
+		json_object *held4 = NULL, *heldlte = NULL, *held = NULL;
+		int n4 = 0, nlte = 0;
+		bool ok4 = ep06_lock_read(four, "common/4g", save4, sizeof(save4), &held4, &n4);
+		bool oklte = ep06_lock_read(lte, "common/lte", savelte, sizeof(savelte), &heldlte, &nlte);
+		const char *form = NULL, *restore = NULL;
+
+		/* Prefer an already active dialect; never overwrite two active forms. */
+		if (!(ok4 && oklte && n4 && nlte)) {
+			if (ok4 && (!oklte || n4 || !nlte)) {
+				form = "common/4g"; restore = save4; held = held4; held4 = NULL;
+			} else if (oklte) {
+				form = "common/lte"; restore = savelte; held = heldlte; heldlte = NULL;
+			}
+		}
+		json_object_put(held4);
+		json_object_put(heldlte);
+		if (form) {
+			json_object *rats = json_object_new_array();
+			json_object_array_add(rats, json_object_new_string("lte"));
+			json_object_object_add(raw, "qnwlock_form", json_object_new_string(form));
+			json_object_object_add(raw, "qnwlock_restore", json_object_new_string(restore));
+			out = json_object_new_object();
+			json_object_object_add(out, "cell_lock", held);
+			json_object_object_add(out, "cell_lock_rats", rats);
+			seen = true;
+		}
+	}
 	if (any)
 		while (json_object_array_length(bands))
 			json_object_array_del_idx(bands, 0, 1);
 	if (seen) {
-		out = block(allowed, NULL, bands, any);
-		/* the values as read, the QNWPREFCFG generation only: a rollback writes them back as they were */
+		json_object *base = block(allowed, NULL, bands, any);
+		if (out) {
+			json_object_object_foreach(out, k, v)
+				json_object_object_add(base, k, json_object_get(v));
+			json_object_put(out);
+		}
+		out = base;
 		if (json_object_object_length(raw))
 			json_object_object_add(out, "raw", json_object_get(raw));
 	}
@@ -845,8 +955,8 @@ json_object *mm_radio_from_at(const char *dialect, json_object *responses)
 {
 	if (!dialect || !responses)
 		return NULL;
-	if (!strcmp(dialect, "quectel"))
-		return quectel(responses);
+	if (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06"))
+		return quectel(responses, !strcmp(dialect, "quectel-ep06"));
 	if (!strcmp(dialect, "fibocom-mtk"))
 		return fibocom_mtk(responses);
 	if (!strcmp(dialect, "xmm"))
@@ -1285,6 +1395,27 @@ bands_step:
 				json_object_put(arg);
 			}
 		}
+	} else if (!strcmp(via, "at") && dialect && !strcmp(dialect, "quectel-ep06")) {
+		json_object *snap = rollback ? raw : json_object_object_get(current, "raw");
+		const char *form = json_object_get_string(json_object_object_get(snap, "qnwlock_form"));
+		const char *restore = json_object_get_string(json_object_object_get(snap, "qnwlock_restore"));
+		if (!lock_asked)
+			return fail(why, size, "EP06 QCFG mode/band edits are read-only", steps);
+		if (!rollback && (allowed || bands))
+			return fail(why, size, "EP06 cell lock cannot be combined with mode/band edits", steps);
+		if (!form || (strcmp(form, "common/4g") && strcmp(form, "common/lte")) || !restore)
+			return fail(why, size, "EP06 QNWLOCK is unreadable: no safe rollback", steps);
+		if (rollback)
+			snprintf(buf, sizeof(buf), "AT+QNWLOCK=\"%s\",%s", form, restore);
+		else if (!lock)
+			snprintf(buf, sizeof(buf), "AT+QNWLOCK=\"%s\",0", form);
+		else {
+			if (lk_pci < 0)
+				return fail(why, size, "EP06 needs both EARFCN and PCI", steps);
+			snprintf(buf, sizeof(buf), "AT+QNWLOCK=\"%s\",%d,%ld,%ld",
+				 form, !strcmp(form, "common/4g") ? 1 : 2, lk_arfcn, lk_pci);
+		}
+		json_object_array_add(steps, step(buf, NULL));
 	} else if (!strcmp(via, "at") && dialect && !strcmp(dialect, "quectel")) {
 		static const char *const groups[] = { "mode_pref", "lte_band", "nsa_nr5g_band", "nr5g_band" };
 		json_object *have = rollback ? raw : json_object_object_get(current, "raw");
@@ -1591,7 +1722,7 @@ const char *mm_cells_command(const char *dialect)
 	if (dialect && !strcmp(dialect, "fibocom-mtk"))
 		return "AT+GTCCINFO?";
 	/* spec 26.1 step 5: on the engine's own AT port only (engine_at_port() refuses ModemManager's and QModem's) */
-	if (dialect && !strcmp(dialect, "quectel"))
+	if (dialect && (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06")))
 		return "AT+QCAINFO";
 	if (dialect && !strcmp(dialect, "simcom"))
 		return "AT+CPSI?";
@@ -2415,7 +2546,7 @@ json_object *mm_cells_from_at(const char *dialect, const char *raw)
 		return NULL;
 	if (!strcmp(dialect, "fibocom-mtk"))
 		cells = cells_gtcc(raw);
-	else if (!strcmp(dialect, "quectel"))
+	else if (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06"))
 		cells = cells_qca(raw);
 	else if (!strcmp(dialect, "simcom"))
 		cells = cells_cpsi(raw);
