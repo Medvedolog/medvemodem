@@ -1,5 +1,14 @@
 # MedveModem — Release History (English)
 
+## Source-only r10 — modem owner badge placement (2026-11-19)
+
+- Move the optional MM/QM/MV badge to the lower-right corner of each dashboard modem card and the individual modem hero card. Remove it from the title row, toolbar and modem overview table.
+- Remove the HiLink/WEB owner badge: the existing modem web-interface link already identifies the web UI. Ownership badges now identify only ModemManager, QModem or MedveModem as the controlling service.
+- Keep the existing browser-local preference and common Save/Revert behavior.
+- Bump engine, LuCI, bot, bot LuCI and all browser module revisions to 0.16.0_alpha1-r10.
+- **Source only:** no SDK build, release publication or router acceptance has been performed. Published r8/r9 assets are unchanged.
+
+
 ## Source-only r9 — updater and settings UX (2026-11-19)
 
 - The LuCI updater now reports the engine, its LuCI, Telegram bot and bot LuCI versions independently. Any installed component older than the selected release makes the update available; the updater refreshes only the outdated package family, keeping engine/LuCI and bot/bot-LuCI paired.
