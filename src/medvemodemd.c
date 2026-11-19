@@ -2046,7 +2046,7 @@ static json_object *radio_view(json_object *dev)
 		else if (!strcmp(via, "at") && strncmp(dialect, "foxconn-", 8) == 0 &&
 			 !json_object_object_get(json_object_object_get(json_object_object_get(cached, "radio"), "raw"), "slmode"))
 			nowrite = "the modem did not answer AT^SLMODE?: read only";
-		if (dialect && !strcmp(dialect, "quectel-ep06"))
+		if (dialect && !strcmp(dialect, "quectel-ep06") && !strcmp(via, "at"))
 			json_object_object_add(o, "cell_lock_only", json_object_new_boolean(true));
 		json_object_object_add(o, "writable", json_object_new_boolean(!nowrite));
 		if (nowrite)
