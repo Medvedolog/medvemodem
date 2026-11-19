@@ -1652,9 +1652,17 @@ return view.extend({
 		u.out = E('p', { 'class': 'mm-faint mm-up-result', role: 'status' });
 		u.pre = E('pre', { 'class': 'mm-pre mm-up-text' }, '');
 		u.log = E('details', { 'class': 'mm-up-log', hidden: '' }, [E('summary', {}, _('Update log')), u.pre]);
+		u.channel = E('select', { 'class': 'mm-select', id: 'mm-update-channel', change: function() { self.dirty(); } }, [
+			E('option', { value: 'release' }, _('Stable releases')),
+			E('option', { value: 'bench' }, _('Test builds (bench)'))]);
+		this.selects.update_channel = u.channel;
 		u.check = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-up-check', click: mm.busy(function() {
-			text(u.out, _('Checking the releases…'));
-			return fs.exec(SELFUP, ['check']).then(parse, function(e) { return { ok: false, error: failText(e) }; }).then(function(j) { self.updateDraw(j); });
+			var saved = self.core.update_channel === 'bench' ? 'bench' : 'release';
+			if (u.channel.value !== saved) { text(u.out, _('Save the selected update channel first.')); return; }
+			u.check.disabled = true; text(u.out, _('Checking the releases…'));
+			return fs.exec(SELFUP, ['check']).then(parse, function(e) { return { ok: false, error: failText(e) }; }).then(function(j) {
+				self.updateDraw(j);
+			}).finally(function() { u.check.disabled = false; });
 		}) }, _('Check for updates'));
 		u.btn = E('button', { type: 'button', 'class': 'mm-btn mm-up-install', hidden: '', click: mm.busy(function() {
 			if (!window.confirm(_('Update MedveModem to %s? The engine and its LuCI pages (and the Telegram bot, if installed) are replaced; the settings stay. LuCI reloads its pages afterwards.').format(u.latest || '')))
@@ -1666,7 +1674,10 @@ return view.extend({
 				return self.updateRefresh();
 			});
 		}) }, _('Update'));
-		var card = this.sec('set-update', _('MedveModem update'), [u.kv, u.news, E('div', { 'class': 'mm-actions' }, [u.btn, u.check]), u.out, u.log,
+		var card = this.sec('set-update', _('MedveModem update'), [
+			E('label', { 'class': 'mm-field', 'for': 'mm-update-channel' }, [E('span', { 'class': 'mm-dim' }, _('Update channel')), u.channel]),
+			E('p', { 'class': 'mm-faint' }, _('Stable releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
+			u.kv, u.news, E('div', { 'class': 'mm-actions' }, [u.btn, u.check]), u.out, u.log,
 			E('p', { 'class': 'mm-faint' }, _('From the project\'s releases on GitHub; when GitHub does not open directly, through the router\'s tunnel proxies (Whitelists → Local proxies). The archive is checked against the release\'s SHA256SUMS before anything is installed. Bench builds are tests, not releases.'))]);
 		card.id = 'update';
 		this.upGist = card.querySelector('.mm-sec-gist');
@@ -1679,8 +1690,12 @@ return view.extend({
 		var row = function(k, v) { return [E('dt', {}, k), E('dd', {}, v || '—')]; };
 		u.latest = j.latest;
 		u.kv.replaceChildren.apply(u.kv, [].concat(
-			row(_('Installed'), ins.engine ? ins.engine + (ins.bot ? ' · ' + _('bot %s').format(ins.bot) : '') : _('not installed')),
-			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('newer') : ' · ' + _('this one')) : j.error ? _('unknown: %s').format(j.error) : _('not checked yet')),
+			row(_('MedveModem engine'), ins.engine),
+			row(_('LuCI MedveModem'), ins.luci),
+			row(_('Telegram bot'), ins.bot),
+			row(_('LuCI Telegram bot'), ins.luci_bot),
+			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('update available') : ' · ' + _('up to date')) : j.error ? _('unknown: %s').format(updateWhy(j.error)) : _('not checked yet')),
+			row(_('Channel'), j.channel === 'bench' ? _('Test builds (bench)') : _('Stable releases')),
 			row(_('Checked'), j.checked_at ? new Date(j.checked_at * 1000).toLocaleString(mm.LANG) : '—')));
 		/* what is new since the installed version: the release's short highlights, by version (the owner, 2026-11-14) */
 		var news = list(j.highlights).filter(function(h) { return h && h.t; }), by = [], cur = null;
@@ -1691,11 +1706,13 @@ return view.extend({
 				E('ul', {}, g.t.map(function(t) { return E('li', {}, t); }))]);
 		})) : []);
 		u.btn.hidden = !j.newer;
-		u.btn.disabled = running;
-		text(u.btn, j.latest ? _('Update to %s').format(j.latest) : _('Update'));
+		u.btn.disabled = running || !!j.error;
+		u.check.disabled = running;
+		text(u.btn, j.latest ? _('Update all outdated packages to %s').format(j.latest) : _('Update'));
 		var gist = j.newer ? _('update %s available').format(j.latest) : j.latest ? _('the newest') : '';
 		if (this.upGist) text(this.upGist, gist);
-		text(u.out, running ? _('Updating, the log is below.') : j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
+		text(u.out, running ? _('Updating, the log is below.') : j.error ? _('Update check failed: %s').format(updateWhy(j.error)) :
+			j.state === 'failed' ? _('The last attempt: %s. Details in the log.').format(j.result || _('error')) :
 			j.state === 'done' && j.result && j.result !== 'current' ? _('Updated to %s.').format(j.result) : '');
 		return running;
 	},
@@ -1706,7 +1723,8 @@ return view.extend({
 		return fs.exec(SELFUP, ['status']).then(parse, function() { return {}; }).then(function(j) {
 			if (!j.ok) { text(u.out, _('The update script does not answer.')); return; }
 			/* over an hour since the last check: ask again by itself, once when the card opens */
-			if (first && j.state !== 'running' && (!j.checked_at || Date.now() / 1000 - j.checked_at > 3600) && !j.error)
+			var selected = self.core.update_channel === 'bench' ? 'bench' : 'release';
+			if (first && j.state !== 'running' && (j.channel !== selected || !j.checked_at || Date.now() / 1000 - j.checked_at > 3600))
 				return fs.exec(SELFUP, ['check']).then(parse, function() { return j; }).then(function(k) { self.updateDraw(k.ok ? k : j); });
 			var running = self.updateDraw(j);
 			if (!running && j.state !== 'failed' && j.state !== 'done') return;
