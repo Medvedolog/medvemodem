@@ -80,6 +80,7 @@ if "control !== 'native'" in modem:
 # Settings regressions: the owner badge preference must be part of the common
 # Save/Revert form and live at the bottom of the diagnostics tab.
 dashboard = (BASE / "view/medvemodem/dashboard.js").read_text(encoding="utf-8")
+dashboard_css = (BASE / "medvemodem/dashboard.css").read_text(encoding="utf-8")
 settings = VIEWS["settings"]
 for token in (
     "this.boxes.owner_badges = box",
@@ -101,12 +102,14 @@ if "c.pkgs, c.mmr, this.ownerBadgePref()" not in settings:
 # Owner badges belong in the lower-right corner of each modem card/page,
 # not beside the modem title or in the toolbar/table. HiLink's WEB link
 # already identifies that interface and must not be duplicated as an owner.
-for token in ("refs.ownerTag\n", "mm-mcard > .mm-owner-tag"):
-    if token not in dashboard:
-        failures.append(f"dashboard.js: missing bottom-right owner badge placement: {token}")
-for token in ("h.ownerTag]);", "mm-hero > .mm-owner-tag"):
-    if token not in modem and token not in (ROOT / "packages/luci-app-medvemodem/htdocs/luci-static/resources/medvemodem/dashboard.css").read_text(encoding="utf-8"):
-        failures.append(f"modem.js/CSS: missing bottom-right owner badge placement: {token}")
+if "refs.ownerTag\n" not in dashboard:
+    failures.append("dashboard.js: owner badge is not appended after card actions")
+if "mm-mcard > .mm-owner-tag" not in dashboard_css:
+    failures.append("dashboard.css: dashboard owner badge is not bottom-right aligned")
+if "h.ownerTag]);" not in modem:
+    failures.append("modem.js: owner badge is not appended after modem hero actions")
+if "mm-hero > .mm-owner-tag" not in dashboard_css:
+    failures.append("dashboard.css: modem-page owner badge is not bottom-right aligned")
 if "refs.ownerTag, refs.autofixBadge" in dashboard:
     failures.append("dashboard.js: owner badge remains in the top icon row")
 if "card.ownerTag.cloneNode(true)" in dashboard:
