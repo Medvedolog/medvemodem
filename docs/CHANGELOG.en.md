@@ -1,5 +1,17 @@
 # MedveModem — Release History (English)
 
+
+## 0.16.0-alpha1-r8 — 2026-11-19
+
+- **Quectel EP06-E:** add an isolated native-AT radio dialect with firmware-gated LTE cell lock/unlock by EARFCN and PCI. Read both `QNWLOCK` families: `common/4g` (cell count and frequency/PCI pairs) and `common/lte` (action, frequency, PCI and completion status).
+- **Reversible changes:** keep the full original lock snapshot, including multiple cells, for exact rollback; refuse malformed, unfinished or ambiguous reads. The exclusive AT lease, radio journal and connectivity guard still protect a change.
+- **LuCI cell selection:** report LTE serving/neighbor cells from `QENG` and expose a Lock action in native QMI mode. Explain when ModemManager owns the port; keep its current automatic owner priority and network-mode controls.
+- **Telemetry:** native `QTEMP` sensor parsing, `QCAINFO` PCC/SCC states, proper QENG SINR units, and neighbour RSRQ/RSRP positions; no direct AT traffic while another owner controls the modem.
+- **CI and release:** package builds are manual-only, with an explicit publishing switch, version-matched release tag, six OpenWrt SDK targets and SHA256-verified GitHub assets. Add nine QTEMP and eleven QNWLOCK C parser fixtures.
+- **Packaging:** align daemon, LuCI, bot and bot LuCI revisions to `0.16.0_alpha1-r8`. Include the post-r7 BusyBox installer fix that removes the `paste` dependency.
+- **Source status:** r8 candidate prepared. Package publication and live EP06 acceptance must be verified independently; see `docs/HANDOFF-ALPHA1-R8.md`.
+
+
 ## Post-r7 installer fix — 2026-11-19
 
 - Fix the release auto-selection failure `paste: not found` on minimal OpenWrt: replace the optional `paste` dependency with portable `awk` reading the API field streams in lockstep.
