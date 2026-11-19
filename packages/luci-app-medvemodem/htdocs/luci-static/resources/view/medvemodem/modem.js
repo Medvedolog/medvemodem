@@ -4592,7 +4592,7 @@ return view.extend({
 				(rs.dialect === 'foxconn-sdx' ? _('the modem takes it after its restart, about a minute') : _('the modem takes it after flight mode'))));
 		else if (!lockable) text(r.rs_lock, rs.dialect === 'quectel-ep06' && rs.via === 'modemmanager' ?
 			_('For EP06 cell locking, manually select MedveModem native QMI management. ModemManager reserves its AT port.') : '');
-		else r.rs_lock.replaceChildren.apply(r.rs_lock, cl ? [E('span', {}, lockText(cl) + (cl.count > 1 ? ' · ' + _('%d cells locked').format(cl.count) : '')), ' ',
+		else r.rs_lock.replaceChildren.apply(r.rs_lock, cl ? [E('span', {}, lockText(cl) + (cl.count > 1 ? ' · ' + _('Locked cells: %d').format(cl.count) : '')), ' ',
 			E('button', Object.assign({ type: 'button', 'class': 'mm-link mm-rs-unlock', click: mm.busy(this.lockCell.bind(this, null)) },
 				rs.writable && this.present ? {} : { disabled: '' }), _('Remove'))] :
 			[E('span', { 'class': 'mm-faint' }, _('none: the modem picks its cells itself. «Lock» beside a cell holds the modem on it.'))]);
