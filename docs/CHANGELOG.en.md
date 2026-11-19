@@ -1,5 +1,15 @@
 # MedveModem — Release History (English)
 
+## Source-only r9 — updater and settings UX (2026-11-19)
+
+- The LuCI updater now reports the engine, its LuCI, Telegram bot and bot LuCI versions independently. Any installed component older than the selected release makes the update available; the update transaction refreshes both bot packages whenever either bot package is installed.
+- Stable published releases are the default updater channel. LuCI now offers an explicit stable/bench selector saved through the common Save/Revert form. Cached checks are tagged with their channel, so results from a previous channel cannot masquerade as current; stale and channel-mismatched results are checked again.
+- Russian translations added for channel selection, updater status/errors and the optional modem-management badge preference.
+- Move the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the Save button's dirty state and is written to this browser's localStorage only after the common Save succeeds.
+- Bump the engine, LuCI and bot package release numbers and all browser module versions to r9. Add updater regression contracts to the manual build's frontend gate.
+- **Source only:** no SDK build, release publication or on-router test has been performed. The immutable r8 release is unchanged.
+
+
 
 ## Post-published r8 — modem controller switching regression fix (2026-11-19)
 
