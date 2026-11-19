@@ -13,3 +13,7 @@
 **Validation:** host parser fixtures and frontend/Chromium gates run before the six SDK builds. The exact EP06-E firmware and RF environment still require live router acceptance; code-level protection is not a substitute for hardware testing.
 
 Release: https://github.com/Medvedolog/medvemodem/releases/tag/v0.16.0-alpha1-r8
+
+## Post-release correction notice (source-only; not in published r8)
+
+A field report after deploying r8 found that choosing MedveModem native QMI for EP06-E could appear ineffective: Save did not generate a bottom toast, queued `bringup` did not report the final managing service, and EP06 AT cell polling compared against the nonexistent `owner.control="native"` rather than `netifd-qmi`. The `main` branch now includes explicit owner-change statuses, UCI save verification, real owner/connection confirmation, live QMI/MBIM control-node choice and corrected EP06 native cell polling. These corrections were **not** included in the original published r8 archives. A subsequent versioned release and router acceptance are required. See `docs/HANDOFF-ALPHA1-R8.md`.
