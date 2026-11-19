@@ -47,7 +47,10 @@ wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/
 
 Do not hard-code r6 or r7 as a default release tag. Do not automatically remove third-party modem ownership scripts. Do not claim successful CI merely because tests are in source; inspect GitHub Actions. The user requires changelog, handoff and release highlights for every release and a test for every regression.
 
-## Automatic r7 publication after checks
+## Historical r7 publication mechanism (now disabled)
+
+**Retired on 2026-11-19:** the `workflow_run` trigger described below was removed. This section documents the old r7 release path; it is not the current policy. The old publisher now requires an explicit `workflow_dispatch` with a successful `build_run_id` and cannot silently follow a build.
+
 
 The main `build` workflow performs LuCI module contract checks and Chromium smoke checks, then builds six SDK targets. `.github/workflows/publish-alpha1-r7-after-build.yml` receives only successful completed `build` runs on `main`. It checks that the exact successful commit is the current main head and has PKG_RELEASE=7, then downloads the original six build artifacts by `workflow_run.id`.
 
@@ -87,4 +90,16 @@ Branch policy: continue on `main`; do not create a working branch for EP06-E. Th
 - Existing `QCAINFO` parser already distinguishes SCC state=1 (configured/deactivated) from state=2 (activated). Keep the reporting semantic: idle SCC is not an active carrier.
 - ModemManager-owned AT ports remain off limits to native commands; no `QTEMP`, `QNWLOCK` or other background direct AT queries while MM owns EP06-E. MM telemetry remains the supported read path in that mode.
 - `QNWLOCK` is still a **nonimplemented, firmware-probe-required cell lock**. Do not expose a write control without exact read syntax, previous-state snapshot, exclusive AT ownership and rollback testing. `QRSRP` / `QENG` detailed metrics, SMS/PDU edge cases, and QMI UIM slot selection still require integration and hardware verification.
-- No release tag or package publication was created for these post-r7 commits. Confirm the newest `main` CI, then validate on physical EP06-E with independent recovery access.
+- No release tag or package publication was created for these post-r7 commits. CI is now manual-only; request a deliberate build after feature completion, then validate on physical EP06-E with independent recovery access.
+
+## Manual-only OpenWrt SDK policy (2026-11-19)
+
+**User decision:** do not build SDK packages automatically while development and EP06-E cell lock remain unfinished. Every build needs an explicit manual invocation or a user command; modifying or pushing code, opening PRs, or pushing tags must not launch a build.
+
+- `.github/workflows/build.yml`: only `workflow_dispatch`; runs compatibility checks, browser smoke, then the six OpenWrt SDK jobs. `publish_release` defaults to `false`. Only an explicitly selected version tag with `publish_release=true` may enter the release job.
+- `.github/workflows/qmodem.yml`: only `workflow_dispatch`, independent SDK matrix; `publish_release=false` by default.
+- Legacy `publish-alpha1-r2.yml`, `publish-alpha1-r3.yml`, `publish-alpha1-r4.yml`: automatic `push` triggers removed; SDK jobs manual only, release publication separately gated by `publish_release=true`. Do not use old release workflows for new releases.
+- `.github/workflows/publish-alpha1-r7-after-build.yml`: removed `workflow_run` automatic publisher; manual `build_run_id` required, and the selected completed run must be successful from this repository's `main`. Existing r7 is not overwritten.
+- `.github/workflows/docs.yml` remains automatically triggered for Markdown-only source checks; it **does not** launch SDK builds or publish packages.
+- Any workflows already queued/running before this change are not cancelled by editing the YAML. Inspect Actions separately if those should be stopped.
+- No SDK run or release was manually started in the course of changing these triggers.
