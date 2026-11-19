@@ -147,10 +147,12 @@ highlights() {
 # Share the package-manager lock with pkg-install and the SSH installer.
 PM_LOCK=${MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock}
 PM_HELD=0
+# Child shell returns this shell's PID without relying on templated dollar escaping.
+LOCK_PID=$(sh -c 'printf %s "$PPID"')
 pm_lock() {
 	local owner
 	mkdir -p "${PM_LOCK%/*}" || return 1
-	if mkdir "$PM_LOCK" 2>/dev/null; then echo $ > "$PM_LOCK/owner"; PM_HELD=1; return 0; fi
+	if mkdir "$PM_LOCK" 2>/dev/null; then echo "$LOCK_PID" > "$PM_LOCK/owner"; PM_HELD=1; return 0; fi
 	owner=$(cat "$PM_LOCK/owner" 2>/dev/null)
 	if [ -n "$owner" ]; then
 		case "$owner" in *[!0-9]*|'') return 1 ;; esac
@@ -158,15 +160,15 @@ pm_lock() {
 	else
 		[ -n "$(find "$PM_LOCK" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
 	fi
-	mv "$PM_LOCK" "$PM_LOCK.stale.$" 2>/dev/null || return 1
-	rm -rf "$PM_LOCK.stale.$"
+	mv "$PM_LOCK" "$PM_LOCK.stale.$LOCK_PID" 2>/dev/null || return 1
+	rm -rf "$PM_LOCK.stale.$LOCK_PID"
 	mkdir "$PM_LOCK" 2>/dev/null || return 1
-	echo $ > "$PM_LOCK/owner"
+	echo "$LOCK_PID" > "$PM_LOCK/owner"
 	PM_HELD=1
 }
 pm_unlock() {
 	[ "$PM_HELD" = 1 ] || return 0
-	[ "$(cat "$PM_LOCK/owner" 2>/dev/null)" = "$" ] && rm -rf "$PM_LOCK"
+	[ "$(cat "$PM_LOCK/owner" 2>/dev/null)" = "$LOCK_PID" ] && rm -rf "$PM_LOCK"
 	PM_HELD=0
 	return 0
 }
