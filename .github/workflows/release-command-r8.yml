@@ -1,0 +1,40 @@
+# A one-shot, owner-authorized bridge for the user's request to release r8
+# from chat. Normal pushes, PRs, tags and code changes cannot launch SDK jobs.
+# The build workflow itself remains workflow_dispatch-only.
+name: release-command-r8
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: owner-r8-command
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch authorized r8 build
+    if: >-
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem publish r8' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start explicitly requested manual build and verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.16.0-alpha1-r8 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'r8 already published: refusing to duplicate this release.'
+            exit 0
+          fi
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f publish_release=true -f release_tag=v0.16.0-alpha1-r8
+          echo 'Dispatched the explicitly authorized, manual r8 SDK build.'
