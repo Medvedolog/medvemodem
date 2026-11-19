@@ -2031,7 +2031,7 @@ return view.extend({
 		});
 		var nm = this.nameEditor();
 		h.node = E('section', { 'class': 'mm-card mm-hero mm-header' }, [
-			E('div', { 'class': 'mm-hero-top' }, [h.mark, E('div', { 'class': 'mm-hero-id' }, [E('div', { 'class': 'mm-hero-name-row' }, [h.title, h.ownerTag, nm.open, h.web]),
+			E('div', { 'class': 'mm-hero-top' }, [h.mark, E('div', { 'class': 'mm-hero-id' }, [E('div', { 'class': 'mm-hero-name-row' }, [h.title, nm.open, h.web]),
 				h.model, h.pill])]),
 			nm.box,
 			E('div', { 'class': 'mm-hero-say' }, [h.sayB, h.sayText]),
