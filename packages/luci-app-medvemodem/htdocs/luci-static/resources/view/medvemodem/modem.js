@@ -2386,19 +2386,34 @@ return view.extend({
 		var self = this, c = this.conn, f = (this.connInfo || {}).foreign || {}, id = this.id;
 		if (!window.confirm(_('Take the interface “%s” down and hand the modem over to MedveModem? Until ModemManager takes the modem there is no connection through it; “Put back as it was” brings the interface back afterwards.').format(f.interface)))
 			return Promise.resolve();
-		this.say(_('Saving…'));
+		this.ownerStage(_('Saving modem connection settings…'), 'run');
+		c.save.disabled = true;
 		return uciGet('medvemodem', 'device').then(function(r) {
 			var secs = (r && r.values) || {}, name = Object.keys(secs).filter(function(n) { return secs[n].id === id; })[0];
 			return name ? uciSet('medvemodem', name, values) : uciAdd('medvemodem', 'device', values);
 		}).then(function() { return uciCommit('medvemodem'); }).then(function() {
+			return uciGet('medvemodem', 'device').then(function(r) {
+				var secs = (r && r.values) || {};
+				if (!Object.keys(secs).some(function(n) { return secs[n].id === id && secs[n].backend === values.backend; }))
+					throw new Error(_('The managing service was not saved in the modem configuration.'));
+			});
+		}).then(function() {
 			c.dirty = false;
+			self.ownerSwitch = { backend: values.backend, at: Date.now() };
+			self.ownerStage(_('The managing service choice is saved. Handing control over…'), 'run');
 			return handover(id);
 		}).then(function(r) {
 			r = r || {};
-			if (r.result === 'started') self.watchConnect(_('Handed over: “%s” is down. Waiting for ModemManager to take the modem…').format(f.interface));
-			else self.say(_('Error: %s').format(why(r.reason) || r.result || _('no answer')));
+			if (r.result === 'started') self.ownerStage(_('The interface handover has started. Waiting for the modem to change its managing service…'), 'run');
+			else {
+				self.ownerSwitch = null;
+				self.ownerStage(_('The settings are saved, but modem bring-up was refused: %s').format(why(r.reason) || r.result || _('no answer')), 'err');
+			}
 			return self.update();
-		}).catch(function(e) { self.say(_('Saving error: %s').format(failText(e))); });
+		}).catch(function(e) {
+			self.ownerSwitch = null;
+			self.ownerStage(_('Saving or switching error: %s').format(failText(e)), 'err');
+		}).finally(function() { c.save.disabled = false; });
 	},
 
 	/* a connection asked for is followed in three steps (UX audit 2026-10-17), never «done» on the job's start alone:
