@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "foxconn-t99w640-mbim",
   "extends": "generic-mbim",
-  "description": "Experimental (the owner, 2026-11-06): Foxconn T99W640 / Dell DW5934e (Snapdragon X72) over USB, its MBIM composition 05c6:90d5 with cdc_mbim on interface 02 (dw5934e-5g-toolkit: USB\\VID_05C6&PID_90D5&MI_02; 4PDA 1125602, kniga043 20.10.26: DIAG + ADB + MBIM). On USB it runs stably only when it powered up with PCIe connected and the PCIe bus was then cut physically (4PDA 1125602, Kilm 05.11.26); with PCIe left on it falls to no network until a reboot. The module is made for PCIe M.2 (MHI 105b:e11d eSIM, 105b:e11e, 105b:e118) and needs an M.2-to-USB adapter (4PDA 1125602, its first post: not USB out of the box). The ID is shared with the T99W175 in MBIM and the Compal RXM-G1: this profile takes it only by ModemManager's model (DMS over MBIM gives DP25-42843-47; a generic MBIM name leaves it to the T99W175 profile). Known faults, none curable from the router: a false PA temperature (sdr0_pa 131-137 °C at 34 °C) trips the modem's own thermal protection, which deregisters it and puts the radio to power save (powered, registration idle, no signal; persists across cold boots, a firmware fault: the toolkit's OEM fix request); a deadlock after a foreign base station's reject, held off by a periodic ping (4PDA 1125602 #59; the engine's reach checks send traffic anyway). So ModemManager alone, no AT, no driver rebind or USB re-authorize (a runtime driver switch killed the device in the toolkit's notes), recovery only on the operator's request, a long settle for the X72's boot. Reference: docs/modem-zoo/modems/foxconn-t99w640.md, observations F32, F33",
+  "description": "Experimental (the owner, 2026-11-06): Foxconn T99W640 / Dell DW5934e (Snapdragon X72) over USB, its MBIM composition 05c6:90d5 with cdc_mbim on interface 02 (dw5934e-5g-toolkit: USB\\VID_05C6&PID_90D5&MI_02; 4PDA 1125602, kniga043 20.10.26: DIAG + ADB + MBIM). On USB it runs stably only when it powered up with PCIe connected and the PCIe bus was then cut physically (4PDA 1125602, Kilm 05.11.26); with PCIe left on it falls to no network until a reboot. The module is made for PCIe M.2 (MHI 105b:e11d eSIM, 105b:e11e, 105b:e118) and needs an M.2-to-USB adapter (4PDA 1125602, its first post: not USB out of the box). The ID is shared with the T99W175 in MBIM and the Compal RXM-G1: this profile takes it only by ModemManager's model (DMS over MBIM gives DP25-42843-47; a generic MBIM name leaves it to the T99W175 profile). Known faults, none curable from the router: a false PA temperature (sdr0_pa 131-137 °C at 34 °C) trips the modem's own thermal protection, which deregisters it and puts the radio to power save (powered, registration idle, no signal; persists across cold boots, a firmware fault: the toolkit's OEM fix request); a deadlock after a foreign base station's reject, held off by a periodic ping (4PDA 1125602 #59; the engine's reach checks send traffic anyway). So ModemManager alone, no AT, no driver rebind or USB re-authorize (a runtime driver switch killed the device in the toolkit's notes), recovery only on the operator's request, a long settle for the X72's boot. Reference: docs/modem-zoo/modems/foxconn-t99w640.md, observations F32, F33 Further firmware-specific read-only commands and the separate QMI-over-MBIM AT, FTM and DIAG paths are documented in docs/modem-zoo/modems/foxconn-t99w640-at-diag.md. This is reference-only: no firmware writes or automatic AT/DIAG polling, no native vendor AT-over-MBIM implementation.",
   "match": {
     "bus": "usb",
     "vid": "05c6",
@@ -32,7 +32,119 @@
       "modemmanager",
       "mbim"
     ],
-    "title": "Dell DW5934e / T99W640 (X72)"
+    "title": "Dell DW5934e / T99W640 (X72)",
+    "firmware_research": {
+      "reference": "docs/modem-zoo/modems/foxconn-t99w640-at-diag.md",
+      "source_revision": "user research v2.4 / 2026-11-18; ENG read-only live tests and Retail static analysis; not verified against a working MedveModem router",
+      "cpu": "Qualcomm SDX72; separate AP atfwd-daemon and CP Hexagon",
+      "api_status": "reference-only: no generic native AT-over-MBIM/QCDM implementation or automatic AT reads",
+      "at_transport": {
+        "pcie_mbim": "/dev/wwan0mbim0: vendor QMI-over-MBIM AT path; firmware private Foxconn 0xE3 / 0x555D TLV 0x10; unsupported",
+        "pcie_serial": "/dev/wwan0at0: may not work on Retail (missing mhi_pipe_32)",
+        "usb_serial": "/dev/ttyUSB2: if actually enumerated; no assumption that 05c6:90d5 provides it",
+        "diag": "/dev/wwan0qcdm0 or /dev/ttyUSB0; QCDM not enabled by MedveModem"
+      },
+      "safe_read_reference": {
+        "thermal": [
+          "AT+TEMP?",
+          "AT$QCTEMP"
+        ],
+        "rf": [
+          "AT+CA_INFO?",
+          "AT$QCSQ",
+          "AT$QCRSRP",
+          "AT$QCRSRQ",
+          "AT+MIMOCONFIG?",
+          "AT+MODULATION?",
+          "AT+DEBUG",
+          "AT+RX_CHAINS?"
+        ],
+        "cellular": [
+          "AT+SLMODE?",
+          "AT+SLBAND?",
+          "AT+BAND_PREF?",
+          "AT+NR5G_MODE?",
+          "AT+LTE_LOCK?",
+          "AT+NR5G_LOCK?",
+          "AT+WCDMA_LOCK?",
+          "AT+WMS_ROUTE?",
+          "AT+SWITCH_SLOT?"
+        ],
+        "hardware": [
+          "AT+RFPIN_STATUS?",
+          "AT+USBTYPE?",
+          "AT+BOOT_VER?",
+          "AT+SECBOOT_STATUS?",
+          "AT+FCC_LOCK?",
+          "AT+CUSTOMER?",
+          "AT+FEATURE?"
+        ]
+      },
+      "semantics": {
+        "lte_lock": "Read AT+LTE_LOCK? only; WRITE form AT+LTE_LOCK=<PCI>,<EARFCN>[,<PCI>,<EARFCN>...] (PCI first), up to eight pairs, not enabled; bare AT+LTE_LOCK clears lock",
+        "nr5g_lock": "AT+NR5G_LOCK=<band>,<scs>,<dl_arfcn>,<num_pci>,<pci...> is static-analysis-only and disabled",
+        "band_mode": "AT+SLMODE=<term 0 transient|1 NV>,<pref_mode 0..7>; enum differs from SDX55 bit mask",
+        "ca": "AT+CA_ENABLE=0 enables CA; 1..255 disables, never write from telemetry",
+        "rssi": "AT+RSSI=LTE,ALL reports antenna measurements; AT+RSSI? alone can fail",
+        "tuner": "AT+QTUNER_ENABLE? is correct, not AT+QTUNER?",
+        "fcc": "AT+FCC_LOCK? may omit OK; changing FCC NV flag is not authenticated host QMI FCC unlock"
+      },
+      "forbidden_probes": [
+        "AT+VZWRSRP?",
+        "AT+VZWRSRQ?",
+        "AT+ODIS",
+        "AT+ULCA",
+        "AT+LTE_LOCK",
+        "AT+ERASE_IMEI",
+        "AT+EFS_ERASE",
+        "AT+CRASH",
+        "AT+PCIE_EDL",
+        "AT+EDL",
+        "AT+FASTBOOT",
+        "AT+DPR=rm_all"
+      ],
+      "known_crashes": [
+        "AT+VZWRSRP?",
+        "AT+VZWRSRQ?"
+      ],
+      "dangerous_side_effects": "Do not add bare commands as read probes: AT+ODIS resets ODIS, bare LTE_LOCK clears lock, bare ULCA removes feature-disable flag; some AT+CMD=? calls are unsupported; do not execute dangerous/FTM/DIAG in production",
+      "ftm": {
+        "count": 34,
+        "via": "vendor QMI text dispatcher, commands lack AT prefix",
+        "enabled": false,
+        "reference_only": true
+      },
+      "diag": {
+        "protocol": "QCDM Async HDLC",
+        "enabled": false,
+        "write_enabled": false,
+        "reference_only": true
+      },
+      "nv_efs": {
+        "enabled": false,
+        "write_enabled": false,
+        "reference_only": true
+      },
+      "feature_access": {
+        "vendor_at_over_mbim": false,
+        "automatic_at_poll": false,
+        "at_lte_lock_write": false,
+        "at_nr5g_lock_write": false,
+        "ftm": false,
+        "diag": false,
+        "nv_efs_write": false,
+        "automatic_usb_switch": false,
+        "automatic_sdc_unlock": false,
+        "automatic_fcc_unlock": false
+      }
+    },
+    "warnings": [
+      "Firmware ENG read-only probes are not proof of availability or safety on Retail; do not run any AT while ModemManager owns the device",
+      "On ENG AT+VZWRSRP? and AT+VZWRSRQ? crash CP (MHI SSR). Avoid even as reads; use AT$QCSQ or AT$QCRSRP where an exclusive supported transport exists",
+      "AT+ODIS without ? performs factory reset; bare AT+LTE_LOCK clears cell lock; bare AT+ULCA mutates EFS",
+      "FCC_LOCK=0 and ftm unlock_fcc are NOT the host's authenticated QMI FCC unlock",
+      "No automatic writes to RFNV/EFS, DIAG, FTM, USB compositions, SAR power configuration or identity"
+    ]
   },
   "recovery": {
     "status": "field-reported",
@@ -43,6 +155,6 @@
     "usb_reauthorize": false,
     "power_cycle": false,
     "settle_ms": 90000,
-    "source": "experimental: reconnect, radio and reset through ModemManager on the operator's request only; no rebind or re-authorize (toolkit: a runtime driver switch gave «Device died»); the thermal fault is not cured by any reset"
+    "source": "experimental: reconnect, radio and reset through ModemManager on the operator's request only; no rebind or re-authorize (toolkit: a runtime driver switch gave «Device died»); the thermal fault is not cured by any reset; T99W640 firmware reference v2.4 (2026-11-18) confirms native PCIe AT can be absent on Retail and contains dangerous AT/DIAG/FTM traps; neither owner nor recovery policy changed"
   }
 }
