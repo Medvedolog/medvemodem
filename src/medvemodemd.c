@@ -6180,7 +6180,6 @@ static json_object *at_reply(struct at_job *j, const char *error)
 static bool at_probe_next(struct at_job *j);
 
 /* the FM350's carrier command and whether a modem is that kind (its radio dialect, profiles/generic/fibocom-fm350.json) */
-#define FIBOCOM_OPERATOR "AT+GTCURCAR?"  /* Fibocom MTK carrier name, queried through QModem's serialized send_at */
 #define FIBOCOM_CA "AT+GTCAINFO?"
 #define FIBOCOM_CC "AT+GTCCINFO?"	/* the serving cells with their SINR: 3GPP's own commands have none */
 static bool fibocom_mtk(json_object *srv)
@@ -6198,32 +6197,6 @@ static const char *sim_send_at_res(json_object *responses, const char *key)
 	return jstr(cfg, "status") && !strcmp(jstr(cfg, "status"), "1") ? jstr(cfg, "res") : NULL;
 }
 
-/*
- * +GTCURCAR: <id>,"<carrier>" (FM350). This is QModem-owned AT data,
- * never a second port opener. Reject multiline/control output; if absent,
- * keep the existing MCC/MNC fallback from cell_info.
- */
-static void fibocom_operator_from_at(json_object *metrics, const char *raw)
-{
-	const char *p, *q;
-	char name[96];
-	size_t n, i;
-
-	if (!metrics || !raw || !(p = strstr(raw, "+GTCURCAR:")))
-		return;
-	p = strchr(p, '"');
-	if (!p || !(q = strchr(++p, '"')))
-		return;
-	n = (size_t)(q - p);
-	if (!n || n >= sizeof(name))
-		return;
-	for (i = 0; i < n; i++)
-		if ((unsigned char)p[i] < 0x20 || (unsigned char)p[i] == 0x7f)
-			return;
-	memcpy(name, p, n);
-	name[n] = '\0';
-	json_object_object_add(metrics, "operator", json_object_new_string(name));
-}
 
 /*
  * An FM350 after AT+GTACT (or its flight mode for a cell lock) keeps its address while the data path is dead:
@@ -6642,11 +6615,8 @@ static void at_exited(struct uloop_process *p, int ret)
 		bool via_q = jstr(j->results, "qmodem_section") != NULL;
 		json_object *m = metrics_clean(via_q ? mm_qmodem_metrics(responses) : mm_at_metrics(responses)), *entry = json_object_new_object();
 		int complete = json_object_get_int(json_object_object_get(r, "complete"));
-		const char *ca_raw = via_q ? sim_send_at_res(responses, "step2") : jstr(responses, FIBOCOM_CA);
+		const char *ca_raw = via_q ? NULL : jstr(responses, FIBOCOM_CA);
 		json_object *ca = ca_raw ? mm_fibocom_ca(ca_raw) : NULL;
-
-		if (via_q)
-			fibocom_operator_from_at(m, sim_send_at_res(responses, "step1"));
 
 		if (ca)	/* the shape of ModemManager's QMI carriers: the pages read both alike */
 			json_object_object_add(m, "ca", ca);
