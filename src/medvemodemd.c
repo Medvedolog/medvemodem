@@ -1802,6 +1802,11 @@ static json_object *profile_from_mm_read(json_object *rec, json_object *mm)
 			/* the session protocols: «ppp» marks a serial-only modem (hostfix guesses no QMI interface on it) */
 			if (json_object_is_type(json_object_object_get(dial, "protocols"), json_type_array))
 				json_object_object_add(decision, "protocols", json_object_get(json_object_object_get(dial, "protocols")));
+		/* Explicit native QMI support does not change automatic owner priority. */
+		if (!match.ambiguous && json_object_object_get_ex(match.profile, "hints", &dial) &&
+		    json_object_is_type(json_object_object_get(dial, "native_qmi"), json_type_object) &&
+		    json_object_get_boolean(json_object_object_get(json_object_object_get(dial, "native_qmi"), "enabled")))
+			json_object_object_add(decision, "native_qmi", json_object_new_boolean(true));
 		}
 		if (!match.ambiguous && json_object_object_get_ex(match.profile, "hints", &dial) &&
 		    json_object_is_type(json_object_object_get(dial, "at_interface_numbers"), json_type_array))
