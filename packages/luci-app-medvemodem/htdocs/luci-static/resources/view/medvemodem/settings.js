@@ -1676,7 +1676,7 @@ return view.extend({
 		}) }, _('Update'));
 		var card = this.sec('set-update', _('MedveModem update'), [
 			E('label', { 'class': 'mm-field', 'for': 'mm-update-channel' }, [E('span', { 'class': 'mm-dim' }, _('Update channel')), u.channel]),
-			E('p', { 'class': 'mm-faint' }, _('Published releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
+			E('p', { 'class': 'mm-faint' }, _('Published versioned releases, including tagged prereleases such as Alpha, are the normal channel. Test builds (bench) are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
 			u.kv, u.news, E('div', { 'class': 'mm-actions' }, [u.btn, u.check]), u.out, u.log,
 			E('p', { 'class': 'mm-faint' }, _('From the project\'s releases on GitHub; when GitHub does not open directly, through the router\'s tunnel proxies (Whitelists → Local proxies). The archive is checked against the release\'s SHA256SUMS before anything is installed. Bench builds are tests, not releases.'))]);
 		card.id = 'update';
