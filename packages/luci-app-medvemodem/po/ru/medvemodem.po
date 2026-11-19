@@ -12592,3 +12592,11 @@ msgstr "Нет сборки для %s под OpenWrt %s в канале %s."
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "The update channel changed; check again."
 msgstr "Канал обновлений изменился; выполните проверку ещё раз."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Published releases"
+msgstr "Опубликованные релизы"
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Published releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking."
+msgstr "Для обычного использования выбирайте опубликованные релизы проекта. Тестовые сборки экспериментальные и могут отсутствовать для отдельных архитектур роутеров и версий OpenWrt. Перед проверкой сохраните выбранный канал."
