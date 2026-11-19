@@ -128,7 +128,7 @@ function qmWords(j) {
 function updateWhy(w) {
 	w = String(w || '');
 	var m = /^no build for (.+) on OpenWrt (.+) in the (.+) releases$/.exec(w);
-	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('test') : _('stable'));
+	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Stable releases'));
 	if (/^release channel changed|^old update result/.test(w)) return _('The update channel changed; check again.');
 	return w || _('no answer');
 }
