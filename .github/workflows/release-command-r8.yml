@@ -74,7 +74,7 @@ jobs:
   qa-contracts:
     name: Manual LuCI source contracts (no SDK)
     if: >-
-      \${{ github.repository == 'Medvedolog/medvemodem' &&
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
           github.event.issue.number == 14 &&
           github.event.comment.user.login == 'Medvedolog' &&
           github.event.comment.body == '/medvemodem qa luci' }}
@@ -91,7 +91,7 @@ jobs:
   qa-browser:
     name: Manual Chromium owner-change regression (no SDK)
     if: >-
-      \${{ github.repository == 'Medvedolog/medvemodem' &&
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
           github.event.issue.number == 14 &&
           github.event.comment.user.login == 'Medvedolog' &&
           github.event.comment.body == '/medvemodem qa luci' }}
