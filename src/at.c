@@ -374,11 +374,22 @@ static const char *act_name(int act)
 }
 
 /*
- * The same metrics from QModem's `modem_ctrl.sh cell_info <section>` (its {"modem_info": [{"key", "value"}...]}, the
- * owner 2026-10-19: «FM350 в режиме QModem не показывает оператора и уровни»): the serving cell's RSRP, RSRQ, SINR and
- * RSSI, the 5G cell of an NSA connection after its "NR5G-NSA" marker, the network's code from MCC and MNC. No IMEI,
- * IMSI or ICCID: those are in other methods, never asked for.
+ * QModem rpcd cell_info ({ "modem_info": [{"key","value"}...] }): serving LTE/NR signal,
+ * RAT, MCC/MNC and cell identity. This is a structured cached QModem response;
+ * no direct tty access and no SIM identifiers are requested here.
  */
+static bool qmodem_metric_integer(const char *value, long long *out)
+{
+	char *end;
+	int base = strpbrk(value, "abcdefABCDEF") || !strncmp(value, "0x", 2) ? 16 : 10;
+	long long n = strtoll(value, &end, base);
+
+	if (end == value || *end)
+		return false;
+	*out = n;
+	return true;
+}
+
 json_object *mm_qmodem_metrics(json_object *responses)
 {
 	json_object *m = json_object_new_object(), *nr = json_object_new_object(), *info = NULL, *cur = m;
@@ -418,6 +429,20 @@ json_object *mm_qmodem_metrics(json_object *responses)
 			snprintf(mcc, sizeof(mcc), "%s", v);
 		if (!strcmp(k, "MNC") && !mnc[0] && strlen(v) >= 2 && strlen(v) <= 3 && strspn(v, "0123456789") == strlen(v))
 			snprintf(mnc, sizeof(mnc), "%s", v);
+		if (!strcmp(k, "Band")) {
+			if (!json_object_object_get(cur, "band"))
+				json_object_object_add(cur, "band", json_object_new_string(v));
+			continue;
+		}
+		if (!strcmp(k, "Cell ID") || !strcmp(k, "TAC") || !strcmp(k, "Physical Cell ID") ||
+		    !strcmp(k, "EARFCN") || !strcmp(k, "ARFCN")) {
+			long long value;
+			const char *field = !strcmp(k, "Cell ID") ? "cell_id" : !strcmp(k, "TAC") ? "tac" :
+				!strcmp(k, "Physical Cell ID") ? "pci" : "earfcn";
+			if (!json_object_object_get(cur, field) && qmodem_metric_integer(v, &value))
+				json_object_object_add(cur, field, json_object_new_int64(value));
+			continue;
+		}
 		d = strtod(v, &end);
 		if (end == v)
 			continue;
@@ -429,6 +454,8 @@ json_object *mm_qmodem_metrics(json_object *responses)
 			json_object_object_add(cur, "sinr_db", json_object_new_double(d));
 		else if (!strcmp(k, "RSSI") && cur == m && !json_object_object_get(m, "rssi_dbm"))
 			json_object_object_add(m, "rssi_dbm", json_object_new_int((int)d));
+		else if (!strcmp(k, "DL Bandwidth") && !json_object_object_get(cur, "bandwidth_mhz"))
+			json_object_object_add(cur, "bandwidth_mhz", json_object_new_double(d));
 	}
 	if (mcc[0] && mnc[0]) {
 		char code[16];
