@@ -38,3 +38,37 @@ jobs:
           gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref main \
             -f publish_release=true -f release_tag=v0.16.0-alpha1-r8
           echo 'Dispatched the explicitly authorized, manual r8 SDK build.'
+
+  qa-contracts:
+    name: Manual LuCI source contracts (no SDK)
+    if: >-
+      \${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem qa luci' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify LuCI contracts and release-version consistency
+        run: |
+          python3 tests/test-luci-frontend.py
+          sh tools/check-web-version.sh
+          node --check packages/luci-app-medvemodem/htdocs/luci-static/resources/view/medvemodem/modem.js
+          node --check tests/test-luci-browser.cjs
+
+  qa-browser:
+    name: Manual Chromium owner-change regression (no SDK)
+    if: >-
+      \${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem qa luci' }}
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Playwright client
+        run: npm install --no-save --no-package-lock playwright@1.58.2
+      - name: Exercise real LuCI view including EP06 native QMI handover
+        run: node tests/test-luci-browser.cjs
