@@ -67,6 +67,17 @@ older() {
 		}
 		exit 1 }'
 }
+# The engine, both LuCI packages and the optional bot are separate APK/IPK
+# records. An update is needed when ANY installed member is older.
+needs_update() {
+	local latest="$1" name version
+	for name in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot; do
+		version=$(installed_version "$name")
+		[ -n "$version" ] || continue
+		if older "$version" "$latest"; then return 0; fi
+	done
+	return 1
+}
 
 # $1 url, $2 file: straight (curl, then uclient-fetch), then through the local proxies; the log says which way worked.
 # curl first: a release asset redirects to a storage host whose answer headers pass 4 KB, where uclient-fetch is
@@ -105,21 +116,24 @@ pick() {
 			} }'
 }
 
+check_error() {
+	printf 'error %s %s %s\n' "$CHANNEL" "$(date +%s)" "$*" > "$CHECK"
+}
 check() {
 	local json="$RUN/releases.json" line url
 	mkdir -p "$RUN"
 	: > "$RUN/fetch.log"
-	if [ -z "$REPO" ]; then printf 'error no update source (medvemodem.core.update_repo)\n' > "$CHECK"; return 1; fi
+	if [ -z "$REPO" ]; then check_error 'no update source (medvemodem.core.update_repo)'; return 1; fi
 	if ! fetch "$API/repos/$REPO/releases?per_page=15" "$json"; then
-		printf 'error the releases are not reachable, straight or through a local proxy\n' > "$CHECK"
+		check_error 'the releases are not reachable, straight or through a local proxy'
 		return 1
 	fi
 	line=$(pick "$json")
 	if [ -z "$line" ]; then
-		printf 'error no build for %s on OpenWrt %s in the %s releases\n' "$ARCH" "$LINE" "$CHANNEL" > "$CHECK"
+		check_error "no build for $ARCH on OpenWrt $LINE in the $CHANNEL releases"
 		return 1
 	fi
-	printf 'ok %s %s\n' "$(date +%s)" "$line" > "$CHECK"
+	printf 'ok %s %s %s\n' "$CHANNEL" "$(date +%s)" "$line" > "$CHECK"
 	# the release's short highlights (HIGHLIGHTS.txt, from its changelog): shown, never needed to install
 	set -- $line
 	rm -f "$RUN/highlights"
@@ -186,7 +200,7 @@ jtext() { jstr "$1"; }
 
 
 status() {
-	local eng luci bot lbot state=idle result= c latest= tag= at=0 err= newer=false
+	local eng luci bot lbot state=idle result= c latest= tag= at=0 err= newer=false oldest=
 	eng=$(installed_version medvemodem); luci=$(installed_version luci-app-medvemodem)
 	bot=$(installed_version medvemodem-bot); lbot=$(installed_version luci-app-medvemodem-bot)
 	if running; then state=running
@@ -194,13 +208,26 @@ status() {
 	fi
 	c=$(cat "$CHECK" 2>/dev/null)
 	case "$c" in
-		ok\ *) set -- $c; at=$2; latest=$3; tag=$4 ;;
-		error\ *) err=${c#error } ;;
+		ok\ *)
+			set -- $c
+			if [ "$2" = "$CHANNEL" ]; then at=$3; latest=$4; tag=$5
+			else err="release channel changed; check again"
+			fi ;;
+		error\ *)
+			set -- $c
+			if [ "$2" = "$CHANNEL" ]; then at=$3; shift 3; err="$*"
+			else err="release channel changed; check again"
+			fi ;;
+		*) [ -z "$c" ] || err="old update result; check again" ;;
 	esac
-	[ -n "$latest" ] && [ -n "$eng" ] && older "$eng" "$latest" && newer=true
+	if [ -n "$latest" ] && needs_update "$latest"; then newer=true; fi
+	for v in "$eng" "$luci" "$bot" "$lbot"; do
+		[ -n "$v" ] || continue
+		if [ -z "$oldest" ] || older "$v" "$oldest"; then oldest=$v; fi
+	done
 	printf '{"ok":true,"installed":{"engine":"%s","luci":"%s","bot":"%s","luci_bot":"%s"},"latest":"%s","tag":"%s","checked_at":%s,"error":"%s","newer":%s,"highlights":%s,"repo":"%s","channel":"%s","arch":"%s","openwrt":"%s","pm":"%s","state":"%s","result":"%s","log":"%s"}\n' \
 		"$(jstr "$eng")" "$(jstr "$luci")" "$(jstr "$bot")" "$(jstr "$lbot")" "$(jstr "$latest")" "$(jstr "$tag")" "${at:-0}" \
-		"$(jstr "$err")" "$newer" "$( [ "$newer" = true ] && highlights "$eng" || printf '[]')" "$(jstr "$REPO")" "$CHANNEL" "$(jstr "$ARCH")" "$(jstr "$REL")" "$PM" "$state" "$(jstr "$result")" "$LOG"
+		"$(jstr "$err")" "$newer" "$( [ "$newer" = true ] && highlights "$oldest" || printf '[]')" "$(jstr "$REPO")" "$CHANNEL" "$(jstr "$ARCH")" "$(jstr "$REL")" "$PM" "$state" "$(jstr "$result")" "$LOG"
 }
 
 finish() {
@@ -296,18 +323,18 @@ run() {
 	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
 	say "$(T "Router: OpenWrt ${REL:-?} ($ARCH), packages: $PM; installed: $(installed_version medvemodem)" "Роутер: OpenWrt ${REL:-?} ($ARCH), пакеты: $PM; установлено: $(installed_version medvemodem)")"
 	say "$(T "Asking the releases of $REPO ($CHANNEL)" "Запрос выпусков $REPO ($CHANNEL)")"
-	check || fail "$(sed 's/^error //' "$CHECK")"
-	set -- $(cat "$CHECK"); latest=$3; tag=$4; url=$5; sums=$6
+	check || fail "$(sed 's/^error [^ ]* [^ ]* //' "$CHECK")"
+	set -- $(cat "$CHECK"); latest=$4; tag=$5; url=$6; sums=$7
 	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"
-	older "$(installed_version medvemodem)" "$latest" || { say "$(T "Already the newest: $latest" "Уже последняя версия: $latest")"; finish done "current"; }
+	needs_update "$latest" || { say "$(T "All installed MedveModem packages are current: $latest" "Все установленные пакеты MedveModem актуальны: $latest")"; finish done "current"; }
 	say "$(T "Downloading $latest ($tag)" "Загрузка $latest ($tag)")"
 	archive "$url" "$sums"
 	# the engine and its LuCI as a pair; the bot and its pages only when installed
 	case "$PM" in
 		apk) pkgs=$(cd "$RUN/work" && ls medvemodem-0*.apk luci-app-medvemodem-[0-9]*.apk 2>/dev/null)
-		     [ -n "$(installed_version medvemodem-bot)" ] && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null)" ;;
+		     { [ -n "$(installed_version medvemodem-bot)" ] || [ -n "$(installed_version luci-app-medvemodem-bot)" ]; } && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null)" ;;
 		opkg) pkgs=$(cd "$RUN/work" && ls medvemodem_*.ipk luci-app-medvemodem_*.ipk 2>/dev/null)
-		      [ -n "$(installed_version medvemodem-bot)" ] && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null)" ;;
+		      { [ -n "$(installed_version medvemodem-bot)" ] || [ -n "$(installed_version luci-app-medvemodem-bot)" ]; } && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null)" ;;
 	esac
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"
 	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
