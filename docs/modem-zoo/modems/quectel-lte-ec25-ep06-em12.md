@@ -35,6 +35,15 @@ That form must not be blindly copied to every Quectel generation.
 
 They belong to the same broad QENG/QCFG telemetry tradition, but field layouts and available CA/band functions differ by firmware. Use family knowledge as a candidate set, not as a proof of support.
 
+## EP06-E parser and ownership boundaries (19 November 2026)
+
+- `AT+QTEMP` is now queried beside `AT+QCAINFO` **only** for the exact `quectel-ep06` profile through an engine-owned AT port. The returned sensor array may contain three or four signed values; the highest valid temperature becomes `heat.modem_c`. Missing sensors (`255`, `-140`, `-32768`), errors and nonnumeric values do not become temperatures. The production parser has nine host-compiled fixtures.
+- Existing `QCAINFO` parsing distinguishes configured/deactivated LTE SCC (`state=1`) from activated (`state=2`). A response containing only `OK` does **not** prove the modem lacks CA.
+- On EP06-E `QENG=\"servingcell\"` SINR is already in dB, and the LTE bandwidth index converts `0..5` to `1.4/3/5/10/15/20 MHz`. Neighbour entries put RSRQ before RSRP. The two physical receive chains are not the same as the four positions in `QRSRP`.
+- `QNWLOCK` lock/unlock **is not implemented**: query spelling and lock modes vary with firmware. A write must require a successful read of the same dialect, a saved previous lock, controlled disconnection/lease and tested rollback. Do not expose a misleading working control just because the JSON profile contains command references.
+- ModemManager remains the automatic owner on the known working EP06-E configuration. While it owns the modem, no direct AT polling (including temperature) is attempted; use MM-owned telemetry, and treat optional AT-only fields as unavailable. Changing ownership is a manual opt-in with connectivity risk.
+- EP06-E SIM-slot reports are to be verified via the current owner's QMI UIM interface. Never infer that `AT+QUIMSLOT?` works from other Quectel generations.
+
 ## Native QMI (EP06-E)
 
 The EP06-E profile explicitly offers MedveModem native QMI when `qmi_wwan` exposes the control node and network device. This is a **manual opt-in**, not a change to the automatic QModem/ModemManager preference. Use the existing ownership handover and netifd QMI path; never share QMI control with ModemManager. Changing backend can disrupt an active connection and must keep recovery access available. Verify the resulting interface and bearer after switching; this profile declaration is not a field-test result.
