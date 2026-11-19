@@ -2034,6 +2034,9 @@ static json_object *radio_view(json_object *dev)
 		else if (!strcmp(via, "at") && !(dialect && (!strcmp(dialect, "quectel") || !strncmp(dialect, "foxconn-", 8) ||
 							   !strcmp(dialect, "fibocom-mtk"))))
 			nowrite = "writing this modem's AT dialect is not done yet";
+		else if (!strcmp(via, "at") && !strcmp(dialect, "quectel-ep06") &&
+			 !json_object_object_get(json_object_object_get(cached, "radio"), "cell_lock_rats"))
+			nowrite = "this EP06 firmware did not return a safe QNWLOCK state";
 		else if (!strcmp(via, "at") && !strcmp(dialect, "quectel") &&
 			 !json_object_object_get(json_object_object_get(json_object_object_get(cached, "radio"), "raw"), "mode_pref"))
 			nowrite = "this Quectel generation (QCFG) is read only for now";
@@ -2043,6 +2046,8 @@ static json_object *radio_view(json_object *dev)
 		else if (!strcmp(via, "at") && strncmp(dialect, "foxconn-", 8) == 0 &&
 			 !json_object_object_get(json_object_object_get(json_object_object_get(cached, "radio"), "raw"), "slmode"))
 			nowrite = "the modem did not answer AT^SLMODE?: read only";
+		if (dialect && !strcmp(dialect, "quectel-ep06"))
+			json_object_object_add(o, "cell_lock_only", json_object_new_boolean(true));
 		json_object_object_add(o, "writable", json_object_new_boolean(!nowrite));
 		if (nowrite)
 			json_object_object_add(o, "why_read_only", json_object_new_string(nowrite));
@@ -6484,6 +6489,14 @@ static void at_exited(struct uloop_process *p, int ret)
 
 		if (raw && ca && asprintf(&both, "%s\n%s", raw, ca) < 0)
 			both = NULL;
+		if (raw && !strcmp(jstr(j->results, "dialect") ? jstr(j->results, "dialect") : "", "quectel-ep06")) {
+			const char *serv = jstr(responses, MM_EP06_SERVING_COMMAND), *neigh = jstr(responses, MM_EP06_NEIGHBOUR_COMMAND);
+			char *mix = NULL;
+			if (asprintf(&mix, "%s\n%s\n%s", raw, serv ? serv : "", neigh ? neigh : "") >= 0) {
+				free(both);
+				both = mix;
+			}
+		}
 		c = !error && cmd && raw ? mm_cells_from_at(jstr(j->results, "dialect"), both ? both : raw) : NULL;
 		free(both);
 		/* a cell answer that says the modem's heat itself (Sierra !GSTATUS?) */
@@ -7302,6 +7315,7 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 	}
 	/* ModemManager's cell info stands in only for a modem it holds (an FM350 on the engine's AT is not one) */
 	if ((cell_info_on && json_object_object_get(srv, "modemmanager") &&
+	     !strcmp(jstr(json_object_object_get(srv, "owner"), "control") ? jstr(json_object_object_get(srv, "owner"), "control") : "", "modemmanager") &&
 	     !(tb[CL_LEVELS] && blobmsg_get_bool(tb[CL_LEVELS]) && dialect && (!strcmp(dialect, "foxconn-sdx") || !strcmp(dialect, "quectel")))) || !cmd) {
 		bool mm_cells = cell_info_on && json_object_object_get(srv, "modemmanager");
 
@@ -7328,9 +7342,9 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 
 		json_object_put(o);
 		/* spec 26.1 step 5: a Quectel's AT+QCAINFO goes on the engine's own port only, never through QModem's */
-		if (!strcmp(dialect, "quectel") || !sec || !qmodem_installed() || !port || qmodem_foreign_port(rec, sec) ||
+		if (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06") || !sec || !qmodem_installed() || !port || qmodem_foreign_port(rec, sec) ||
 		    snprintf(line, sizeof(line), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", cmd, port) >= (int)sizeof(line)) {
-			rc = at_refuse(ctx, req, id, !strcmp(dialect, "quectel") ? "QModem drives this modem; its carriers are read on the engine's own AT port only" :
+			rc = at_refuse(ctx, req, id, (!strcmp(dialect, "quectel") || !strcmp(dialect, "quectel-ep06")) ? "QModem drives this modem; its carriers are read on the engine's own AT port only" :
 					     "QModem drives this modem and names no AT port of it", NULL);
 			json_object_put(srv);
 			return rc;
@@ -7356,6 +7370,10 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 	/* Only the known EP06 profile receives the optional QTEMP query; never ask it on an MM-owned AT port. */
 	if (profile_id && !strcmp(profile_id, "quectel-ep06"))
 		json_object_array_add(cmds, json_object_new_string(MM_EP06_TEMP_COMMAND));
+	if (dialect && !strcmp(dialect, "quectel-ep06")) {
+		json_object_array_add(cmds, json_object_new_string(MM_EP06_SERVING_COMMAND));
+		json_object_array_add(cmds, json_object_new_string(MM_EP06_NEIGHBOUR_COMMAND));
+	}
 	if (!strcmp(dialect, "foxconn-t77"))
 		json_object_array_add(cmds, json_object_new_string(MM_T77_CA_COMMAND));
 	/* the modem's heat beside the cells (2026-11-02): degrees on a T99, a throttling level where there are none */
