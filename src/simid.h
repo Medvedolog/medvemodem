@@ -20,10 +20,6 @@ bool simid_imsi_from_cimi(const char *raw, char *out, size_t size);
  * F as filler: 18 to 20 digits, or false */
 bool simid_iccid_from_crsm(const char *raw, char *out, size_t size);
 
-/* QModem's modem_ctrl.sh sim_info: {"responses": {"sim_info": {"modem_info": [{"key", "value"}...]}}}; IMSI and
- * ICCID by their keys. Each out may stay empty. */
-bool simid_from_qmodem(json_object *responses, char *imsi, size_t imsi_size, char *iccid, size_t iccid_size);
-
 /*
  * The SIM's home operator code (MCC+MNC, «25011» for Yota) from its IMSI: the first 5 digits, 6 where the country's
  * operators have three-digit network codes (North America, India's 405, parts of Latin America and the Caribbean).
