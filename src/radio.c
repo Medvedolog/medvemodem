@@ -201,6 +201,11 @@ static bool ep06_lock_read(const char *raw, const char *form, char *save, size_t
 		if (*count)
 			*held = cell_lock("lte", v[1], v[0] == 2 ? v[2] : -1);
 	}
+	/* The /lte reply includes a final completion STATUS, which is NOT a
+	 * writable parameter. Preserve only action/EARFCN/PCI for rollback;
+	 * disabling a lock takes action 0 alone. */
+	if (!multi)
+		n = v[0] ? 3 : 1;
 	save[0] = '\0';
 	for (i = 0; i < n; i++) {
 		size_t len = strlen(save);
