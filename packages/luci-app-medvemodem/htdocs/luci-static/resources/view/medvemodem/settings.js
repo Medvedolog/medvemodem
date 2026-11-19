@@ -128,7 +128,7 @@ function qmWords(j) {
 function updateWhy(w) {
 	w = String(w || '');
 	var m = /^no build for (.+) on OpenWrt (.+) in the (.+) releases$/.exec(w);
-	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Stable releases'));
+	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Published releases'));
 	if (/^release channel changed|^old update result/.test(w)) return _('The update channel changed; check again.');
 	return w || _('no answer');
 }
@@ -1653,7 +1653,7 @@ return view.extend({
 		u.pre = E('pre', { 'class': 'mm-pre mm-up-text' }, '');
 		u.log = E('details', { 'class': 'mm-up-log', hidden: '' }, [E('summary', {}, _('Update log')), u.pre]);
 		u.channel = E('select', { 'class': 'mm-select', id: 'mm-update-channel', change: function() { self.dirty(); } }, [
-			E('option', { value: 'release' }, _('Stable releases')),
+			E('option', { value: 'release' }, _('Published releases')),
 			E('option', { value: 'bench' }, _('Test builds (bench)'))]);
 		this.selects.update_channel = u.channel;
 		u.check = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-up-check', click: mm.busy(function() {
@@ -1676,7 +1676,7 @@ return view.extend({
 		}) }, _('Update'));
 		var card = this.sec('set-update', _('MedveModem update'), [
 			E('label', { 'class': 'mm-field', 'for': 'mm-update-channel' }, [E('span', { 'class': 'mm-dim' }, _('Update channel')), u.channel]),
-			E('p', { 'class': 'mm-faint' }, _('Stable releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
+			E('p', { 'class': 'mm-faint' }, _('Published releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
 			u.kv, u.news, E('div', { 'class': 'mm-actions' }, [u.btn, u.check]), u.out, u.log,
 			E('p', { 'class': 'mm-faint' }, _('From the project\'s releases on GitHub; when GitHub does not open directly, through the router\'s tunnel proxies (Whitelists → Local proxies). The archive is checked against the release\'s SHA256SUMS before anything is installed. Bench builds are tests, not releases.'))]);
 		card.id = 'update';
@@ -1695,7 +1695,7 @@ return view.extend({
 			row(_('Telegram bot'), ins.bot),
 			row(_('LuCI Telegram bot'), ins.luci_bot),
 			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('update available') : ' · ' + _('up to date')) : j.error ? _('unknown: %s').format(updateWhy(j.error)) : _('not checked yet')),
-			row(_('Channel'), j.channel === 'bench' ? _('Test builds (bench)') : _('Stable releases')),
+			row(_('Channel'), j.channel === 'bench' ? _('Test builds (bench)') : _('Published releases')),
 			row(_('Checked'), j.checked_at ? new Date(j.checked_at * 1000).toLocaleString(mm.LANG) : '—')));
 		/* what is new since the installed version: the release's short highlights, by version (the owner, 2026-11-14) */
 		var news = list(j.highlights).filter(function(h) { return h && h.t; }), by = [], cur = null;
