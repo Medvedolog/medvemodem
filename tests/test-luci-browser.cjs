@@ -107,6 +107,91 @@ async function run() {
     assert.equal(badge.ok, true, JSON.stringify(badge));
     console.log('PASS chromium LuCI stale common.js owner badge fallback');
     await page.close();
+
+    // Verify that saving a new backend is acknowledged in the UI, while the
+    // actual owner is checked separately (a started bring-up is not success).
+    const switchPage = await browser.newPage();
+    const sw = await switchPage.evaluate(async source => {
+      String.prototype.format = function (...a) { let i = 0; return this.replace(/%[sd]/g, () => String(a[i++] ?? '')); };
+      const _ = text => text;
+      const messages = [], toasts = [];
+      const config = { device_one: { id: 'ep06', backend: 'modemmanager' } };
+      const rpc = { declare: spec => (...args) => {
+        if (spec.object === 'uci' && spec.method === 'get')
+          return Promise.resolve({ values: JSON.parse(JSON.stringify(config)) });
+        if (spec.object === 'uci' && spec.method === 'set') {
+          Object.assign(config[args[1]], args[2]);
+          return Promise.resolve({});
+        }
+        if (spec.object === 'uci' && spec.method === 'commit')
+          return Promise.resolve({});
+        if (spec.object === 'medvemodem' && spec.method === 'bringup')
+          return Promise.resolve({result: 'started'});
+        return Promise.resolve({});
+      }};
+      const mm = {
+        VERSION: '0.16.0-alpha1-r8', LANG: 'en',
+        text: (node, val) => { node.textContent = String(val ?? ''); },
+        toast: (key, line, tone) => { toasts.push({line, tone}); },
+        failText: error => String(error && error.message || error)
+      };
+      let view;
+      try {
+        view = new Function('view', 'rpc', 'poll', 'fs', 'mm', '_', 'E', 'L', source)(
+          {extend: value => value}, rpc, {add: () => {}}, {}, mm, _,
+          () => document.createElement('div'),
+          {env: {},resource: x => x,url: x => x});
+      } catch (e) {
+        return {error:'compile: ' + e.message};
+      }
+      view.id = 'ep06';
+      view.message = document.createElement('p');
+      view.connInfo = {backend: 'modemmanager', interface: 'mm0'};
+      const ownerStatus = document.createElement('p');
+      view.conn = {
+        apn: {value: ''}, auto: {checked: true}, ip: {value: ''},
+        backend: {value: 'native'}, ttl: {checked: false},
+        autoc: {checked: true}, dns: {value: ''},
+        dnsMode: {value: 'add'}, save: {disabled: false},
+        ownerStatus
+      };
+      view.update = () => Promise.resolve();
+      window.confirm = () => true;
+      try {
+        await view.saveConnection();
+        const started = !!view.ownerSwitch && view.ownerSwitch.backend === 'native';
+        const persisted = config.device_one.backend === 'native';
+        const hasBanner = !ownerStatus.hidden && /handover|managing service/i.test(ownerStatus.textContent);
+        const hasToast = toasts.length > 0;
+        view.followOwnerSwitch({
+          device_id: 'ep06', connection: {backend: 'native'},
+          backend: 'modemmanager', owner: {control: 'modemmanager'},
+          session: {state: 'connected'}
+        });
+        const notPremature = !!view.ownerSwitch;
+        view.followOwnerSwitch({
+          device_id: 'ep06', connection: {backend: 'native'},
+          backend: 'native', owner: {control: 'netifd-qmi'},
+          session: {state: 'connected'}
+        });
+        const confirmed = !view.ownerSwitch && /modem is connected/i.test(ownerStatus.textContent);
+        view.data = {owner: {control: 'netifd-qmi'}, radio_settings: {dialect: 'quectel-ep06'}};
+        view.atFresh = () => ({cells: [{earfcn: 1749, pci: 226}]});
+        const selected = view.withAtCells({cells: [{earfcn: 800, pci: 1}]}).cells[0].earfcn;
+        return {started, persisted, hasBanner, hasToast, notPremature, confirmed,
+                nativeCellsVisible: selected === 1749,
+                enabled: !view.conn.save.disabled, last: ownerStatus.textContent, toasts};
+      } catch (e) {
+        return {error:String(e && e.stack || e)};
+      }
+    }, source);
+    assert.equal(sw.error, undefined, JSON.stringify(sw));
+    for (const key of ['started','persisted','hasBanner','hasToast','notPremature',
+                      'confirmed','nativeCellsVisible','enabled'])
+      assert.equal(sw[key], true, key + ': ' + JSON.stringify(sw));
+    console.log('PASS chromium EP06 owner selection: save, toast, pending and native QMI readback');
+    await switchPage.close();
+
   } finally {
     await browser.close();
   }
