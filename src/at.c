@@ -529,6 +529,7 @@ json_object *mm_qmodem_metrics(json_object *responses)
 		for (j = 0; j < count; j++) {
 			json_object *c = json_object_new_object();
 			long long value;
+			char *end;
 			json_object_object_add(c, "role", json_object_new_string("secondary"));
 			json_object_object_add(c, "type", json_object_new_string(!strcmp(ca_type, "CA-NR") ? "5gnr" : "lte"));
 			if (j < nb && qmodem_band_number(band[j], &value))
