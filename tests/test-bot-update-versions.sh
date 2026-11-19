@@ -9,7 +9,13 @@ grep -Fq '0-9A-Za-z._+~-' "$view" || { echo 'Bot installed version regex must al
 grep -Fq "const CHECK_EVERY = 12 * 3600" "$root/packages/medvemodem-bot/files/usr/share/medvemodem-bot/update.uc"
 grep -Fq '## 0.16.0-alpha1-r6' "$notes"
 grep -Fq 'HIGHLIGHTS.txt' "$root/.github/workflows/build.yml"
-grep -Fq 'older "$eng" "$latest"' "$update"
+grep -Fq 'needs_update "$latest"' "$update"
+grep -Fq 'for name in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot' "$update"
+grep -Fq 'if [ -n "$latest" ] && needs_update "$latest"; then newer=true; fi' "$update"
+grep -Fq 'installed_version luci-app-medvemodem-bot' "$update"
+grep -Fq 'ok %s %s %s' "$update"
+grep -Fq 'error %s %s %s' "$update"
+sh -n "$update"
 # Model self-update's AWK numeric comparison using the same AWK program.
 older() {
     awk -v a="$1" -v b="$2" 'BEGIN {
@@ -24,7 +30,9 @@ older() {
     }'
 }
 older 0.16.0_alpha1-r5 0.16.0-alpha1-r6
+older 0.16.0_alpha1-r5 0.16.0-alpha1-r8
+older 0.16.0_alpha1-r7 0.16.0-alpha1-r8
 older 0.16.0-alpha1-r4 0.16.0-alpha1-r6
 if older 0.16.0_alpha1-r6 0.16.0-alpha1-r6; then echo 'Equal release must not be newer' >&2; exit 1; fi
 if older 0.16.0_alpha1-r7 0.16.0-alpha1-r6; then echo 'Downgrade must not be offered' >&2; exit 1; fi
-echo 'PASS: bot version display and r6 update comparison contracts'
+echo 'PASS: bot and LuCI component update detection, channel-scoped cache and version comparison'
