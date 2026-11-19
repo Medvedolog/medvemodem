@@ -2320,10 +2320,10 @@ json_object *served(json_object *rec)
 
 				own = json_object_get(own);
 				json_object_object_get_ex(own, "control", &ctl);
-				if ((qsec && !ours) || (backend && !strcmp(backend, "qmodem"))) {
-					/* QModem drives this modem: its ports and session are QModem's */
+				if (qsec && !ours) {
+					/* A real QModem modem-device section is the evidence of ownership. */
 					bool mm_too = !strcmp(json_object_get_string(ctl), "modemmanager");
-					json_object *q = json_object_new_object(), *qs = qsec ? json_object_object_get(qmodem_img, qsec) : NULL;
+					json_object *q = json_object_new_object(), *qs = json_object_get(qmodem_img ? json_object_object_get(qmodem_img, qsec) : NULL);
 
 					json_object_put(own);
 					own = json_object_new_object();
@@ -2333,16 +2333,32 @@ json_object *served(json_object *rec)
 					if (mm_too)
 						json_object_object_add(own, "conflict", json_object_new_string(
 							"ModemManager still holds a modem handed to QModem"));
-					json_object_object_add(q, "section", qsec ? json_object_new_string(qsec) : NULL);
+					json_object_object_add(q, "section", json_object_new_string(qsec));
 					json_object_object_add(q, "state", json_object_get(json_object_object_get(qs, "state")));
 					json_object_object_add(q, "at_port", json_object_get(json_object_object_get(qs, "at_port")));
 					json_object_object_add(q, "network", json_object_get(json_object_object_get(qs, "network")));
 					json_object_object_add(q, "managed_by_engine", json_object_new_boolean(backend && !strcmp(backend, "qmodem")));
-					if (qsec && qmodem_foreign_port(rec, qsec)) {
+					if (qmodem_foreign_port(rec, qsec)) {
 						json_object_object_add(q, "foreign_at_port", json_object_new_boolean(1));
 						json_object_object_add(own, "conflict", json_object_new_string(
 							"QModem's section names an AT port that is not this modem's (another modem's port)"));
 					}
+					json_object_object_add(o, "qmodem", q);
+				} else if (backend && !strcmp(backend, "qmodem")) {
+					/* A selected backend is not an owner until QModem's scanner creates its section. */
+					bool pending = job.active && job.qmodem && !strcmp(job.device_id, json_object_get_string(idv));
+					json_object *q = json_object_new_object();
+
+					json_object_put(own);
+					own = json_object_new_object();
+					json_object_object_add(own, "control", json_object_new_string("unresolved"));
+					json_object_object_add(own, "session", json_object_new_string("unresolved"));
+					json_object_object_add(own, "at", json_object_new_string("qmodem"));
+					json_object_object_add(q, "section", NULL);
+					json_object_object_add(q, "state", json_object_new_string(pending ? "adopting" : "not-adopted"));
+					json_object_object_add(q, "managed_by_engine", json_object_new_boolean(true));
+					json_object_object_add(q, "adoption_pending", json_object_new_boolean(pending));
+					json_object_object_add(q, "adoption_failed", json_object_new_boolean(!pending));
 					json_object_object_add(o, "qmodem", q);
 				} else if (native && !strcmp(json_object_get_string(ctl), "unresolved")) {
 					/* spec 13: the native owner is the configuration we wrote */
@@ -4896,11 +4912,23 @@ static const struct blobmsg_policy bringup_policy[] = {
 static bool qmodem_leaving(json_object *rec, char *sec, size_t size)
 {
 	const char *id = jstr(rec, "device_id"), *b = ledger_backend(id), *choice = jstr(decision_of(id), "backend");
-	const char *q = qmodem_section_of(rec);
+	const char *preferred = jstr(json_object_object_get(rec, "profile"), "prefer_owner");
+	const char *att = jstr(rec, "attachment_id"), *q = qmodem_section_of(rec);
+	/* Auto must release an existing QModem handoff when this profile prefers
+	 * ModemManager/native. Keep it only when auto would select QModem itself. */
+	bool auto_keeps_qmodem = choice && !strcmp(choice, "auto") && preferred &&
+		!strcmp(preferred, "qmodem") && qmodem_installed() && att && !strncmp(att, "usb:", 4);
 
-	if (!q || !b || strcmp(b, "qmodem") || !choice || (strcmp(choice, "native") && strcmp(choice, "modemmanager")))
+	if (!b || strcmp(b, "qmodem") || !choice ||
+	    (strcmp(choice, "native") && strcmp(choice, "modemmanager") &&
+	     (strcmp(choice, "auto") || auto_keeps_qmodem)))
 		return false;
-	snprintf(sec, size, "%s", q);
+	/* A failed QModem adoption can leave the ledger behind without ever
+	 * creating a modem-device section. That still needs an explicit release. */
+	if (q)
+		snprintf(sec, size, "%s", q);
+	else
+		sec[0] = '\0';
 	return true;
 }
 
@@ -4910,13 +4938,14 @@ static void mm_return_wait(const char *id, long long generation);
 static void bringup_after_qmodem(int status)
 {
 	json_object *rec, *o, *r;
-	const char *choice;
+	const char *choice, *preferred;
+	bool auto_mm;
 	char d[32];
 
 	if (!job.active || job.phase != JOB_QRELEASE)
 		return;
 	snprintf(d, sizeof(d), "exit %d", WIFEXITED(status) ? WEXITSTATUS(status) : -1);
-	job_log("qmodem-remove-done", d);
+	job_log(job.qsection[0] ? "qmodem-remove-done" : "qmodem-release-no-section", d);
 	qmodem_global_sync();
 	rec = mm_registry_find(&registry, job.device_id);
 	if (!rec || !job_device_ok()) {
@@ -4927,18 +4956,22 @@ static void bringup_after_qmodem(int status)
 		job_finish("failed", "QModem kept its section for this modem");
 		return;
 	}
-	mm_history_add(&history, job.device_id, (long long)time(NULL), now_mono_ms(), "qmodem-release", job.qsection);
+	mm_history_add(&history, job.device_id, (long long)time(NULL), now_mono_ms(), "qmodem-release",
+		       job.qsection[0] ? job.qsection : "no modem-device section existed; clearing failed handoff");
 	history_dirty = true;
 	choice = jstr(decision_of(job.device_id), "backend");
-	if (choice && !strcmp(choice, "modemmanager")) {
-		/* our QModem ledger goes, the inhibition with it; the bring-up follows once ModemManager has the modem */
+	preferred = jstr(json_object_object_get(rec, "profile"), "prefer_owner");
+	auto_mm = choice && !strcmp(choice, "auto") && preferred && !strcmp(preferred, "modemmanager");
+	if ((choice && !strcmp(choice, "modemmanager")) || auto_mm) {
+		/* explicit MM and MM-first auto both clear our ledger/inhibition,
+		 * then wait for ModemManager to rediscover and take the modem. */
 		r = mm_cfgtxn_run(&cfg, job.device_id, NULL, NULL, false, now_mono_ms());
 		job_log("released", status_of(r));
 		json_object_put(r);
 		mm_return_wait(job.device_id, job.generation);
 		inhibits_sync();
 		mm_schedule(0);
-		job_finish("released", "QModem let go of the modem; the bring-up follows once ModemManager has it");
+		job_finish("released", "QModem handoff cleared; waiting for ModemManager to take the modem");
 		return;
 	}
 	o = json_object_new_object();
@@ -4960,12 +4993,15 @@ static bool bringup_go(json_object *rec, json_object *o)
 		char script[300];
 		const char *argv[] = { script, "remove", sec, NULL };
 		json_object *g = NULL;
+		bool have_section = sec[0] != '\0';
 
-		snprintf(script, sizeof(script), "%s/modem_scan.sh", qmodem_dir);
-		if (!hook_run(argv, bringup_after_qmodem)) {
-			json_object_object_add(o, "result", json_object_new_string("busy"));
-			json_object_object_add(o, "reason", json_object_new_string("QModem's helper is busy; try again"));
-			return false;
+		if (have_section) {
+			snprintf(script, sizeof(script), "%s/modem_scan.sh", qmodem_dir);
+			if (!hook_run(argv, bringup_after_qmodem)) {
+				json_object_object_add(o, "result", json_object_new_string("busy"));
+				json_object_object_add(o, "reason", json_object_new_string("QModem's helper is busy; try again"));
+				return false;
+			}
 		}
 		memset(&job, 0, sizeof(job));
 		job.active = true;
@@ -4976,10 +5012,17 @@ static bool bringup_go(json_object *rec, json_object *o)
 		snprintf(job.qsection, sizeof(job.qsection), "%s", sec);
 		json_object_object_get_ex(rec, "generation", &g);
 		job.generation = json_object_get_int64(g);
-		job_log("qmodem-remove", sec);
-		ULOG_INFO("%s: the operator chose %s; QModem lets go of it first (section %s)\n", job.device_id,
-			  jstr(decision_of(job.device_id), "backend"), sec);
+		job_log(have_section ? "qmodem-remove" : "qmodem-remove-skipped",
+			have_section ? sec : "QModem never created a modem-device section");
+		ULOG_INFO("%s: the operator chose %s; %s\n", job.device_id,
+			  jstr(decision_of(job.device_id), "backend"),
+			  have_section ? "QModem lets go of its section first" :
+			  "clearing a failed QModem handoff with no section to release");
 		session_set(job.device_id, "configuring", NULL, NULL, NULL, NULL);
+		/* No QModem section was ever created: clear our stale selection/lease
+		 * immediately instead of waiting for a helper that has nothing to remove. */
+		if (!have_section)
+			bringup_after_qmodem(0);
 		return true;
 	}
 	return bringup_txn(rec, o);

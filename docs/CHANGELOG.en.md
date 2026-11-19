@@ -1,3 +1,12 @@
+## Source-only r11 — QModem handover recovery (2026-11-19)
+
+- Fix T99W175 hand-back from QModem to `auto` and ModemManager, including a failed adoption where QModem never created a `modem-device` section. The engine no longer waits to remove a nonexistent section: it clears its own QModem lease and proceeds to the selected owner.
+- QModem ownership now requires an actual `modem-device` section; a persisted `backend=qmodem` selection alone is not proof of adoption. Until QModem really accepts the modem, the card reports a pending/failed handover rather than false ownership and stale telemetry.
+- Add regression contracts for `auto` hand-back, failed-lease cleanup, owner state without a QModem section, and the dashboard warning.
+- The 2026-11-19 manual USB rescue reset the entire EHCI controller `5310000.usb`, not only the modem. This remains a separate operator-initiated hardware recovery step, not an ordinary reconnect.
+- Synchronize package and LuCI module versions to `0.16.0-alpha1-r11`.
+- **Source only:** no SDK build, release publication or router acceptance has been performed. r10 and previously published artifacts remain unchanged.
+
 # MedveModem — Release History (English)
 
 ## Source-only r10 — modem owner badge placement (2026-11-19)
