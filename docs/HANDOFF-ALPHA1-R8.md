@@ -130,3 +130,14 @@ Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inh
   - `fix/self-update-release-check` (ahead 3; open PR #2): updater latest-tag logic and LuCI UI. Verify current r8 updater before deciding.
   - `release/0.16.0-alpha1-r2` (ahead 19; open PR #3): old version/changelog/UI. **Never merge the stale r2 package versions into r8/main**; review any independent logic as individual commits only.
 - **Remaining action:** audit these eight for *functional* differences, close superseded PRs with rationale, and delete their branches only after confirming unique substantive fixes are ported or deliberately rejected. Do not auto-merge obsolete release branches.
+
+
+## Eight-branch reconciliation progress — 2026-11-19
+
+- Closed obsolete PRs [#1](https://github.com/Medvedolog/medvemodem/pull/1) and [#11](https://github.com/Medvedolog/medvemodem/pull/11), without merge: QModem persistent workflow/build script and LuCI Chromium coverage have newer versions in main.
+- Found that the existing SSH installer owns a shared `package-operation.lock`, while current `pkg-install` and `self-update` lacked the corresponding inter-process lock. Ported shared locking to main for component installs, self-update and release add-ons, with exit cleanup and PID-owner checks. Closed obsolete PR [#10](https://github.com/Medvedolog/medvemodem/pull/10) without merging r6 files.
+- Added `tests/test-package-locks.sh` (shell syntax, cross-entrypoint exclusion, fresh-ownerless-lock race). **The new test has not yet been run in GitHub Actions or on a router; do not mark the fix accepted until it passes.**
+- Release update channel in `self-update`: default is now `release`; `bench` accepts only `bench-v*` tags, not public `v*` tags. Existing explicit `bench` preferences remain usable. PR #2 remains open because some old LuCI display enhancements have not yet been reconciled.
+- Current native QMI/MBIM selector recognizes a discovered `qmi_wwan`/`cdc_mbim` control port and has post-r8 owner-handover monitoring, superseding the one-commit old selector. Physical EP06 owner acceptance remains outstanding.
+- The `feat/ssh-installer` branch carries an older 185-line installer test and branch-triggered CI workflow absent from main; they need adaptation rather than wholesale copying because release versions and behavior have changed. PR #6 remains open.
+- Owner-badges branch and old r2 branch still need individual UI/feature reconciliation. No new build/release was requested or triggered, and **none of the eight retained branches has been deleted**. Their commit histories remain available pending final source and test acceptance.
