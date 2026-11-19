@@ -15,6 +15,8 @@ grep -Fq 'json_object_new_string("cell_info")' "$engine"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 cat > "$tmp/test.c" <<'EOF'
+#define _GNU_SOURCE
+#include <ctype.h>
 #include <json-c/json.h>
 #include <stdbool.h>
 #include <stdint.h>
