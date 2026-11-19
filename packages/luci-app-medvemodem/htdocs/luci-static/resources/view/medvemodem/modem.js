@@ -4628,7 +4628,11 @@ return view.extend({
 	 * «Радио» is open, at most every 30 s (the engine holds the same period) */
 	/* audit M03: the AT readings belong to one attachment of one modem and age: another generation or 2 min drops them */
 	withAtCells: function(mm) {
-		var at = this.atFresh();
+		var at = this.atFresh(), d = this.data || {}, ctl = (d.owner || {}).control;
+		/* Native EP06 QENG reports belong to the current engine-owned modem, even if an
+		 * older ModemManager snapshot still contains carriers. */
+		if (at && ctl === 'native' && (d.radio_settings || {}).dialect === 'quectel-ep06')
+			return Object.assign({}, mm, { cells: at.cells });
 		return list(mm.cells).length || !at ? mm : Object.assign({}, mm, { cells: at.cells });
 	},
 
@@ -4679,7 +4683,7 @@ return view.extend({
 		var self = this, dialect = (d.radio_settings || {}).dialect, now = Date.now();
 		var levels = list(mm.cells).length > 0 && this.wantsLevels(d, mm);
 		if (this.current !== 'radio' || d.present !== true || (dialect === 'quectel-ep06' && ((d.owner || {}).control !== 'native')) ||
-			(list(mm.cells).length && !levels) || ['foxconn-sdx', 'foxconn-t77', 'fibocom-mtk', 'quectel', 'quectel-ep06'].indexOf(dialect) < 0 ||
+			(list(mm.cells).length && !levels && dialect !== 'quectel-ep06') || ['foxconn-sdx', 'foxconn-t77', 'fibocom-mtk', 'quectel', 'quectel-ep06'].indexOf(dialect) < 0 ||
 			this.cellsBusy || (this.cellsAsked && now - this.cellsAsked < 30000)) return;
 		this.cellsAsked = now; this.cellsBusy = true;
 		(levels ? getCells(this.id, true) : getCells(this.id)).then(function(r) {
