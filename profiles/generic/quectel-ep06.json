@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "quectel-ep06",
   "extends": "quectel",
-  "description": "Quectel EP06 / EG06 / EM06 (2c7c:0306, LTE-A Cat.6): DIAG 0, NMEA 1, AT 2 primary, 3 AT/PPP, network function after them (QMI by default; ModemManager's rules name ports 0-3 for this PID whatever the usbnet mode, but a usbnet change re-enumerates and was field-reported to lose the AT port and the data interface on one host). EP06-E / EG06-E: USSD is not supported by the firmware (AT+CUSD answers OK, no network answer ever comes); not generalised to EP06-A, which shares the PID. SIM slots: two, reported by QMI UIM and ModemManager; AT+QUIMSLOT does not answer on this model (that is the EM12/RM5xx command). Band tables differ per firmware under the same PID; legacy AT+QCFG=\"band\" / \"nwscanmode\" (0 auto, 2 WCDMA, 3 LTE on EP06-E), not QNWPREFCFG",
+  "description": "Quectel EP06-E / EP06-A / EG06 on USB 2c7c:0306 (LTE Cat 6). Ports by interface: 0 DIAG, 1 GNSS, 2 primary AT, 3 secondary AT/PPP; QMI data function follows, when qmi_wwan is loaded. EP06-E has no GSM radio; legacy QCFG nwscanmode (0 auto, 2 WCDMA, 3 LTE) and QCFG band masks (firmware-dependent); do not use 5G-generation QNWPREFCFG. Never alter QCFG usbnet automatically. On EP06-E/EG06-E raw AT+CUSD was reported to acknowledge without a network reply; MM USSD/firmware variants require separate live verification.",
   "match": {
     "bus": "usb",
     "vid": "2c7c",
@@ -12,13 +12,40 @@
     "at_interface_numbers": [
       2
     ],
-    "at_source": "ModemManager 1.25.95 src/plugins/quectel/77-mm-quectel-port-types.rules (EG06/EP06 2c7c:0306: if 0 QCDM, 1 GPS, 2 AT primary, 3 AT secondary); Linux 6.12 qmi_wwan.c QMI_MATCH_FF_FF_FF for 0306",
+    "at_source": "ModemManager port-type rules for 2c7c:0306, Linux qmi_wwan matching, validated EP06-E live composition: AT on interface 2 and optionally 3; map by USB interface, not changing ttyUSB index",
     "ussd": "unconfirmed",
-    "ussd_source": "EP06-E/EG06-E: AT+CUSD answers OK and no network answer follows; another modem manager field notes via the owner's digest 2026-11-02"
+    "ussd_source": "EP06-E/EG06-E raw AT+CUSD acknowledgement without useful network reply; do not treat command OK as network delivery",
+    "sms": {
+      "owner": "modemmanager first when MM owns the modem; native only under a leased AT port",
+      "send": "PDU/UCS2 for Cyrillic and multipart; wait for CMGS prompt and +CMGS confirmation; ambiguous timeouts must not blindly resend",
+      "storage": "Avoid AT CPMS access during MM probe; distinguish SM/ME/MT, archive before purging, handle segmented messages"
+    },
+    "cell_lock": {
+      "status": "probe-required",
+      "rat": "lte",
+      "read": [
+        "AT+QNWLOCK=\"common/4g\"",
+        "AT+QNWLOCK=\"common/lte\""
+      ],
+      "write_policy": "Never write unless matching query returned a supported response, ownership exclusive and rollback recorded; common/4g cell uses mode 1, common/lte cell uses mode 2; unlock uses mode 0. In ModemManager ownership this is not currently exposed.",
+      "identifiers": [
+        "EARFCN",
+        "PCI"
+      ],
+      "persistence": "firmware-dependent"
+    },
+    "telemetry": {
+      "serving": "AT+QENG=\"servingcell\": serving LTE PCI EARFCN TAC RSRP RSRQ RSSI SINR; SINR is already dB",
+      "ca": "AT+QCAINFO: PCC/SCC EARFCN band bandwidth PCI state; SCC state 1 inactive 2 active",
+      "neighbours": "AT+QENG=\"neighbourcell\": LTE intra rows EARFCN PCI RSRQ RSRP RSSI (RSRQ before RSRP); drop invalid/truncated rows",
+      "antenna": "AT+QRSRP: PRX DRX RX2 RX3; EP06 two receive chains; -140/-32768 sentinel, never infer disconnected antenna",
+      "temperature": "AT+QTEMP: 3 or 4 signed sensor values; report maximum valid sensor reading",
+      "operator": "AT+QSPN: prefer SPN with nonnumeric fallback; network operator and SIM operator remain distinct"
+    }
   },
   "radio": {
     "dialect": "quectel",
     "status": "field-reported",
-    "source": "another modem manager 3.5.5 quirks.sh (EP06-E/EG06-E USSD unsupported; slots via QMI, live 2026-08-05; no QUIMSLOT); docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md (nwscanmode values, firmware-specific band masks; 4PDA topic 994474 post 8569 usbnet hazard)"
+    "source": "EP06-E hardware-specific QCFG/QENG/QCAINFO/QNWLOCK/QRSRP/QTEMP observations; per-firmware feature detection mandatory; docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md"
   }
 }
