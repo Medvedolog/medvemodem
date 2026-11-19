@@ -115,7 +115,7 @@ if "[h.title, h.ownerTag, nm.open" in modem:
     failures.append("modem.js: owner badge remains beside the modem title")
 if "hilink:" in COMMON or "['WEB'" in COMMON:
     failures.append("common.js: redundant WEB owner badge is still defined")
-if "var VIEW_VERSION = '0.16.0-alpha1-r9';" not in settings:
+if "var VIEW_VERSION = '0.16.0-alpha1-r10';" not in settings:
     failures.append("settings.js: expected r9 source version")
 
 if failures:
