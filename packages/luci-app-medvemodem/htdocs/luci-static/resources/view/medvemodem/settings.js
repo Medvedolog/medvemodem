@@ -2066,7 +2066,14 @@ return view.extend({
 	reset: function() {
 		var self = this, c = this.core;
 		/* unset means on, except failover: it moves routes, so only when asked for */
-		Object.keys(this.boxes).forEach(function(k) { self.boxes[k].checked = k === 'failover' || k === 'cell_info' || k === 'dns_check' || k === 'sms_keep_all' ? c[k] === '1' : c[k] !== '0'; });
+		Object.keys(this.boxes).forEach(function(k) {
+			if (k === 'owner_badges') {
+				try { self.boxes[k].checked = localStorage.getItem('mm:owner-badges') === '1'; } catch (e) { self.boxes[k].checked = false; }
+				return;
+			}
+			self.boxes[k].checked = k === 'failover' || k === 'cell_info' || k === 'dns_check' || k === 'sms_keep_all' ? c[k] === '1' : c[k] !== '0';
+		});
+		this.selects.update_channel.value = c.update_channel === 'bench' ? 'bench' : 'release';
 		this.selects.failback.value = c.failback === 'demote' ? 'demote' : 'restore';
 		this.selects.failover_flush.value = c.failover_flush === 'all' || c.failover_flush === '0' ? c.failover_flush : 'link';
 		this.selects.radio_lock_guard.value = ['0', '5', '15'].indexOf(c.radio_lock_guard) >= 0 ? c.radio_lock_guard : '10';
@@ -2080,7 +2087,7 @@ return view.extend({
 
 	/* checks first, then one commit: a half-saved form never reaches the engine */
 	store: function() {
-		var self = this, f = JSON.parse(this.read()), bad = [];
+		var self = this, f = JSON.parse(this.read()), bad = [], previousChannel = this.core.update_channel === 'bench' ? 'bench' : 'release';
 		var q = function(v) { return _('“%s”').format(v); };
 		f.reach_target.forEach(function(v) { if (target(v) !== true) bad.push(q(v)); });
 		f.reach_restricted.forEach(function(v) { if (v !== 'none' && target(v) !== true) bad.push(q(v)); });
@@ -2089,7 +2096,8 @@ return view.extend({
 		if (bad.length) { this.say(_('Manual-only channels: %s — a network device name is needed, for example wlan0.').format(bad.map(q).join(', ')), true); return Promise.resolve(); }
 		var ops = [], drop = [], values = { auto_connect: f.auto_connect ? '1' : '0', auto_recovery: f.auto_recovery ? '1' : '0', host_fixes: f.host_fixes ? '1' : '0', failover: f.failover ? '1' : '0',
 			failover_dns: f.failover_dns ? '1' : '0', proxy_guard: f.proxy_guard ? '1' : '0', dns_check: f.dns_check ? '1' : '0', failback: f.failback, failover_flush: f.failover_flush, radio_lock_guard: f.radio_lock_guard,
-			cell_info: f.cell_info ? '1' : '0', antennas: f.antennas ? '1' : '0', web_forward: f.web_forward ? '1' : '0', status_overview: f.status_overview ? '1' : '0', sms_archive: f.sms_archive ? '1' : '0', sms_keep_all: f.sms_keep_all ? '1' : '0' };
+			cell_info: f.cell_info ? '1' : '0', antennas: f.antennas ? '1' : '0', web_forward: f.web_forward ? '1' : '0', status_overview: f.status_overview ? '1' : '0', sms_archive: f.sms_archive ? '1' : '0', sms_keep_all: f.sms_keep_all ? '1' : '0',
+			update_channel: f.update_channel === 'bench' ? 'bench' : 'release' };
 		/* an emptied list is deleted only when the config has it: deleting an absent option is ubus «not found» (bench, 2026-10-09) */
 		['reach_target', 'reach_restricted', 'failover_manual', 'restart_on_uplink'].forEach(function(k) { if (f[k].length) values[k] = f[k]; else if (self.core[k] != null) drop.push(k); });
 		/* none ticked is «-»: an absent list is the engine's own choice (ZeroBlock when installed) */
@@ -2110,8 +2118,11 @@ return view.extend({
 			.then(function(r) {
 				self.core = (r[0] && r[0].values && r[0].values.core) || {};
 				self.names = (r[1] && r[1].values) || {};
+				try { localStorage.setItem('mm:owner-badges', f.owner_badges ? '1' : '0'); } catch (e) {}
 				self.reset();
 				self.say(_('Saved. The MedveModem service applies the changes itself.'));
+				if (previousChannel !== (f.update_channel === 'bench' ? 'bench' : 'release'))
+					self.updateRefresh(true);
 			}, function(e) {
 				/* nothing half-done stays staged for a later commit */
 				self.save.disabled = false;
