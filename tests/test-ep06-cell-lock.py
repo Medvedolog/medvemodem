@@ -94,11 +94,11 @@ int main(void) {
     trial("+QNWLOCK: \"common/4g\",1,1749,504", "common/4g",
           false, "", 0, 0, 0);
     trial("+QNWLOCK: \"common/lte\",0,0,0,0", "common/lte",
-          true, "0,0,0,0", 0, 0, 0);
+          true, "0", 0, 0, 0);
     trial("+QNWLOCK: \"common/lte\",2,1749,226,0", "common/lte",
-          true, "2,1749,226,0", 1, 1749, 226);
+          true, "2,1749,226", 1, 1749, 226);
     trial("+QNWLOCK: \"common/lte\",1,1749,0,0", "common/lte",
-          true, "1,1749,0,0", 1, 1749, -1);
+          true, "1,1749,0", 1, 1749, -1);
     trial("+QNWLOCK: \"common/lte\",2,1749,226,1", "common/lte",
           false, "", 0, 0, 0); /* incomplete locking */
     trial("AT+QNWLOCK=\"common/4g\"\r\nERROR", "common/4g",
