@@ -21,18 +21,18 @@
       "storage": "Avoid AT CPMS access during MM probe; distinguish SM/ME/MT, archive before purging, handle segmented messages"
     },
     "cell_lock": {
-      "status": "probe-required",
+      "status": "implemented-native-at-probe",
       "rat": "lte",
       "read": [
         "AT+QNWLOCK=\"common/4g\"",
         "AT+QNWLOCK=\"common/lte\""
       ],
-      "write_policy": "Do not expose a write until the exact QNWLOCK read dialect is confirmed by this firmware, the previous lock is captured, an exclusive engine-owned AT port is leased, and rollback is available. common/4g and common/lte forms are not interchangeable; MM ownership is read-only/no direct AT access.",
+      "write_policy": "Read both common/4g and common/lte on engine-owned AT. Only permit an explicitly selected EARFCN+PCI after a valid, fully parsed QNWLOCK reply with captured rollback. /4g count/tuples and /lte action/status must be distinguished; preserve multi-cell history. Under ModemManager/QModem ownership no direct AT.",
       "identifiers": [
         "EARFCN",
         "PCI"
       ],
-      "persistence": "firmware-dependent"
+      "persistence": "common/lte not saved; common/4g persistence firmware-dependent; never change save_ctrl automatically"
     },
     "telemetry": {
       "serving": "AT+QENG=\"servingcell\": LTE PCI EARFCN TAC RSRP RSRQ RSSI SINR, LTE bandwidth is an index (0=1.4,1=3,2=5,3=10,4=15,5=20 MHz); SINR is already dB, do not rescale.",
@@ -59,7 +59,7 @@
     }
   },
   "radio": {
-    "dialect": "quectel",
+    "dialect": "quectel-ep06",
     "status": "field-reported",
     "source": "EP06-E hardware-specific QCFG/QENG/QCAINFO/QNWLOCK/QRSRP/QTEMP observations; per-firmware feature detection mandatory; docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md"
   }
