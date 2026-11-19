@@ -12483,3 +12483,15 @@ msgstr ""
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Update MedveModem to %s? Only outdated package families are replaced: engine/LuCI and/or Telegram bot/LuCI. Settings stay. LuCI reloads its pages afterwards."
 msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "QModem was selected but did not create a modem-device section, and qmodem_network is not running. It has not taken ownership; check the QModem service and AT-port detection, or choose another backend."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "QModem was selected but did not create a modem-device section. It has not taken ownership; check AT-port detection or choose another backend."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "QModem handoff pending"
+msgstr ""
