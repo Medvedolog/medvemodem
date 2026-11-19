@@ -7131,8 +7131,7 @@ static int metrics_launch(struct ubus_context *ctx, struct ubus_request_data *re
 		else if (qmodem_foreign_port(rec, sec))
 			rc = metrics_refuse(ctx, req, id, "QModem's section names an AT port that is not this modem's; nothing is sent");
 		else {
-			/* QModem's cached cell_info contains RAT, MCC/MNC and serving-cell levels.
-			 * Keep the core signal reading independent of optional carrier/CA enrichment calls. */
+			/* One cached QModem cell_info snapshot contains RAT, MCC/MNC, serving-cell levels and CA summary. */
 			cmds = json_object_new_array();
 			json_object_array_add(cmds, json_object_new_string("cell_info"));
 			x = json_object_new_object();
