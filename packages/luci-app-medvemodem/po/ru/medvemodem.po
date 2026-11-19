@@ -12600,3 +12600,7 @@ msgstr "Опубликованные релизы"
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Published releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking."
 msgstr "Для обычного использования выбирайте опубликованные релизы проекта. Тестовые сборки экспериментальные и могут отсутствовать для отдельных архитектур роутеров и версий OpenWrt. Перед проверкой сохраните выбранный канал."
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Published versioned releases, including tagged prereleases such as Alpha, are the normal channel. Test builds (bench) are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking."
+msgstr "Опубликованные версии с тегами релизов, включая предварительные выпуски Alpha, — основной канал. Тестовые сборки (bench) экспериментальные и могут отсутствовать для отдельных архитектур роутеров и версий OpenWrt. Перед проверкой сохраните выбранный канал."
