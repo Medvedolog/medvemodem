@@ -54,3 +54,19 @@ Do **not** add new branches for EP06 work. Update **handoff + highlights + Russi
 Control issue: [#14](https://github.com/Medvedolog/medvemodem/issues/14). The exact comment `/medvemodem publish r8` by GitHub login `Medvedolog` triggers only the `release-command-r8.yml` bridge, which invokes `build.yml` with `workflow_dispatch`, `publish_release=true`, `release_tag=v0.16.0-alpha1-r8`. All other comments and authors skip the dispatch job. The builder itself remains manual-only. No QModem build or PR/push SDK trigger is enabled.
 
 After the explicit owner command, inspect the build run, gate outcomes and release assets. If any test or package fails, **do not** call r8 published. The one-shot bridge should be retired after successful release. This command is a user-authorized exception to the normal lack of automatic builds, not a recurring publishing scheduler.
+
+## Post-r8 incident: EP06-E native QMI choice silently not applied (2026-11-19)
+
+**Field evidence:** after installing the published r8 on the router, the operator selected native management for EP06-E but saw no lower toast, no clear result beside Save and no effective switch away from ModemManager.
+
+**Root causes found in source:** `saveConnection()` and `handOver()` never called the common `mm.toast()` notification for owner changes and treated `bringup: started` as the last UI response; the actual owner release was asynchronous and its failure was not displayed. LuCI's EP06 `withAtCells()` and `askCells()` checked the impossible literal `owner.control === "native"` although the daemon reports `netifd-qmi`, `netifd-mbim` or `medvemodem-at`. Native QMI selection also depended unnecessarily on an exact resolved modem profile even if a genuine `qmi_wwan` + `/dev/cdc-wdm*` control function was present.
+
+**Post-r8 source fixes on main (NOT present in the already published r8 packages):**
+- LuCI native choice now accepts a discovered QMI/MBIM control driver and node independently of exact profile matching. This does not change automatic owner priority, and `uqmi` or `umbim` is still required for the selected netifd protocol.
+- Both standard Save and foreign-interface handover report progress in three places: top action message, visible status beside Save and shared bottom toast. UCI readback verifies the saved `backend` option before starting `bringup`.
+- A `started` response is explicitly pending, **not** success. The next 5-second device polls verify the chosen UCI backend, real `owner.control`, `backend` ledger and session state; detect owner conflicts, incomplete transfer, missing connection or timeout, with explanations.
+- EP06 native `QENG` cell readings now recognize `netifd-qmi`, `netifd-mbim` and `medvemodem-at`, instead of a nonexistent `native` control label.
+- Russian translations added for all new statuses. `tests/test-luci-frontend.py` statically gates the owner-reporting contracts; the real-view Chromium suite exercises persistence, pending result, native-QMI handover confirmation, toast and fresh EP06 cells.
+- A manual-only lightweight frontend QA path `/medvemodem qa luci` on control issue #14 runs two jobs without OpenWrt SDK. It does not start package compilation or publication.
+
+**Important:** Do not report a fixed installed r8; the correction requires a later versioned package/release and on-router acceptance. On the r8 router, inspect `uci show medvemodem | grep backend`, `ubus call medvemodem devices`, and `logread -e medvemodem -e ModemManager` to distinguish unsaved preference, refused bring-up and failed ModemManager release. Do not issue direct AT commands while MM owns the modem.
