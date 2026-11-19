@@ -390,18 +390,54 @@ static bool qmodem_metric_integer(const char *value, long long *out)
 	return true;
 }
 
+static int qmodem_split_values(const char *src, char out[][48], int max)
+{
+	char buf[256], *save = NULL, *p;
+	int n = 0;
+
+	if (!src || !*src)
+		return 0;
+	snprintf(buf, sizeof(buf), "%s", src);
+	for (p = strtok_r(buf, "/", &save); p && n < max; p = strtok_r(NULL, "/", &save)) {
+		char *end;
+		while (*p == ' ' || *p == '\t')
+			p++;
+		end = p + strlen(p);
+		while (end > p && (end[-1] == ' ' || end[-1] == '\t'))
+			*--end = '\0';
+		if (*p)
+			snprintf(out[n++], sizeof(out[0]), "%s", p);
+	}
+	return n;
+}
+
+static bool qmodem_band_number(const char *value, long long *out)
+{
+	const char *p = value;
+	while (*p && !isdigit((unsigned char)*p))
+		p++;
+	return *p && qmodem_metric_integer(p, out);
+}
+
 json_object *mm_qmodem_metrics(json_object *responses)
 {
 	json_object *m = json_object_new_object(), *nr = json_object_new_object(), *info = NULL, *cur = m;
-	char mcc[8] = "", mnc[8] = "";
+	char mcc[8] = "", mnc[8] = "", ca_type[16] = "";
+	char ca_pci[256] = "", ca_earfcn[256] = "", ca_band[256] = "", ca_ul[256] = "", ca_dl[256] = "";
 	size_t i;
 
 	json_object_object_get_ex(json_object_object_get(responses, "cell_info"), "modem_info", &info);
 	for (i = 0; info && json_object_is_type(info, json_type_array) && i < json_object_array_length(info); i++) {
 		json_object *e = json_object_array_get_idx(info, i), *kv = NULL, *vv = NULL;
-		const char *k, *v;
+		const char *k, *v, *extra = NULL;
 		char *end;
 		double d;
+
+		{
+			json_object *x = NULL;
+			if (json_object_object_get_ex(e, "extra_info", &x) && json_object_is_type(x, json_type_string))
+				extra = json_object_get_string(x);
+		}
 
 		if (!json_object_object_get_ex(e, "key", &kv) || !json_object_object_get_ex(e, "value", &vv))
 			continue;
@@ -409,6 +445,20 @@ json_object *mm_qmodem_metrics(json_object *responses)
 		v = json_object_get_string(vv);
 		if (!k || !v)
 			continue;
+		if (extra && (!strcmp(extra, "CA-LTE") || !strcmp(extra, "CA-NR"))) {
+			snprintf(ca_type, sizeof(ca_type), "%s", extra);
+			if (!strcmp(k, "Physical Cell ID (CA)"))
+				snprintf(ca_pci, sizeof(ca_pci), "%s", v);
+			else if (!strcmp(k, "EARFCN (CA)") || !strcmp(k, "ARFCN (CA)"))
+				snprintf(ca_earfcn, sizeof(ca_earfcn), "%s", v);
+			else if (!strcmp(k, "Band (CA)"))
+				snprintf(ca_band, sizeof(ca_band), "%s", v);
+			else if (!strcmp(k, "UL Bandwidth (CA)"))
+				snprintf(ca_ul, sizeof(ca_ul), "%s", v);
+			else if (!strcmp(k, "DL Bandwidth (CA)"))
+				snprintf(ca_dl, sizeof(ca_dl), "%s", v);
+			continue;
+		}
 		if (!strcmp(k, "network_mode")) {
 			json_object_object_add(m, "access_technology", json_object_new_string(
 				strstr(v, "SA") && !strstr(v, "NSA") ? "nr" : strstr(v, "NSA") || strstr(v, "EN-DC") ? "nr-nsa" :
@@ -462,6 +512,44 @@ json_object *mm_qmodem_metrics(json_object *responses)
 
 		snprintf(code, sizeof(code), "%.3s%.3s", mcc, mnc);
 		json_object_object_add(m, "operator", json_object_new_string(code));
+	}
+	/* QModem's structured CA summary replaces the redundant second GTCAINFO query. */
+	if (ca_type[0]) {
+		char pci[8][48] = {{0}}, earfcn[8][48] = {{0}}, band[8][48] = {{0}}, ul[8][48] = {{0}}, dl[8][48] = {{0}};
+		int np = qmodem_split_values(ca_pci, pci, 8), ne = qmodem_split_values(ca_earfcn, earfcn, 8);
+		int nb = qmodem_split_values(ca_band, band, 8), nu = qmodem_split_values(ca_ul, ul, 8);
+		int nd = qmodem_split_values(ca_dl, dl, 8), count = np;
+		json_object *cells = json_object_new_array(), *ca = json_object_new_object();
+		int j;
+
+		if (ne > count) count = ne;
+		if (nb > count) count = nb;
+		if (nu > count) count = nu;
+		if (nd > count) count = nd;
+		for (j = 0; j < count; j++) {
+			json_object *c = json_object_new_object();
+			long long value;
+			json_object_object_add(c, "role", json_object_new_string("secondary"));
+			json_object_object_add(c, "type", json_object_new_string(!strcmp(ca_type, "CA-NR") ? "5gnr" : "lte"));
+			if (j < nb && qmodem_band_number(band[j], &value))
+				json_object_object_add(c, "band", json_object_new_int64(value));
+			if (j < np && qmodem_metric_integer(pci[j], &value))
+				json_object_object_add(c, "pci", json_object_new_int64(value));
+			if (j < ne && qmodem_metric_integer(earfcn[j], &value))
+				json_object_object_add(c, "earfcn", json_object_new_int64(value));
+			if (j < nd && strtod(dl[j], &end) >= 0 && end != dl[j])
+				json_object_object_add(c, "bandwidth_mhz", json_object_new_double(strtod(dl[j], NULL)));
+			if (j < nu && strtod(ul[j], &end) >= 0 && end != ul[j])
+				json_object_object_add(c, "ul_bandwidth_mhz", json_object_new_double(strtod(ul[j], NULL)));
+			json_object_array_add(cells, c);
+		}
+		if (json_object_array_length(cells)) {
+			json_object_object_add(ca, "cells", cells);
+			json_object_object_add(m, "ca", ca);
+		} else {
+			json_object_put(cells);
+			json_object_put(ca);
+		}
 	}
 	/* SA: the only cell is 5G, the page reads it as such */
 	if (json_object_object_length(nr))
