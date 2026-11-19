@@ -2,7 +2,7 @@
 
 ## Source-only r9 — updater and settings UX (2026-11-19)
 
-- The LuCI updater now reports the engine, its LuCI, Telegram bot and bot LuCI versions independently. Any installed component older than the selected release makes the update available; the update transaction refreshes both bot packages whenever either bot package is installed.
+- The LuCI updater now reports the engine, its LuCI, Telegram bot and bot LuCI versions independently. Any installed component older than the selected release makes the update available; the updater refreshes only the outdated package family, keeping engine/LuCI and bot/bot-LuCI paired.
 - Published versioned releases (including tagged prereleases) are the default updater channel. LuCI now offers an explicit stable/bench selector saved through the common Save/Revert form. Cached checks are tagged with their channel, so results from a previous channel cannot masquerade as current; stale and channel-mismatched results are checked again.
 - Russian translations added for channel selection, updater status/errors and the optional modem-management badge preference.
 - Move the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the Save button's dirty state and is written to this browser's localStorage only after the common Save succeeds.
