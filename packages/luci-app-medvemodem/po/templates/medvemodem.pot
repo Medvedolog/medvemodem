@@ -12479,3 +12479,7 @@ msgstr ""
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Published versioned releases, including tagged prereleases such as Alpha, are the normal channel. Test builds (bench) are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking."
 msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Update MedveModem to %s? Only outdated package families are replaced: engine/LuCI and/or Telegram bot/LuCI. Settings stay. LuCI reloads its pages afterwards."
+msgstr ""
