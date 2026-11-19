@@ -2031,7 +2031,8 @@ static json_object *radio_view(json_object *dev)
 
 		if (!strcmp(via, "none"))
 			nowrite = "read the settings first";
-		else if (!strcmp(via, "at") && !(dialect && (!strcmp(dialect, "quectel") || !strncmp(dialect, "foxconn-", 8) ||
+		else if (!strcmp(via, "at") && !(dialect && (!strcmp(dialect, "quectel") ||
+							   !strcmp(dialect, "quectel-ep06") || !strncmp(dialect, "foxconn-", 8) ||
 							   !strcmp(dialect, "fibocom-mtk"))))
 			nowrite = "writing this modem's AT dialect is not done yet";
 		else if (!strcmp(via, "at") && !strcmp(dialect, "quectel-ep06") &&
