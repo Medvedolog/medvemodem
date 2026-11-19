@@ -70,3 +70,12 @@ After the explicit owner command, inspect the build run, gate outcomes and relea
 - A manual-only lightweight frontend QA path `/medvemodem qa luci` on control issue #14 runs two jobs without OpenWrt SDK. It does not start package compilation or publication.
 
 **Important:** Do not report a fixed installed r8; the correction requires a later versioned package/release and on-router acceptance. On the r8 router, inspect `uci show medvemodem | grep backend`, `ubus call medvemodem devices`, and `logread -e medvemodem -e ModemManager` to distinguish unsaved preference, refused bring-up and failed ModemManager release. Do not issue direct AT commands while MM owns the modem.
+
+### Source-only QA result (2026-11-19)
+
+- [x] Final manual frontend contract/JS syntax run: [Actions #44478836837](https://github.com/Medvedolog/medvemodem/actions/runs/44478836837), **success**.
+- [x] Final Chromium real LuCI view smoke (including UCI write/readback, progress toast, not treating `started` as success, and `netifd-qmi` cells): same run, **success**.
+- [x] Previous manual smoke baseline: [Actions #44478393451](https://github.com/Medvedolog/medvemodem/actions/runs/44478393451), **success**.
+- [ ] OpenWrt SDK packaging for **the post-r8 fix**: not started (the published r8 already predates the fix; a new package revision/tag is required).
+- [ ] Physical EP06-E owner handover / SMS / QNWLOCK acceptance on router: not yet verified.
+- No OpenWrt SDK jobs, release creation, or tag moves were triggered by these QA runs.
