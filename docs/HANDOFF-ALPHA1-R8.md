@@ -155,7 +155,7 @@ Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inh
 
 ## R9 source changes — updater and settings UX (2026-11-19)
 
-- Fixed the LuCI updater's version model: engine, engine LuCI, Telegram bot and bot LuCI are compared independently against the selected release. A stale bot package now offers an update even when the engine is current. The updater installs the engine/LuCI pair and, when either bot package is present, the bot/LuCI pair.
+- Fixed the LuCI updater's version model: engine, engine LuCI, Telegram bot and bot LuCI are compared independently against the selected release. A stale bot package now offers an update even when the engine is current. The updater selects the engine/LuCI or bot/bot-LuCI pair independently and installs only the outdated family.
 - Added a persistent UCI `core.update_channel` setting with `release` as the default and explicit `bench` opt-in. LuCI offers the choice through the common Save/Revert form. Check cache entries now include their channel; an old-channel result is not presented as current. Error checks are timestamped and stale/channel-mismatched results are retried.
 - Updater status now lists all four installed package versions, the available release, channel and check time; known no-build errors are translated into Russian.
 - Moved the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the common Save dirty state; localStorage is updated only after Save succeeds. It remains a browser-local preference and does not change modem ownership or UCI engine behavior.
