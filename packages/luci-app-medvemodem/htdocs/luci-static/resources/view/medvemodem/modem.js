@@ -2042,7 +2042,8 @@ return view.extend({
 					E('dt', {}, _('Signal')), E('dd', {}, [h.bars, h.sig, h.ca])]),
 				E('dl', { 'class': 'mm-kv' }, [E('dt', {}, _('Address')), h.addr, h.uptimeDt = E('dt', {}, _('Session')), h.uptime,
 					E('dt', {}, _('Traffic')), h.traffic, E('dt', {}, _('Speed')), h.rates])]),
-			E('div', { 'class': 'mm-actions' }, [h.connect, h.check, menu])]);
+			E('div', { 'class': 'mm-actions' }, [h.connect, h.check, menu]),
+			h.ownerTag]);
 		return h;
 	},
 
