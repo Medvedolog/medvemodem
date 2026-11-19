@@ -79,6 +79,7 @@ if "control !== 'native'" in modem:
 
 # Settings regressions: the owner badge preference must be part of the common
 # Save/Revert form and live at the bottom of the diagnostics tab.
+dashboard = (BASE / "view/medvemodem/dashboard.js").read_text(encoding="utf-8")
 settings = VIEWS["settings"]
 for token in (
     "this.boxes.owner_badges = box",
@@ -96,6 +97,24 @@ if "['rec', _('Modems'), [this.ownerBadgePref()" in settings:
     failures.append("settings.js: owner badge preference is not at the bottom of Diagnostics")
 if "c.pkgs, c.mmr, this.ownerBadgePref()" not in settings:
     failures.append("settings.js: owner badge preference is not last in Diagnostics")
+
+# Owner badges belong in the lower-right corner of each modem card/page,
+# not beside the modem title or in the toolbar/table. HiLink's WEB link
+# already identifies that interface and must not be duplicated as an owner.
+for token in ("refs.ownerTag\\n", "mm-mcard > .mm-owner-tag"):
+    if token not in dashboard:
+        failures.append(f"dashboard.js: missing bottom-right owner badge placement: {token}")
+for token in ("h.ownerTag]);", "mm-hero > .mm-owner-tag"):
+    if token not in modem and token not in (ROOT / "packages/luci-app-medvemodem/htdocs/luci-static/resources/medvemodem/dashboard.css").read_text(encoding="utf-8"):
+        failures.append(f"modem.js/CSS: missing bottom-right owner badge placement: {token}")
+if "refs.ownerTag, refs.autofixBadge" in dashboard:
+    failures.append("dashboard.js: owner badge remains in the top icon row")
+if "card.ownerTag.cloneNode(true)" in dashboard:
+    failures.append("dashboard.js: owner badge remains in the modem table")
+if "[h.title, h.ownerTag, nm.open" in modem:
+    failures.append("modem.js: owner badge remains beside the modem title")
+if "hilink:" in COMMON or "['WEB'" in COMMON:
+    failures.append("common.js: redundant WEB owner badge is still defined")
 if "var VIEW_VERSION = '0.16.0-alpha1-r9';" not in settings:
     failures.append("settings.js: expected r9 source version")
 
