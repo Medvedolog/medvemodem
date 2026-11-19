@@ -91,3 +91,25 @@ After the explicit owner command, inspect the build run, gate outcomes and relea
 - [x] Preserved current owner policy: `modemmanager` first, USB-only `05c6:90d5` with model match, no direct AT while MM owns it, no automatic switching, DIAG/FTM/writes disabled, no driver rebind or USB reset. The private PCIe QMI-over-MBIM AT gateway is **not implemented**.
 - [ ] Live testing of the vendor PCIe/USB AT transport, especially Retail behaviour, requires a physical bench and explicit operator consent. No modem write commands or modem-side reset were run.
 - [ ] No build or release was requested for this zoo/profile-only knowledge update; published r8 binaries remain unchanged.
+
+
+## Physical EP06-E diagnostic upload — 2026-11-19 09:22 (post-r8)
+
+**Measured report:** r8 engine `0.16.0_alpha1-r8`, OpenWrt 25.12.6 `aarch64_generic`, Linux 6.12.112, Quectel EP06-E **EP06ELAR04A06M4G**, USB `2c7c:0306`. Exact profile `quectel-ep06`; QMI host driver and nodes `qmi_wwan`, `/dev/cdc-wdm1`, `wwan1`. AT: `/dev/ttyUSB5` (interface 2; previously used by pppd) and `/dev/ttyUSB6` (interface 3, selected by MM). GNSS `ttyUSB4`, MM-ignored `ttyUSB3`. **Do not hard-code ttyUSB numbers: use USB interface role mapping.**
+
+- [x] MM is connected and fully functional (`mm5`, MTS RUS LTE, APN `internet.mts.ru`, data-path `wwan1`); report shows RSRP −82, RSRQ −12, SINR 3.4. Reach probe OK and modem backup-ready.
+- [x] Confirmed **failed/nonpersisted native selection at capture**: `connection.backend = auto` and `owner.control/session/at = modemmanager`. No evidence of native `uqmi` invocation. The reported QMI nodes exist, so lack of `qmi_wwan` is not the explanation.
+- [x] The 09:08:40 operator freeze inhibited MM and tore down `mm5`; at 09:08:42 the operator released inhibition; MM reacquired and reconnected at 09:08:59. This is **not** a successful native handover. A brief freeze/unfreeze sequence may be the separate freeze control, not the backend Save; do not conflate them.
+- [x] Confirmed inherited generic Quectel `qmodem`-first policy for the EP06 profile; added **EP06-specific MM-first owner_priority** with explicit-only native QMI/QModem. Protect existing working MM and prohibit automatic AT/QMI contention.
+- [x] Saved measured firmware/topology in `profiles/generic/quectel-ep06.json` and linked analysis in `docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md`.
+- [ ] **Cause of the failed r8 Save is not proven by the report alone**: no raw LuCI-to-ubus RPC, UCI commit trace, or post-selection live `backend=native` state. Existing source-level corrections on main require a new versioned build.
+- [ ] Check exact EP06 firmware `EP06ELAR04A06M4G` on router under explicitly chosen native QMI, with independent Ethernet recovery, before claiming `QNWLOCK` writes or native SMS/AT support.
+- [ ] New SDK package not started and published r8 unaffected.
+
+**Safe read-only check on that router**, if an operator repeats the Save test without disturbing MM:
+```sh
+uci show medvemodem | grep -E 'backend|\.id='
+ubus call medvemodem devices
+logread -e medvemodemd -e ModemManager | tail -n 90
+```
+Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inhibition just to collect evidence.
