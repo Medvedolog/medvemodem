@@ -5,6 +5,13 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 command -v cc >/dev/null 2>&1 || { echo "missing host C compiler" >&2; exit 2; }
 pkg-config --exists json-c || { echo "missing json-c host headers" >&2; exit 2; }
+engine="$root/src/medvemodemd.c"
+grep -Fq 'argv[0] = "/bin/ubus"' "$engine"
+grep -Fq 'argv[4] = "qmodem"' "$engine"
+grep -Fq 'argv[1] = "-t"' "$engine"
+grep -Fq 'json_object_new_string("cell_info")' "$engine"
+! grep -Fq 'json_object_new_string("sim_info")' "$engine"
+! grep -Fq 'FIBOCOM_OPERATOR' "$engine"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 cat > "$tmp/test.c" <<'EOF'
