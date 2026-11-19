@@ -77,6 +77,29 @@ for token in (
 if "control !== 'native'" in modem:
     failures.append("modem.js: invalid owner.control === native assumption")
 
+# Settings regressions: the owner badge preference must be part of the common
+# Save/Revert form and live at the bottom of the diagnostics tab.
+settings = VIEWS["settings"]
+for token in (
+    "this.boxes.owner_badges = box",
+    "self.dirty();",
+    "localStorage.setItem('mm:owner-badges', f.owner_badges ? '1' : '0')",
+    "if (k === 'owner_badges')",
+    "this.selects.update_channel = u.channel",
+    "update_channel: f.update_channel === 'bench' ? 'bench' : 'release'",
+    "row(_('LuCI Telegram bot'), ins.luci_bot)",
+    "needs_update",
+    "Save the selected update channel first.",
+):
+    if token not in settings:
+        failures.append(f"settings.js: missing settings/updater contract: {token}")
+if "['rec', _('Modems'), [this.ownerBadgePref()" in settings:
+    failures.append("settings.js: owner badge preference is not at the bottom of Diagnostics")
+if "c.pkgs, c.mmr, this.ownerBadgePref()" not in settings:
+    failures.append("settings.js: owner badge preference is not last in Diagnostics")
+if "var VIEW_VERSION = '0.16.0-alpha1-r9';" not in settings:
+    failures.append("settings.js: expected r9 source version")
+
 if failures:
     print("LuCI frontend contract check FAILED:", file=sys.stderr)
     for message in failures:
