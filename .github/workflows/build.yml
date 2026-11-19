@@ -1,27 +1,16 @@
 # Public OpenWrt package builds.
-# Markdown-only commits are handled by docs.yml, not six SDK jobs.
+# Run only by explicit workflow_dispatch. No push, PR or tag-triggered SDK builds.
+# Use the publish_release switch explicitly with a version tag to publish.
 name: build
 
 on:
-  push:
-    branches: [main]
-    tags:
-      - 'v*'
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'screenshots/**'
-      - 'tools/build-qmodem.sh'
-      - '.github/ISSUE_TEMPLATE/**'
-  pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'screenshots/**'
-      - 'tools/build-qmodem.sh'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/workflows/**'
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish a version-tagged release after the build (normally off)'
+        type: boolean
+        required: true
+        default: false
 
 concurrency:
   group: packages-${{ github.ref }}
@@ -82,7 +71,7 @@ jobs:
 
   release:
     name: Publish tagged release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true && startsWith(github.ref, 'refs/tags/v')
     needs: packages
     runs-on: ubuntu-latest
     permissions:
