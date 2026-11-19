@@ -71,10 +71,28 @@ composition is not confirmed in our sources (HANDOFF 82 notes the `AT+` prefix o
 6. **Power.** An X72 with an adapter draws more than a USB 2 port gives; drops on a weak port are expected. Use a USB 3
    port or a powered adapter.
 
+## New: SDX72 firmware AT / factory diagnostics research (18 Nov 2026)
+
+The owner supplied a **35-page T99W640/DW5934e AT/DIAG technical study v2.4**. [The detailed firmware notes](foxconn-t99w640-at-diag.md) preserve the AP/CP split, a curated AT read-only inventory, the LTE and NR lock formats, all **34 factory ftm subcommands**, the QCDM packet inventory, selected NV/EFS identifiers and risks.
+
+**Provenance boundary:** read-only commands were tested on ENG firmware; Retail was cross-checked with static binary analysis. Destructive or state-changing forms were documented from reverse engineering **without physical write tests**. MedveModem does **not** interpret this as permission to access a live managed device or implement an automatic FCC, DIAG, FTM, NV/EFS or Cell Lock write. No new driver binding or session-control action is implied.
+
+Operationally important discoveries:
+
+- **Vendor interface:** the PCIe host MBIM node (typically \`/dev/wwan0mbim0\`) can carry proprietary AT_OVER_MBIM via QMI; plain PCIe DUN \`/dev/wwan0at0\` may be unusable on Retail. USB may expose ordinary AT in an appropriate composition, but the current \`05c6:90d5\` profile cannot assume a host tty is present.
+- **LTE locking:** exact on-chip syntax is \`AT+LTE_LOCK=<PCI>,<EARFCN>\`, **PCI first**, up to eight pairs. Only \`AT+LTE_LOCK?\` is a read; bare \`AT+LTE_LOCK\` clears the lock. NR locking has separate \`<band>,<scs>,<nr_arfcn>,<count>,<pci...>\` fields. Neither write path is enabled.
+- **CA and modes:** \`AT+CA_INFO?\` reports PCC/SCC; \`AT+CA_ENABLE=0\` **enables** CA, nonzero values disable. SDX72 \`SLMODE\` accepts a persist/temporary flag plus enumerated mode 0..7, **not SDX55's RAT-bitmask form**.
+- **Sensors and antenna levels:** \`AT+TEMP?\` reads TSENS/PA/Skin/Ambient, \`AT$QCTEMP\` reads CP temperature, \`AT$QCRSRP\` / \`AT$QCRSRQ\` give per-Rx signal levels, and \`AT+RSSI=LTE,ALL\` is the parameterized antenna read. These are reference-only under MM ownership.
+- **Forbidden even for reading:** on ENG \`AT+VZWRSRP?\` and \`AT+VZWRSRQ?\` caused an immediate **MHI SSR crash**. The Retail handler looked similar statically; never auto-query them. Bare \`AT+ODIS\` resets ODIS settings and bare \`AT+ULCA\` alters EFS; never infer read safety from a command name.
+- **FCC:** \`AT+FCC_LOCK=0\` / \`ftm unlock_fcc\` do **not** replace authenticated host QMI FCC unlock. The factory \`ftm\` dispatcher is not \`AT+FTM\` and is not implemented here.
+- **DIAG:** QCDM is a separate HDLC-framed port; PCIe transport may need AP-side activation. DIAG reads and all NV/EFS, GPIO, USB PID, EDL and factory operations are **not** exposed by the profile.
+
+**Status remains experimental, USB MBIM and ModemManager-managed.** This research improves support knowledge, not the actual AT-over-MBIM driver or physical compatibility; field-reported thermal cycling and the PCIe/USB coexistence issue remain unresolved.
+
 ## MedveModem's behaviour (profile `foxconn-t99w640-mbim`)
 
 - ModemManager owns it (`mm_ports: control`), the session through netifd's ModemManager proto, MBIM.
-- No AT console, no radio dialect, no `new_id`, no rebind.
+- No direct AT console while MM owns it, no active radio dialect or vendor AT-over-MBIM bridge, no `new_id`, no rebind. Firmware command metadata is documented only.
 - Recovery on the operator's request only (`field-reported`): reconnect, radio off/on and a reset through
   ModemManager; no USB re-authorize, no port power cycle; 90 s to settle (the X72 boots slowly).
 - What to send for a bench profile: `lsusb -t`, `cat /sys/kernel/debug/usb/devices` for the modem, `mmcli -m any`,
