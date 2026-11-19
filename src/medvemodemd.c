@@ -7460,10 +7460,10 @@ static void sim_tick(struct uloop_timeout *t)
 			cmds = json_object_new_array();
 			x = json_object_new_object();
 			json_object_object_add(x, "qmodem_section", json_object_new_string(section));
-			if (!direct) {
-				json_object_array_add(cmds, json_object_new_string("sim_info"));
-			} else if (port && snprintf(a, sizeof(a), "send_at\x1f{\"at\":\"AT+CIMI\",\"port\":\"%s\"}", port) < (int)sizeof(a) &&
-				   snprintf(b, sizeof(b), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", SIM_CRSM, port) < (int)sizeof(b)) {
+			/* Read only the two identifiers MedveModem needs. QModem's full sim_info
+			 * performs many unrelated AT queries and has repeatedly timed out on this FM350. */
+			if (port && snprintf(a, sizeof(a), "send_at\x1f{\"at\":\"AT+CIMI\",\"port\":\"%s\"}", port) < (int)sizeof(a) &&
+			    snprintf(b, sizeof(b), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", SIM_CRSM, port) < (int)sizeof(b)) {
 				json_object_array_add(cmds, json_object_new_string(a));
 				json_object_array_add(cmds, json_object_new_string(b));
 				json_object_object_add(x, "via", json_object_new_string("send_at"));
