@@ -68,15 +68,19 @@ older() {
 		exit 1 }'
 }
 # The engine, both LuCI packages and the optional bot are separate APK/IPK
-# records. An update is needed when ANY installed member is older.
-needs_update() {
+# records. Compare each matched package family independently.
+component_needs_update() {
 	local latest="$1" name version
-	for name in medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot; do
+	shift
+	for name in "$@"; do
 		version=$(installed_version "$name")
 		[ -n "$version" ] || continue
 		if older "$version" "$latest"; then return 0; fi
 	done
 	return 1
+}
+needs_update() {
+	component_needs_update "$1" medvemodem luci-app-medvemodem medvemodem-bot luci-app-medvemodem-bot
 }
 
 # $1 url, $2 file: straight (curl, then uclient-fetch), then through the local proxies; the log says which way worked.
@@ -329,13 +333,25 @@ run() {
 	needs_update "$latest" || { say "$(T "All installed MedveModem packages are current: $latest" "Все установленные пакеты MedveModem актуальны: $latest")"; finish done "current"; }
 	say "$(T "Downloading $latest ($tag)" "Загрузка $latest ($tag)")"
 	archive "$url" "$sums"
-	# the engine and its LuCI as a pair; the bot and its pages only when installed
-	case "$PM" in
-		apk) pkgs=$(cd "$RUN/work" && ls medvemodem-0*.apk luci-app-medvemodem-[0-9]*.apk 2>/dev/null)
-		     { [ -n "$(installed_version medvemodem-bot)" ] || [ -n "$(installed_version luci-app-medvemodem-bot)" ]; } && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null)" ;;
-		opkg) pkgs=$(cd "$RUN/work" && ls medvemodem_*.ipk luci-app-medvemodem_*.ipk 2>/dev/null)
-		      { [ -n "$(installed_version medvemodem-bot)" ] || [ -n "$(installed_version luci-app-medvemodem-bot)" ]; } && pkgs="$pkgs $(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null)" ;;
-	esac
+	# Update only the stale family. The engine and its LuCI stay paired;
+	# the bot and its LuCI are paired only when either installed member is old.
+	pkgs=
+	if component_needs_update "$latest" medvemodem luci-app-medvemodem; then
+		case "$PM" in
+			apk) family=$(cd "$RUN/work" && ls medvemodem-0*.apk luci-app-medvemodem-[0-9]*.apk 2>/dev/null) ;;
+			opkg) family=$(cd "$RUN/work" && ls medvemodem_*.ipk luci-app-medvemodem_*.ipk 2>/dev/null) ;;
+		esac
+		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete engine/LuCI package set" "в выпуске нет полного комплекта движка и LuCI")"
+		pkgs="$pkgs $family"
+	fi
+	if component_needs_update "$latest" medvemodem-bot luci-app-medvemodem-bot; then
+		case "$PM" in
+			apk) family=$(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null) ;;
+			opkg) family=$(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null) ;;
+		esac
+		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete Telegram bot package set" "в выпуске нет полного комплекта Telegram-бота")"
+		pkgs="$pkgs $family"
+	fi
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"
 	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
 	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
