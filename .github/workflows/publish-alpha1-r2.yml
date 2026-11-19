@@ -1,18 +1,17 @@
 # One-shot MedveModem alpha1 r2 publisher. Builds all six SDK targets and
+# SDK jobs are manual-only (workflow_dispatch). No push/PR builds.
 # publishes persistent assets directly (a tag created with GITHUB_TOKEN does
 # not trigger a second GitHub Actions workflow).
 name: publish-alpha1-r2
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/publish-alpha1-r2.yml'
-      - 'Makefile'
-      - 'packages/luci-app-medvemodem/Makefile'
-      - 'packages/medvemodem-bot/Makefile'
-      - 'packages/luci-app-medvemodem-bot/Makefile'
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish release assets as well as building packages'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -62,6 +61,7 @@ jobs:
 
   publish:
     name: Publish permanent MedveModem r2 release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
     needs: packages
     runs-on: ubuntu-latest
     permissions:
