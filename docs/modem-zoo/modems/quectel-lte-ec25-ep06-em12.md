@@ -35,6 +35,10 @@ That form must not be blindly copied to every Quectel generation.
 
 They belong to the same broad QENG/QCFG telemetry tradition, but field layouts and available CA/band functions differ by firmware. Use family knowledge as a candidate set, not as a proof of support.
 
+## Native QMI (EP06-E)
+
+The EP06-E profile explicitly offers MedveModem native QMI when `qmi_wwan` exposes the control node and network device. This is a **manual opt-in**, not a change to the automatic QModem/ModemManager preference. Use the existing ownership handover and netifd QMI path; never share QMI control with ModemManager. Changing backend can disrupt an active connection and must keep recovery access available. Verify the resulting interface and bearer after switching; this profile declaration is not a field-test result.
+
 ## Telemetry
 
 Commonly useful commands include `QENG`, `QCAINFO`, `QNWINFO`, `QRSRP` and `QTEMP`. Even identical command names can return different field layouts, so parsers should be tied to model/firmware evidence.
