@@ -5786,54 +5786,78 @@ static const char *at_stuck(const char *node, json_object *rec)
 static json_object *at_reply(struct at_job *j, const char *error);
 
 /*
- * In the worker: QModem's `modem_ctrl.sh <method> <section>` for each method,
- * {"responses": {method: its JSON}} (spec 25.9.12). QModem owns the modem's
- * AT ports, so the engine asks QModem rather than the port.
+ * Use QModem's documented rpcd interface, not its legacy modem_ctrl.sh wrapper.
+ * The pinned QModem build exposes these cached methods as
+ * ubus call qmodem <method> {config_section,params}; send_at is QModem's own
+ * serialized AT path (modem_util.sh::at -> qmodem_at_lock -> tom_modem).
+ * The router's AT tty is never opened by MedveModem while QModem owns it.
  */
-static json_object *qmodem_ctrl_run(const char *section, const char *const *methods, int n, char *err, size_t size)
+static json_object *qmodem_ctrl_run(const char *section, const char *const *methods, int n,
+				    unsigned int timeout_ms, char *err, size_t size)
 {
 	json_object *r = json_object_new_object(), *resp = json_object_new_object();
-	char script[300];
 	int i, complete = 0;
+	char timeout[16];
 
-	snprintf(script, sizeof(script), "%s/modem_ctrl.sh", qmodem_dir);
+	snprintf(timeout, sizeof(timeout), "%u", (timeout_ms + 999) / 1000);
 	json_object_object_add(r, "responses", resp);
 	for (i = 0; i < n; i++) {
-		/* a write is "method\x1fargument": modem_ctrl.sh <method> <section> <argument> */
 		char method[64], key[80];
 		const char *sep = strchr(methods[i], '\x1f');
-		const char *argv[] = { script, method, section, sep ? sep + 1 : NULL, NULL };
-		char buf[16384];
+		json_object *args = json_object_new_object(), *params = NULL, *parsed = NULL, *api_error = NULL;
+		const char *payload;
+		char buf[16384], *brace;
+		char *argv[8];
 		size_t len = 0;
 		ssize_t got;
-		int fds[2], fd;
+		int fds[2], fd, status = 0;
 		pid_t pid;
-		json_object *parsed;
-		char *brace;
+		long long started = now_mono_ms();
+		bool ok;
 
 		snprintf(method, sizeof(method), "%.*s", sep ? (int)(sep - methods[i]) : (int)strlen(methods[i]), methods[i]);
-		if (sep)
+		if (sep) {
+			if (strcmp(method, "send_at") || !(params = json_tokener_parse(sep + 1)) ||
+			    !json_object_is_type(params, json_type_object)) {
+				json_object_put(params);
+				json_object_put(args);
+				if (!err[0])
+					snprintf(err, size, "QModem RPC %s has invalid parameters", method);
+				break;
+			}
+			json_object_object_add(args, "params", params);
 			snprintf(key, sizeof(key), "step%d", i);
-		else
+		} else {
 			snprintf(key, sizeof(key), "%s", method);
-		if (pipe(fds))
+		}
+		json_object_object_add(args, "config_section", json_object_new_string(section));
+		payload = json_object_to_json_string_ext(args, JSON_C_TO_STRING_PLAIN);
+		if (pipe(fds)) {
+			json_object_put(args);
+			if (!err[0])
+				snprintf(err, size, "cannot create QModem RPC pipe");
 			break;
+		}
+		argv[0] = "/bin/ubus"; argv[1] = "-t"; argv[2] = timeout; argv[3] = "call";
+		argv[4] = "qmodem"; argv[5] = method; argv[6] = (char *)payload; argv[7] = NULL;
+		ULOG_INFO("%s: QModem RPC %s started\n", section, method);
 		pid = fork();
 		if (pid < 0) {
-			close(fds[0]);
-			close(fds[1]);
+			close(fds[0]); close(fds[1]); json_object_put(args);
+			if (!err[0])
+				snprintf(err, size, "cannot start QModem RPC %s", method);
 			break;
 		}
 		if (pid == 0) {
 			fd = open("/dev/null", O_RDWR);
-			dup2(fds[1], 1);
+			dup2(fds[1], STDOUT_FILENO);
 			if (fd >= 0) {
-				dup2(fd, 0);
-				dup2(fd, 2);
+				dup2(fd, STDIN_FILENO);
+				dup2(fd, STDERR_FILENO);
 			}
 			for (fd = 3; fd < 1024; fd++)
 				close(fd);
-			execv(argv[0], (char *const *)argv);
+			execv(argv[0], argv);
 			_exit(127);
 		}
 		close(fds[1]);
@@ -5841,20 +5865,28 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
 			len += (size_t)got;
 		buf[len] = '\0';
 		close(fds[0]);
-		waitpid(pid, NULL, 0);
-		/* its shell libraries may say something before the JSON */
+		while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+		json_object_put(args);
 		brace = strchr(buf, '{');
 		parsed = brace ? json_tokener_parse(brace) : NULL;
-		if (parsed && json_object_is_type(parsed, json_type_object)) {
+		ok = parsed && json_object_is_type(parsed, json_type_object) &&
+		     !json_object_object_get_ex(parsed, "error", &api_error) &&
+		     WIFEXITED(status) && WEXITSTATUS(status) == 0;
+		if (ok) {
 			json_object_object_add(resp, key, parsed);
 			complete++;
 		} else {
-			json_object_put(parsed);
+			const char *why = api_error ? json_object_get_string(api_error) : NULL;
 			if (!err[0])
-				snprintf(err, size, "QModem's modem_ctrl.sh %s gave no JSON", method);
+				snprintf(err, size, "QModem RPC %s failed%s%s", method, why ? ": " : "",
+					 why ? why : WIFEXITED(status) ? " (non-zero exit)" : " (no response)");
+			json_object_put(parsed);
 		}
+		ULOG_INFO("%s: QModem RPC %s %s (%lld ms)\n", section, method,
+			  ok ? "answered" : "failed", now_mono_ms() - started);
+		if (!ok)
+			break;
 	}
-	/* one answer is worth reading: the other may be a method this modem lacks */
 	json_object_object_add(r, "complete", json_object_new_int(complete));
 	return r;
 }
@@ -6017,7 +6049,7 @@ bool at_spawn(struct at_job *j)
 		    j->kind == AT_DIAL && jstr(j->results, "flow") ? mm_dial_at_run(path, j->results, j->settle_ms, err, sizeof(err)) :
 		    !j->node[0] && jstr(j->results, "mm_index") ? mm_steps_run(jstr(j->results, "mm_index"), jstr(j->results, "qmi_wdm"),
 								   json_object_get_boolean(json_object_object_get(j->results, "qmi_mbim")), list, n, err, sizeof(err)) :
-		    !j->node[0] ? qmodem_ctrl_run(jstr(j->results, "qmodem_section"), list, n, err, sizeof(err)) :
+		    !j->node[0] ? qmodem_ctrl_run(jstr(j->results, "qmodem_section"), list, n, j->timeout_ms, err, sizeof(err)) :
 		    mm_at_exchange(path, list, n, j->timeout_ms, j->settle_ms, err, sizeof(err));
 		if (!r)
 			r = json_object_new_object();
