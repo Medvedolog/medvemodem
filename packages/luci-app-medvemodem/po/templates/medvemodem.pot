@@ -12403,3 +12403,67 @@ msgstr ""
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable."
 msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Modem management badges"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Show a management badge on each modem card and modem page"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Shows whether ModemManager, QModem or MedveModem controls the modem. This browser-only preference is saved with Save."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Stable releases"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Test builds (bench)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Update channel"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Stable releases are recommended for normal use. Test builds are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Save the selected update channel first."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "LuCI MedveModem"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "LuCI Telegram bot"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "update available"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "up to date"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Update all outdated packages to %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Update check failed: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "No build for %s on OpenWrt %s in the %s channel."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "The update channel changed; check again."
+msgstr ""
