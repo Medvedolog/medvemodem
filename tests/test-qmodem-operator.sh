@@ -97,7 +97,7 @@ int main(void)
         !number(nr, "earfcn", 640000) || !number(nr, "pci", 45)) return 3;
     if (number(m, "rsrp_dbm", -87)) return 4; /* NR must not overwrite LTE */
     json_object_put(raw); json_object_put(m);
-    puts("PASS: QModem LTE/NR cell_info normalizes operator, RAT, signal and serving-cell fields");
+    puts("PASS: QModem LTE/NR cell_info normalizes operator, RAT, signal, serving-cell and CA fields");
     return 0;
 }
 EOF
