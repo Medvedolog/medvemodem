@@ -56,6 +56,27 @@ if "mm-root mm-modem mm-wait' +" in modem:
 if "Unable to display modem data" not in modem:
     failures.append("modem.js: rendering exceptions do not produce a visible error")
 
+# R8 field regression: changing EP06 from ModemManager to native QMI did not
+# show any action outcome, and native controls compared owner.control to the
+# nonexistent literal 'native' rather than netifd-qmi/netifd-mbim. Gate the
+# next release against accidentally removing the confirmed handover feedback.
+for token in (
+    "ownerStage: function(",
+    "followOwnerSwitch: function(",
+    "this.followOwnerSwitch(d);",
+    "mm.toast('backend-' + this.id",
+    "c.ownerStatus = E('div'",
+    "The managing service was not saved in the modem configuration.",
+    "The handover has started. Waiting for the modem to change its managing service",
+    "['netifd-qmi', 'netifd-mbim', 'medvemodem-at']",
+    "portCtl.node && (/^qmi_wwan",
+    "nativeTransport && /^qmi_wwan",
+):
+    if token not in modem:
+        failures.append(f"modem.js: missing EP06 native-owner handover contract: {token}")
+if "control !== 'native'" in modem:
+    failures.append("modem.js: invalid owner.control === native assumption")
+
 if failures:
     print("LuCI frontend contract check FAILED:", file=sys.stderr)
     for message in failures:
