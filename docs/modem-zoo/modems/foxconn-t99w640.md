@@ -79,12 +79,12 @@ The owner supplied a **35-page T99W640/DW5934e AT/DIAG technical study v2.4**. [
 
 Operationally important discoveries:
 
-- **Vendor interface:** the PCIe host MBIM node (typically \`/dev/wwan0mbim0\`) can carry proprietary AT_OVER_MBIM via QMI; plain PCIe DUN \`/dev/wwan0at0\` may be unusable on Retail. USB may expose ordinary AT in an appropriate composition, but the current \`05c6:90d5\` profile cannot assume a host tty is present.
-- **LTE locking:** exact on-chip syntax is \`AT+LTE_LOCK=<PCI>,<EARFCN>\`, **PCI first**, up to eight pairs. Only \`AT+LTE_LOCK?\` is a read; bare \`AT+LTE_LOCK\` clears the lock. NR locking has separate \`<band>,<scs>,<nr_arfcn>,<count>,<pci...>\` fields. Neither write path is enabled.
-- **CA and modes:** \`AT+CA_INFO?\` reports PCC/SCC; \`AT+CA_ENABLE=0\` **enables** CA, nonzero values disable. SDX72 \`SLMODE\` accepts a persist/temporary flag plus enumerated mode 0..7, **not SDX55's RAT-bitmask form**.
-- **Sensors and antenna levels:** \`AT+TEMP?\` reads TSENS/PA/Skin/Ambient, \`AT$QCTEMP\` reads CP temperature, \`AT$QCRSRP\` / \`AT$QCRSRQ\` give per-Rx signal levels, and \`AT+RSSI=LTE,ALL\` is the parameterized antenna read. These are reference-only under MM ownership.
-- **Forbidden even for reading:** on ENG \`AT+VZWRSRP?\` and \`AT+VZWRSRQ?\` caused an immediate **MHI SSR crash**. The Retail handler looked similar statically; never auto-query them. Bare \`AT+ODIS\` resets ODIS settings and bare \`AT+ULCA\` alters EFS; never infer read safety from a command name.
-- **FCC:** \`AT+FCC_LOCK=0\` / \`ftm unlock_fcc\` do **not** replace authenticated host QMI FCC unlock. The factory \`ftm\` dispatcher is not \`AT+FTM\` and is not implemented here.
+- **Vendor interface:** the PCIe host MBIM node (typically `/dev/wwan0mbim0`) can carry proprietary AT_OVER_MBIM via QMI; plain PCIe DUN `/dev/wwan0at0` may be unusable on Retail. USB may expose ordinary AT in an appropriate composition, but the current `05c6:90d5` profile cannot assume a host tty is present.
+- **LTE locking:** exact on-chip syntax is `AT+LTE_LOCK=<PCI>,<EARFCN>`, **PCI first**, up to eight pairs. Only `AT+LTE_LOCK?` is a read; bare `AT+LTE_LOCK` clears the lock. NR locking has separate `<band>,<scs>,<nr_arfcn>,<count>,<pci...>` fields. Neither write path is enabled.
+- **CA and modes:** `AT+CA_INFO?` reports PCC/SCC; `AT+CA_ENABLE=0` **enables** CA, nonzero values disable. SDX72 `SLMODE` accepts a persist/temporary flag plus enumerated mode 0..7, **not SDX55's RAT-bitmask form**.
+- **Sensors and antenna levels:** `AT+TEMP?` reads TSENS/PA/Skin/Ambient, `AT$QCTEMP` reads CP temperature, `AT$QCRSRP` / `AT$QCRSRQ` give per-Rx signal levels, and `AT+RSSI=LTE,ALL` is the parameterized antenna read. These are reference-only under MM ownership.
+- **Forbidden even for reading:** on ENG `AT+VZWRSRP?` and `AT+VZWRSRQ?` caused an immediate **MHI SSR crash**. The Retail handler looked similar statically; never auto-query them. Bare `AT+ODIS` resets ODIS settings and bare `AT+ULCA` alters EFS; never infer read safety from a command name.
+- **FCC:** `AT+FCC_LOCK=0` / `ftm unlock_fcc` do **not** replace authenticated host QMI FCC unlock. The factory `ftm` dispatcher is not `AT+FTM` and is not implemented here.
 - **DIAG:** QCDM is a separate HDLC-framed port; PCIe transport may need AP-side activation. DIAG reads and all NV/EFS, GPIO, USB PID, EDL and factory operations are **not** exposed by the profile.
 
 **Status remains experimental, USB MBIM and ModemManager-managed.** This research improves support knowledge, not the actual AT-over-MBIM driver or physical compatibility; field-reported thermal cycling and the PCIe/USB coexistence issue remain unresolved.
