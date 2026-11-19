@@ -48,3 +48,9 @@ All have `ahead=0` against the current `main`: all unique commits are already an
 ## Operating policy
 
 Do **not** add new branches for EP06 work. Update **handoff + highlights + Russian and English changelogs** for each release. User authorized r8 publication, but release jobs and physical testing must not be falsely reported as successful before evidence. Unsolicited push/PR builds are disabled; further SDK runs require explicit action.
+
+## One-shot owner command dispatch for r8
+
+Control issue: [#14](https://github.com/Medvedolog/medvemodem/issues/14). The exact comment `/medvemodem publish r8` by GitHub login `Medvedolog` triggers only the `release-command-r8.yml` bridge, which invokes `build.yml` with `workflow_dispatch`, `publish_release=true`, `release_tag=v0.16.0-alpha1-r8`. All other comments and authors skip the dispatch job. The builder itself remains manual-only. No QModem build or PR/push SDK trigger is enabled.
+
+After the explicit owner command, inspect the build run, gate outcomes and release assets. If any test or package fails, **do not** call r8 published. The one-shot bridge should be retired after successful release. This command is a user-authorized exception to the normal lack of automatic builds, not a recurring publishing scheduler.
