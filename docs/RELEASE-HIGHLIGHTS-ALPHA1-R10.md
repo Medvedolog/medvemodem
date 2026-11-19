@@ -2,6 +2,7 @@
 
 ## 0.16.0-alpha1-r10
 
+- **Native QMI/MBIM availability:** offer manual MedveModem control when the actual USB control node and driver (`qmi_wwan` or `cdc_mbim`) are present, even when a modem profile does not opt in explicitly. This makes the T99W175 `cdc-wdm`/`qmi_wwan` path selectable while preserving its ModemManager-first automatic priority.
 - **Owner badge placement:** move MM / QM / MV ownership badges to the lower-right corner of each modem dashboard card and the individual modem hero card. Remove the badge from the title row, top action icons and modem overview table.
 - **No duplicate WEB owner badge:** remove the HiLink / WEB owner chip. The modem's existing web-interface link already identifies and opens its web UI; ownership badges now describe only ModemManager, QModem and MedveModem control.
 - **Keep the preference optional:** the existing browser-local badge preference remains off by default and is saved through the common Save/Revert control.

@@ -192,6 +192,71 @@ async function run() {
     console.log('PASS chromium EP06 owner selection: save, toast, pending and native QMI readback');
     await switchPage.close();
 
+    // T99W175: its profile deliberately keeps ModemManager first, but a real
+    // cdc-wdm/qmi_wwan control endpoint must make the manual native-QMI option available.
+    const t99Profile = JSON.parse(fs.readFileSync(path.join(__dirname,
+      '../profiles/generic/foxconn-t99w175-qmi.json'), 'utf8'));
+    const t99Page = await browser.newPage();
+    const t99 = await t99Page.evaluate(({ source, profile }) => {
+      const _ = value => value;
+      const mm = {
+        VERSION: '0.16.0-alpha1-r10', LANG: 'en',
+        text: (node, value) => { node.textContent = value == null ? '' : String(value); }
+      };
+      let view;
+      try {
+        view = new Function('view', 'rpc', 'poll', 'fs', 'mm', '_', 'E', 'L', source)(
+          {extend: value => value},
+          {declare: spec => () => Promise.resolve({})},
+          {add: () => {}}, {}, mm, _, () => document.createElement('div'),
+          {env: {}, resource: value => value, url: value => value});
+      } catch (e) {
+        return {error: 'compile: ' + String(e && e.stack || e)};
+      }
+      const field = () => ({value: '', checked: false, hidden: false, disabled: false, textContent: '', className: ''});
+      const c = view.conn = {
+        routerNote: field(), cellOnly: [field()], who: field(),
+        apn: field(), ip: field(), nativeOpt: field(), backend: field(), dirty: false,
+        ttl: field(), dns: field(), dnsMode: field(), dnsBypassed: field(), dnsField: field(),
+        ownNote: field(), qmNote: field(), adoptNote: field(), save: field(), toggle: field(),
+        suggest: field(), use: field(), auto: field(), autoc: field()
+      };
+      c.backend.value = 'modemmanager';
+      view.level = 'normal';
+      view.alerts = {};
+      view.applyUsbConfig = () => {};
+      view.applyTtl = () => {};
+      view.applyApnAuto = () => {};
+      view.applyAlert = () => {};
+      view.applyConnection({
+        present: true,
+        profile: {id: profile.id, status: 'matched'},
+        port_roles: {control: {node: '/dev/cdc-wdm0', driver: 'qmi_wwan'}},
+        connection: {backend: 'modemmanager', interface: 'mm0', auto_connect: true},
+        owner: {control: 'modemmanager', session: 'modemmanager'},
+        session: {state: 'connected'}
+      });
+      return {
+        profile: profile.id,
+        automaticPriority: profile.policy.owner_priority,
+        profileNativeFlags: !!(profile.prefer_owner || profile.fallback_owner || profile.native_qmi),
+        nativeVisible: !c.nativeOpt.hidden,
+        nativeEnabled: !c.nativeOpt.disabled,
+        nativeLabel: c.nativeOpt.textContent,
+        selectedBackend: c.backend.value
+      };
+    }, {source, profile: t99Profile});
+    assert.equal(t99.error, undefined, JSON.stringify(t99));
+    assert.equal(t99.profile, 'foxconn-t99w175-qmi', JSON.stringify(t99));
+    assert.deepEqual(t99.automaticPriority, ['modemmanager', 'netifd-qmi']);
+    assert.equal(t99.profileNativeFlags, false);
+    assert.equal(t99.nativeVisible, true, JSON.stringify(t99));
+    assert.equal(t99.nativeEnabled, true, JSON.stringify(t99));
+    assert.match(t99.nativeLabel, /native QMI, without ModemManager/);
+    assert.equal(t99.selectedBackend, 'modemmanager');
+    console.log('PASS chromium T99W175: native QMI is selectable; automatic ModemManager priority is preserved');
+    await t99Page.close();
+
   } finally {
     await browser.close();
   }

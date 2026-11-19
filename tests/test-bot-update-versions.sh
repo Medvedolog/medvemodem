@@ -35,6 +35,7 @@ older 0.16.0_alpha1-r5 0.16.0-alpha1-r6
 older 0.16.0_alpha1-r5 0.16.0-alpha1-r8
 older 0.16.0_alpha1-r7 0.16.0-alpha1-r10
 older 0.16.0-alpha1-r4 0.16.0-alpha1-r6
-if older 0.16.0_alpha1-r9 0.16.0-alpha1-r10; then echo 'Equal release must not be newer' >&2; exit 1; fi
-if older 0.16.0_alpha1-r10 0.16.0-alpha1-r10; then echo 'Downgrade must not be offered' >&2; exit 1; fi
+older 0.16.0_alpha1-r9 0.16.0-alpha1-r10 || { echo 'r9 must be older than r10' >&2; exit 1; }
+if older 0.16.0_alpha1-r10 0.16.0-alpha1-r10; then echo 'Equal release must not be newer' >&2; exit 1; fi
+if older 0.16.0_alpha1-r10 0.16.0-alpha1-r9; then echo 'Downgrade must not be offered' >&2; exit 1; fi
 echo 'PASS: bot and LuCI component update detection, channel-scoped cache and version comparison'

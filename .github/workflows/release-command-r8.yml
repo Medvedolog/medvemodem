@@ -39,6 +39,38 @@ jobs:
             -f publish_release=true -f release_tag=v0.16.0-alpha1-r8
           echo 'Dispatched the explicitly authorized, manual r8 SDK build.'
 
+
+  dispatch-r10:
+    name: Dispatch authorized r10 test build (no release)
+    if: >-
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem build r10' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Confirm synchronized r10 package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' Makefile
+          grep -Fxq 'PKG_RELEASE:=10' Makefile
+          for file in packages/luci-app-medvemodem/Makefile packages/medvemodem-bot/Makefile packages/luci-app-medvemodem-bot/Makefile; do
+            grep -Fxq 'PKG_RELEASE:=10' "$file"
+          done
+          grep -Fq '## 0.16.0-alpha1-r10' docs/RELEASE-HIGHLIGHTS-ALPHA1-R10.md
+      - name: Dispatch the manual SDK matrix without publishing a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref main -f publish_release=false
+          echo 'Dispatched r10 SDK matrix; release publication remains disabled.'
+
   qa-contracts:
     name: Manual LuCI source contracts (no SDK)
     if: >-
