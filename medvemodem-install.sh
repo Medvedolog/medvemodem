@@ -176,6 +176,16 @@ installed() {
         apk info -e "$1" >/dev/null 2>&1
     fi
 }
+installed_version() {
+    if [ "$PM" = opkg ]; then
+        opkg status "$1" 2>/dev/null | sed -n 's/^Version: //p' | head -n 1
+    else
+        awk -v name="$1" '
+            /^P:/ { pkg = substr($0, 4) }
+            /^V:/ && pkg == name { print substr($0, 4); exit }
+        ' /lib/apk/db/installed 2>/dev/null
+    fi
+}
 command -v jsonfilter >/dev/null 2>&1 || fail 'jsonfilter required for GitHub release selection'
 # Use the SAME detector as LuCI (files/usr/libexec/medvemodem/neighbours).
 # On a clean router that file is not installed yet. Fetch the canonical script
@@ -528,6 +538,18 @@ install_flow() {
     files=
     package_files='medvemodem luci-app-medvemodem'
     [ "$with_bot" = 0 ] || package_files="$package_files medvemodem-bot luci-app-medvemodem-bot"
+    expected_version=$(printf '%s' "${TAG#v}" | sed 's/-alpha/_alpha/')
+    all_current=1
+    for name in $package_files; do
+        current_version=$(installed_version "$name")
+        if [ -z "$current_version" ] || [ "$current_version" != "$expected_version" ]; then
+            all_current=0
+        fi
+    done
+    if [ "$all_current" = 1 ] && [ "$FORCE" != 1 ]; then
+        say "All selected packages already match $TAG; no package transaction is needed."
+        return 0
+    fi
     for name in $package_files; do
         match=
         # Package filenames start with the exact name followed by a numeric
