@@ -161,3 +161,13 @@ Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inh
 - Moved the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the common Save dirty state; localStorage is updated only after Save succeeds. It remains a browser-local preference and does not change modem ownership or UCI engine behavior.
 - Bumped root engine and all three dependent package Makefiles to r9; shared LuCI and all three page view versions are aligned to r9. Added Russian PO/POT entries and regression assertions; the manual build workflow now runs `tests/test-bot-update-versions.sh`.
 - Release highlights for r9 are staged in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R9.md`. **No r9 SDK build, release publication or physical router acceptance has been performed.** Published r8 remains immutable.
+
+
+## R10 source changes — modem owner badge placement (2026-11-19)
+
+- Moved the optional MM/QM/MV owner badge to the lower-right corner of dashboard modem cards and the individual modem hero card. Removed it from the dashboard top icon row, overview table and modem title row.
+- Removed the HiLink/WEB owner badge. HiLink's web-interface link remains visible and actionable; ownership chips now represent only ModemManager, QModem and MedveModem.
+- Preserved the browser-local preference, off-by-default behavior and common Save/Revert integration.
+- Bumped root engine, main LuCI, bot and bot LuCI package release counters to r10; bumped common.js and dashboard/modem/settings view versions to 0.16.0-alpha1-r10.
+- Added source-level regression assertions for the bottom-right placement and absence of the duplicate WEB owner badge. Release highlights are in `docs/RELEASE-HIGHLIGHTS-ALPHA1-R10.md`.
+- **Source only:** no r10 SDK build, release publication or physical router acceptance has been performed. Published release assets are unchanged.
