@@ -24,7 +24,6 @@ grep -Fq 'raw.githubusercontent.com/Medvedolog/medvemodem/main/medvemodem-instal
 # Exercise the actual awk program embedded in the installer with mocked API
 # arrays, rather than copying its filtering logic into the regression test.
 python3 tests/test-installer-release-runtime.py
-echo 'PASS: BusyBox syntax, latest stable/prerelease selection, manifest and README contracts'
 
 # Existing bot packages are carried forward automatically; only first-time
 # optional bot installs need a separate choice.
@@ -43,3 +42,5 @@ awk '
     /^    quiesce_for_upgrade$/ { stop = NR }
     END { if (!dry || !confirm || !stop || dry >= confirm || confirm >= stop) exit 1 }
 ' medvemodem-install.sh
+
+echo 'PASS: installer release selection and confirmation-flow contracts'
