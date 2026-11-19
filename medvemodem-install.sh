@@ -444,21 +444,31 @@ installer_exit() {
     [ -z "$TMP" ] || rm -rf "$TMP"
     exit "$code"
 }
-quiesce_for_upgrade() {
-    # An SSH session routed over QModem can die here. Require opt-in even
-    # for --force/--reinstall: correctness is more important than uptime.
-    if [ "$ALLOW_DISCONNECT" != 1 ]; then
-        if [ "$TTY" = /dev/null ] || ! ask 'Upgrading stops MedveModem, QModem connections and Telegram bot temporarily. SSH/mobile internet may disconnect. Continue?' no; then
-            fail 'upgrade cancelled; use --allow-disconnect only with a backup management path'
-        fi
-    fi
+collect_running_services() {
     SERVICE_RESTORE=
     for service in medvemodem-bot medvemodemd qmodem_monitor qmodem_hc_sim qmodem_init qmodem_network; do
         if svc_running "$service"; then SERVICE_RESTORE="$SERVICE_RESTORE $service"; fi
     done
+}
+confirm_installation() {
+    [ "$TTY" != /dev/null ] || return 0
+    warning='Package upgrade may interrupt active modem connections and SSH.'
+    if [ -n "$SERVICE_RESTORE" ]; then
+        warning="This will temporarily stop:$SERVICE_RESTORE. SSH/mobile internet may disconnect."
+    fi
+    ask "Install $TAG packages ($package_files) now? $warning Continue?" no
+}
+quiesce_for_upgrade() {
+    # Interactive users authorize service interruption in confirm_installation.
+    # Noninteractive callers must explicitly opt in with --allow-disconnect.
+    if [ "$TTY" = /dev/null ] && [ "$ALLOW_DISCONNECT" != 1 ]; then
+        fail 'noninteractive upgrade requires --allow-disconnect and a backup management path'
+    fi
     SERVICES_STOPPED=1
     for service in medvemodem-bot medvemodemd qmodem_monitor qmodem_hc_sim qmodem_init qmodem_network; do
-        stop_one "$service"
+        case " $SERVICE_RESTORE " in
+            *" $service "*) stop_one "$service" ;;
+        esac
     done
     wait_pids_gone medvemodemd
     wait_pids_gone medvemodem-bot
@@ -469,7 +479,13 @@ quiesce_for_upgrade() {
 
 choose_bot() {
     case "$BOT" in yes) return 0 ;; no) return 1 ;; esac
-    ask 'Install/update Telegram bot and its LuCI too?' no
+    # Keep an already installed bot in the upgrade set automatically. Ask
+    # only when this is a first-time optional bot installation.
+    if installed medvemodem-bot || installed luci-app-medvemodem-bot; then
+        say 'Existing Telegram bot detected; it will be upgraded together with MedveModem.'
+        return 0
+    fi
+    ask 'Install Telegram bot and its LuCI too? (optional, first-time install)' no
 }
 install_flow() {
     if [ "$ACTION" = update ] && ! installed medvemodem; then
@@ -528,21 +544,22 @@ install_flow() {
     say 'Checking package dependencies (dry-run)...'
     if [ "$PM" = opkg ]; then
         opkg install --noaction $files || fail 'missing/conflicting dependencies'
-        if [ "$TTY" != /dev/null ]; then
-            ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
-        fi
-        quiesce_for_upgrade
+    else
+        apk add --simulate --allow-untrusted $files || fail 'missing/conflicting dependencies'
+    fi
+    collect_running_services
+    if ! confirm_installation; then
+        say 'Cancelled, no packages changed.'
+        return 0
+    fi
+    quiesce_for_upgrade
+    if [ "$PM" = opkg ]; then
         if [ "$FORCE" = 1 ]; then
             opkg install --force-reinstall $files || fail 'reinstallation failed'
         else
             opkg install $files || fail 'installation failed'
         fi
     else
-        apk add --simulate --allow-untrusted $files || fail 'missing/conflicting dependencies'
-        if [ "$TTY" != /dev/null ]; then
-            ask "Install $TAG packages now? ($package_files)" no || { say 'Cancelled, no packages changed.'; return 0; }
-        fi
-        quiesce_for_upgrade
         if [ "$FORCE" = 1 ]; then
             apk add --force-reinstall --allow-untrusted $files || fail 'reinstallation failed'
         else
