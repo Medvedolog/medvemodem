@@ -11,6 +11,15 @@
 
 
 
+
+### Post-r8 source notes — T99W640 SDX72 knowledge (2026-11-19)
+
+- Ingested a 35-page, revision 2.4 (2026-11-18) SDX72 firmware research reference for Foxconn T99W640 / Dell DW5934e: 34 \`ftm\` subcommands, QCDM packet inventory, selected NV/EFS identifiers, four thermal sensors, CA, antenna Rx chains and PCIe QMI-over-MBIM vendor AT routing.
+- Captured **PCI-before-EARFCN** LTE lock arguments, distinct NR lock structure, inverted \`CA_ENABLE=0\` semantics, enumerated \`SLMODE\` settings and the separate host-side QMI FCC authorization requirement.
+- Documented source-level hazards: \`AT+VZWRSRP?\`/\`AT+VZWRSRQ?\` crash tested ENG CP; bare \`AT+ODIS\` resets OEM configuration. Firmware write / reset / FTM / DIAG descriptions remain **reference-only**.
+- Expanded the experimental profile's firmware knowledge without enabling any production write, DIAG/FTM access or auto-poll; ModemManager ownership remains unchanged. Already published r8 artifacts are unchanged.
+
+
 ## 0.16.0-alpha1-r8 — 2026-11-19
 
 - **Quectel EP06-E:** add an isolated native-AT radio dialect with firmware-gated LTE cell lock/unlock by EARFCN and PCI. Read both `QNWLOCK` families: `common/4g` (cell count and frequency/PCI pairs) and `common/lte` (action, frequency, PCI and completion status).
