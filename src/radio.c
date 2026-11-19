@@ -2448,6 +2448,49 @@ json_object *mm_cells_from_at(const char *dialect, const char *raw)
 	return o;
 }
 
+/*
+ * EP06-E AT+QTEMP: comma-separated signed sensor readings (three or four,
+ * depending on firmware). Ignore absent sensors and sentinels (255, -140,
+ * -32768), and do not mistake the AT echo or ERROR for a temperature.
+ * Return only the maximum valid sensor temperature.
+ */
+json_object *mm_quectel_temp_from_at(const char *raw)
+{
+	const char *p;
+	long highest = -1000;
+
+	if (!raw)
+		return NULL;
+	for (p = raw; (p = strstr(p, "+QTEMP:")); p += 7) {
+		const char *q = p + 7;
+		while (*q && *q != '\r' && *q != '\n') {
+			char *end;
+			long n;
+
+			while (*q == ' ' || *q == '\t' || *q == ',')
+				q++;
+			if (!*q || *q == '\r' || *q == '\n')
+				break;
+			n = strtol(q, &end, 10);
+			if (end == q || (*end != ',' && *end != '\r' && *end != '\n' &&
+						    *end != '\0' && *end != ' ' && *end != '\t'))
+				break;
+			if (n > -40 && n < 150 && n > highest)
+				highest = n;
+			q = end;
+			while (*q == ' ' || *q == '\t')
+				q++;
+			if (*q && *q != ',' && *q != '\r' && *q != '\n')
+				break;
+		}
+	}
+	if (highest == -1000)
+		return NULL;
+	json_object *heat = json_object_new_object();
+	json_object_object_add(heat, "modem_c", json_object_new_int((int)highest));
+	return heat;
+}
+
 /* ---- the modem's heat (2026-11-02) ---- */
 
 /* the number after "<name>:" on a line of its own, in degrees: "TSENS: 45C" -> 45 */
