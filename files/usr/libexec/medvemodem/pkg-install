@@ -213,6 +213,34 @@ take_lock() {
 	echo $$ > "$RUN/lock/owner"
 }
 
+# The same package-manager lock used by medvemodem-install.sh and self-update.
+# Only the owning PID may release it; a newly created ownerless lock is protected.
+PM_LOCK=${MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock}
+PM_HELD=0
+pm_lock() {
+	local owner
+	mkdir -p "${PM_LOCK%/*}" || return 1
+	if mkdir "$PM_LOCK" 2>/dev/null; then echo $ > "$PM_LOCK/owner"; PM_HELD=1; return 0; fi
+	owner=$(cat "$PM_LOCK/owner" 2>/dev/null)
+	if [ -n "$owner" ]; then
+		case "$owner" in *[!0-9]*|'') return 1 ;; esac
+		kill -0 "$owner" 2>/dev/null && return 1
+	else
+		[ -n "$(find "$PM_LOCK" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+	fi
+	mv "$PM_LOCK" "$PM_LOCK.stale.$" 2>/dev/null || return 1
+	rm -rf "$PM_LOCK.stale.$"
+	mkdir "$PM_LOCK" 2>/dev/null || return 1
+	echo $ > "$PM_LOCK/owner"
+	PM_HELD=1
+}
+pm_unlock() {
+	[ "$PM_HELD" = 1 ] || return 0
+	[ "$(cat "$PM_LOCK/owner" 2>/dev/null)" = "$" ] && rm -rf "$PM_LOCK"
+	PM_HELD=0
+	return 0
+}
+
 start() {
 	check_ids "$@" || exit 1
 	[ -n "$PM" ] || { echo '{"ok":false,"error":"no package manager"}'; exit 1; }
@@ -273,7 +301,8 @@ EOF
 run() {
 	local id pkgs= drivers= ours= out rc
 	mkdir -p "$RUN"
-	put_pid $$
+	put_pid $
+	trap 'pm_unlock' EXIT
 	exec >>"$LOG" 2>&1
 	check_ids "$@" >/dev/null || fail "$(T "unknown component" "неизвестный компонент")"
 	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
@@ -292,6 +321,7 @@ run() {
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || { say "$(T "Done." "Готово.")"; finish done "installed: $*"; }
 	say "$(T "Installing:$pkgs" "Устанавливается:$pkgs")"
 	say "$(T "Updating the package lists ($PM update)" "Обновление списков пакетов ($PM update)")"
+	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
 	pm_update || say "$(T "WARNING: the package lists were not updated (see above); the dry run tells what is missing" "ВНИМАНИЕ: списки пакетов не обновились (см. выше); проверка покажет, каких пакетов нет")"
 	say "$(T "Dry run: is everything in the router's feeds" "Проверка: есть ли все пакеты в репозиториях роутера")"
 	case "$PM" in
@@ -309,6 +339,7 @@ run() {
 		apk) out=$(apk add $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
+	pm_unlock
 	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; finish failed "install failed"; }
 	for id in $drivers; do
 		[ -d "$DRIVERS/$id" ] || pm_do modprobe "$id"
