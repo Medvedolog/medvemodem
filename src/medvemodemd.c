@@ -6479,6 +6479,9 @@ static void at_exited(struct uloop_process *p, int ret)
 		json_object *c, *heat = j->node[0] && !error ? mm_heat_from_at(jstr(responses, MM_SDX_TEMP_COMMAND),
 									      jstr(responses, MM_SDX_THERM_COMMAND)) : NULL;
 
+		if (!heat && j->node[0] && !error)
+			heat = mm_quectel_temp_from_at(jstr(responses, MM_EP06_TEMP_COMMAND));
+
 		if (raw && ca && asprintf(&both, "%s\n%s", raw, ca) < 0)
 			both = NULL;
 		c = !error && cmd && raw ? mm_cells_from_at(jstr(j->results, "dialect"), both ? both : raw) : NULL;
@@ -7272,7 +7275,7 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 {
 	struct blob_attr *tb[__CL_MAX];
 	json_object *rec, *srv, *o, *cached, *cmds, *extra;
-	const char *id, *dialect, *cmd, *node, *why = NULL;
+	const char *id, *dialect, *cmd, *node, *why = NULL, *profile_id;
 	int rc;
 
 	(void)obj; (void)method;
@@ -7285,6 +7288,7 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 	id = jstr(rec, "device_id");
 	srv = served(rec);
 	dialect = jstr(json_object_object_get(srv, "radio_settings"), "dialect");
+	profile_id = jstr(json_object_object_get(srv, "profile"), "id");
 	cmd = mm_cells_command(dialect);
 	o = json_object_new_object();
 	json_object_object_add(o, "device_id", json_object_new_string(id));
@@ -7349,6 +7353,9 @@ static int m_cells(struct ubus_context *ctx, struct ubus_object *obj,
 	json_object_put(o);
 	cmds = json_object_new_array();
 	json_object_array_add(cmds, json_object_new_string(cmd));
+	/* Only the known EP06 profile receives the optional QTEMP query; never ask it on an MM-owned AT port. */
+	if (profile_id && !strcmp(profile_id, "quectel-ep06"))
+		json_object_array_add(cmds, json_object_new_string(MM_EP06_TEMP_COMMAND));
 	if (!strcmp(dialect, "foxconn-t77"))
 		json_object_array_add(cmds, json_object_new_string(MM_T77_CA_COMMAND));
 	/* the modem's heat beside the cells (2026-11-02): degrees on a T99, a throttling level where there are none */
