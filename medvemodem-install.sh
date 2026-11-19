@@ -181,8 +181,8 @@ installed_version() {
         opkg status "$1" 2>/dev/null | sed -n 's/^Version: //p' | head -n 1
     else
         awk -v name="$1" '
-            /^P:/ { pkg = substr($0, 4) }
-            /^V:/ && pkg == name { print substr($0, 4); exit }
+            /^P:/ { pkg = substr($0, 3) }
+            /^V:/ && pkg == name { print substr($0, 3); exit }
         ' /lib/apk/db/installed 2>/dev/null
     fi
 }
