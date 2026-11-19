@@ -12444,3 +12444,75 @@ msgstr "Для EP06-E доступна только привязка к соте
 #: modem.js
 msgid "Locked cells: %d"
 msgstr "Закреплено сот: %d"
+
+#: modem.js
+msgid "Managing service selected: %s. Press “Save and connect” to apply; the modem connection may be interrupted."
+msgstr "Выбрано управление: %s. Нажмите «Сохранить и подключить»; соединение с модемом может прерваться."
+
+#: modem.js
+msgid "The saved managing service could not be confirmed; check that configuration changes are committed."
+msgstr "Не удалось подтвердить сохранение выбранного управления. Проверьте применение настроек."
+
+#: modem.js
+msgid "Managing service conflict: %s"
+msgstr "Конфликт программ управления модемом: %s"
+
+#: modem.js
+msgid "Modem management transferred to %s; checking the connection…"
+msgstr "Управление модемом передано: %s. Проверяем подключение…"
+
+#: modem.js
+msgid "automatic selection"
+msgstr "автоматический выбор"
+
+#: modem.js
+msgid "The managing service was changed and the modem is connected."
+msgstr "Программа управления переключена. Модем подключён."
+
+#: modem.js
+msgid "The managing service is selected, but the modem has not connected: %s"
+msgstr "Программа управления выбрана, но модем не подключился: %s"
+
+#: modem.js
+msgid "check Diagnostics and the network interface"
+msgstr "проверьте диагностику и сетевой интерфейс"
+
+#: modem.js
+msgid "The managing service was saved, but the modem is still managed by %s. Check Diagnostics and ModemManager inhibition."
+msgstr "Выбор управления сохранён, но модем по-прежнему контролирует %s. Проверьте диагностику и освобождение модема ModemManager."
+
+#: modem.js
+msgid "another service"
+msgstr "другая программа"
+
+#: modem.js
+msgid "Native modem management is unavailable: this modem profile or its QMI/MBIM capability was not detected."
+msgstr "Нативное управление недоступно: профиль модема или поддержка QMI/MBIM не обнаружены."
+
+#: modem.js
+msgid "Saving modem connection settings…"
+msgstr "Сохраняем настройки подключения модема…"
+
+#: modem.js
+msgid "The managing service was not saved in the modem configuration."
+msgstr "Выбранная программа управления не сохранилась в конфигурации модема."
+
+#: modem.js
+msgid "The managing service choice is saved. Handing control over…"
+msgstr "Выбор программы управления сохранён. Передаём управление модемом…"
+
+#: modem.js
+msgid "The modem settings are saved. Connecting…"
+msgstr "Настройки модема сохранены. Подключаем…"
+
+#: modem.js
+msgid "The handover has started. Waiting for the modem to change its managing service…"
+msgstr "Передача управления началась. Ожидаем переключения программы управления модемом…"
+
+#: modem.js
+msgid "The settings are saved, but modem bring-up was refused: %s"
+msgstr "Настройки сохранены, но запуск модема отклонён: %s"
+
+#: modem.js
+msgid "Saving or switching error: %s"
+msgstr "Ошибка сохранения или переключения программы управления: %s"
