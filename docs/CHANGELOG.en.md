@@ -1,6 +1,16 @@
 # MedveModem — Release History (English)
 
 
+## Post-published r8 — modem controller switching regression fix (2026-11-19)
+
+- Fix native QMI/MBIM option availability based on a real `qmi_wwan` or `cdc_mbim` control device, even when exact hardware profile recognition is incomplete.
+- Save and Connect now reports the controller change in the top action banner, beside the Save button and in a bottom toast. Read back the committed UCI `backend` before attempting bring-up.
+- Treat `bringup: started` as pending, not successful ownership. Follow actual `owner.control` (`netifd-qmi`/`netifd-mbim`/`medvemodem-at`), the selected backend and connection status, showing conflict and timeout errors. Apply the same visible feedback to foreign-interface handovers.
+- Fix EP06-E native cell polling wrongly testing `owner.control === 'native'`. Add Russian strings and real LuCI Chromium backend-switch regressions.
+- **Source-only:** these corrections were committed to `main` **after** r8 was published. Existing r8 release packages remain unchanged. A new version and hardware validation are required; no automatic SDK build was initiated.
+
+
+
 ## 0.16.0-alpha1-r8 — 2026-11-19
 
 - **Quectel EP06-E:** add an isolated native-AT radio dialect with firmware-gated LTE cell lock/unlock by EARFCN and PCI. Read both `QNWLOCK` families: `common/4g` (cell count and frequency/PCI pairs) and `common/lte` (action, frequency, PCI and completion status).
