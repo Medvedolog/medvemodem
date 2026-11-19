@@ -11,7 +11,7 @@ for file in "$pkg" "$upd" "$ssh"; do sh -n "$file"; done
 for file in "$pkg" "$upd" "$ssh"; do
     grep -Fq 'MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock' "$file"
     grep -Fq 'kill -0 "$owner"' "$file"
-    grep -Fq 'echo $$ > "$PM_LOCK/owner"' "$file" || {
+    grep -Fq 'echo "$LOCK_PID" > "$PM_LOCK/owner"' "$file" || {
         # SSH uses a generic lock function instead.
         [ "$file" = "$ssh" ] && grep -Fq 'echo $$ > "$lock_dir/owner"' "$file"
     }
