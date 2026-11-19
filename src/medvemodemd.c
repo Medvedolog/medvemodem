@@ -7172,23 +7172,13 @@ static int metrics_launch(struct ubus_context *ctx, struct ubus_request_data *re
 		else if (qmodem_foreign_port(rec, sec))
 			rc = metrics_refuse(ctx, req, id, "QModem's section names an AT port that is not this modem's; nothing is sent");
 		else {
-			const char *port = qmodem_img ? jstr(json_object_object_get(qmodem_img, sec), "at_port") : NULL;
-			char ca[320];
-
+			/* QModem's cached cell_info contains RAT, MCC/MNC and serving-cell levels.
+			 * Keep the core signal reading independent of optional carrier/CA enrichment calls. */
 			cmds = json_object_new_array();
 			json_object_array_add(cmds, json_object_new_string("cell_info"));
-			/* Fibocom MTK: QModem's own send_at serializes on the port lock.
-			 * First get a printable carrier name (+GTCURCAR), then LTE CA.
-			 * Never open the tty beside tom_modem. */
-			if (port && fibocom_mtk(srv)) {
-				if (snprintf(ca, sizeof(ca), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", FIBOCOM_OPERATOR, port) < (int)sizeof(ca))
-					json_object_array_add(cmds, json_object_new_string(ca));
-				if (snprintf(ca, sizeof(ca), "send_at\x1f{\"at\":\"%s\",\"port\":\"%s\"}", FIBOCOM_CA, port) < (int)sizeof(ca))
-					json_object_array_add(cmds, json_object_new_string(ca));
-			}
 			x = json_object_new_object();
 			json_object_object_add(x, "qmodem_section", json_object_new_string(sec));
-			rc = at_begin(ctx, req, rec, AT_METRICS, NULL, cmds, NULL, MM_QMODEM_CTRL_MS, x);
+			rc = at_begin(ctx, req, rec, AT_METRICS, NULL, cmds, NULL, 30000, x);
 		}
 		return rc;
 	}
