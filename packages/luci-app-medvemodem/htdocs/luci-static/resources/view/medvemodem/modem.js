@@ -2094,7 +2094,7 @@ return view.extend({
 		c.ip = E('select', { 'class': 'mm-select', id: 'mm-ip', change: function() { c.dirty = true; } }, [
 			E('option', { value: '' }, _('Automatically')), E('option', { value: 'ipv4' }, _('IPv4 only')),
 			E('option', { value: 'ipv4v6' }, _('IPv4 and IPv6')), E('option', { value: 'ipv6' }, _('IPv6 only'))]);
-		c.backend = E('select', { 'class': 'mm-select', id: 'mm-backend', change: function() { c.dirty = true; self.checkQmodemChoice(); } }, [
+		c.backend = E('select', { 'class': 'mm-select', id: 'mm-backend', change: function() { c.dirty = true; self.checkQmodemChoice(); self.ownerChoiceChanged(); } }, [
 			E('option', { value: 'auto' }, _('Automatically, by the model')), E('option', { value: 'modemmanager' }, 'ModemManager'),
 			c.nativeOpt = E('option', { value: 'native' }, _('MedveModem directly (QMI, MBIM or AT)')), E('option', { value: 'qmodem' }, 'QModem')]);
 		c.adoptNote = E('div', { 'class': 'mm-callout is-info mm-note mm-adopt-note', hidden: true });
@@ -2123,6 +2123,7 @@ return view.extend({
 		c.qmNote = E('div', { 'class': 'mm-callout is-warn mm-qm-pick', hidden: true }, [
 			_('QModem is not installed on the router: install it first, or the modem stays without management.') + ' ',
 			E('a', { href: L.url('admin/modem/medvemodem/settings') + '#qmodem' }, _('Install QModem'))]);
+		c.ownerStatus = E('div', { 'class': 'mm-callout is-info mm-owner-switch-status', role: 'status', 'aria-live': 'polite', hidden: true });
 		c.save = E('button', { type: 'button', 'class': 'mm-btn is-primary mm-primary', click: mm.busy(function() { return self.saveConnection(); }) }, _('Save and connect'));
 		c.toggle = E('button', { type: 'button', 'class': 'mm-btn mm-secondary', hidden: true, click: mm.busy(function() { return self.toggleConnection(); }) }, _('Disconnect'));
 		/* a router inside the modem (HiLink, a UFI stick, a phone) dials by itself: no APN, IP version or owner to choose here
@@ -2141,7 +2142,7 @@ return view.extend({
 		return c.node = this.sec('conn', _('Connection setup'), [c.who, c.routerNote].concat(c.cellOnly, [c.dnsField,
 			E('label', { 'class': 'mm-check mm-ttl' }, [c.ttl, ' ' + _('Fix TTL 64 (a smartphone tariff)')]), c.ttlSay,
 			E('label', { 'class': 'mm-check mm-auto-connect' }, [c.autoc, ' ' + _('Connect automatically when the modem has no interface yet')]),
-			c.ownNote, c.qmNote, c.adoptNote, E('div', { 'class': 'mm-actions' }, [c.save, c.toggle])]));
+			c.ownNote, c.qmNote, c.adoptNote, c.ownerStatus, E('div', { 'class': 'mm-actions' }, [c.save, c.toggle])]));
 	},
 	applyConnection: function(d) {
 		var c = this.conn, k = d.connection || {}, s = k.apn_suggestion, connected = d.present === true && (d.session || {}).state === 'connected';
@@ -2164,6 +2165,8 @@ return view.extend({
 		text(c.nativeOpt, (p.dial || {}).status === 'unverified' ? _('MedveModem directly (AT; not yet checked on this model)') :
 			_('MedveModem directly (QMI, MBIM or AT)'));
 		if (!c.dirty && document.activeElement !== c.backend) c.backend.value = k.backend || 'auto';
+		if (!nativeOk && c.backend.value === 'native' && !this.ownerSwitch)
+			this.ownerStage(_('Native modem management is unavailable: this modem profile or its QMI/MBIM capability was not detected.'), 'err');
 		if (!c.dirty && document.activeElement !== c.ttl) c.ttl.checked = !!k.ttl;
 		if (!c.dirty && document.activeElement !== c.dns) c.dns.value = (k.dns || []).join(' ');
 		if (!c.dirty && document.activeElement !== c.dnsMode) c.dnsMode.value = k.dns_mode === 'replace' ? 'replace' : 'add';
@@ -2331,20 +2334,41 @@ return view.extend({
 		if (k.foreign && !k.foreign.handed)
 			return this.handOver(values);
 		if (k.user_interface) values.adopt = '1';
-		this.say(_('Saving…'));
+		var changedOwner = (k.backend || 'auto') !== values.backend;
+		this.ownerStage(_('Saving modem connection settings…'), 'run');
+		c.save.disabled = true;
 		return uciGet('medvemodem', 'device').then(function(r) {
 			var secs = (r && r.values) || {}, name = Object.keys(secs).filter(function(n) { return secs[n].id === id; })[0];
 			return name ? uciSet('medvemodem', name, values) : uciAdd('medvemodem', 'device', values);
 		}).then(function() { return uciCommit('medvemodem'); }).then(function() {
+			/* Commit returned without a transport error: verify its durable value,
+			 * not a stale frontend select element or a previous UCI image. */
+			return uciGet('medvemodem', 'device').then(function(r) {
+				var secs = (r && r.values) || {};
+				var found = Object.keys(secs).some(function(n) { return secs[n].id === id && secs[n].backend === values.backend; });
+				if (!found) throw new Error(_('The managing service was not saved in the modem configuration.'));
+			});
+		}).then(function() {
 			c.dirty = false;
-			self.say(_('Connecting…'));
+			if (changedOwner) self.ownerSwitch = { backend: values.backend, at: Date.now() };
+			self.ownerStage(changedOwner ? _('The managing service choice is saved. Handing control over…') :
+				_('The modem settings are saved. Connecting…'), 'run');
 			return bringup(id);
 		}).then(function(r) {
 			r = r || {};
-			if (r.result === 'connected' || r.result === 'started' || r.result === 'running') self.watchConnect(_('The settings are saved. Connecting the modem…'));
-			else self.say(_('Error: %s').format(why(r.reason) || r.result || _('no answer')));
+			if (r.result === 'connected' || r.result === 'started' || r.result === 'running') {
+				if (!changedOwner) self.watchConnect(_('The settings are saved. Connecting the modem…'));
+				else self.ownerStage(_('The handover has started. Waiting for the modem to change its managing service…'), 'run');
+			} else {
+				self.ownerSwitch = null;
+				self.ownerStage(_('The settings are saved, but modem bring-up was refused: %s').format(
+					why(r.reason) || r.result || _('no answer')), 'err');
+			}
 			return self.update();
-		}).catch(function(e) { self.say(_('Saving error: %s').format(failText(e))); });
+		}).catch(function(e) {
+			self.ownerSwitch = null;
+			self.ownerStage(_('Saving or switching error: %s').format(failText(e)), 'err');
+		}).finally(function() { c.save.disabled = false; });
 	},
 
 	/* «Передать MedveModem»: the settings saved, the other interface down, the rewrite once ModemManager holds the modem */
@@ -4077,6 +4101,76 @@ return view.extend({
 	/* a message is an operator's action or its outcome: the next refresh asks the journal and the status too */
 	say: function(line) { text(this.message, line); this.message.hidden = !line; if (line) this.askAgain = true; },
 
+	/* Changing the controller is two distinct events: the UCI choice is saved,
+	 * and the live modem actually changes hands. Show both, never call a queued
+	 * bring-up a successful hand-over. All stages persist beside Save and in the
+	 * shared bottom toast; the top action message stays visible too. */
+	ownerStage: function(line, tone) {
+		this.say(line);
+		if (this.conn && this.conn.ownerStatus) {
+			text(this.conn.ownerStatus, line);
+			this.conn.ownerStatus.hidden = !line;
+			this.conn.ownerStatus.className = 'mm-callout mm-owner-switch-status ' +
+				(tone === 'err' ? 'is-err' : tone === 'warn' ? 'is-warn' : 'is-info');
+		}
+		mm.toast('backend-' + this.id, line, tone || 'run', tone === 'err' ? 15000 : tone === 'ok' ? 10000 : 0);
+	},
+
+	ownerChoiceChanged: function() {
+		var c = this.conn || {}, previous = (this.connInfo || {}).backend || 'auto';
+		if (!c.backend) return;
+		if (c.backend.value !== previous)
+			this.ownerStage(_('Managing service selected: %s. Press “Save and connect” to apply; the modem connection may be interrupted.')
+				.format(c.backend.options[c.backend.selectedIndex].textContent), 'warn');
+	},
+
+	/* Confirm the live owner, not only an RPC result of `started`. The daemon's
+	 * owner.control names native QMI as netifd-qmi, never simply native. */
+	followOwnerSwitch: function(d) {
+		var change = this.ownerSwitch;
+		if (!change || !d || d.device_id !== this.id) return;
+		var cfg = d.connection || {}, owner = d.owner || {}, ctl = owner.control || '',
+			actual = d.backend || '', state = (d.session || {}).state || '',
+			selected = cfg.backend || 'auto', elapsed = Date.now() - change.at;
+		var expected = change.backend === 'native' ? actual === 'native' &&
+			['netifd-qmi', 'netifd-mbim', 'medvemodem-at'].indexOf(ctl) >= 0 :
+			change.backend === 'modemmanager' ? ctl === 'modemmanager' :
+			change.backend === 'qmodem' ? ctl === 'qmodem' : selected === 'auto';
+		if (selected !== change.backend) {
+			if (elapsed >= 15000) {
+				this.ownerStage(_('The saved managing service could not be confirmed; check that configuration changes are committed.'), 'err');
+				this.ownerSwitch = null;
+			}
+			return;
+		}
+		if (owner.conflict) {
+			this.ownerStage(_('Managing service conflict: %s').format(why(owner.conflict)), 'err');
+			this.ownerSwitch = null;
+			return;
+		}
+		if (expected && !change.owned) {
+			change.owned = true;
+			change.since = Date.now();
+			this.ownerStage(_('Modem management transferred to %s; checking the connection…').format(
+				change.backend === 'native' ? (ctl === 'netifd-qmi' ? 'MedveModem / QMI' : ctl === 'netifd-mbim' ? 'MedveModem / MBIM' : 'MedveModem / AT') :
+				change.backend === 'modemmanager' ? 'ModemManager' : change.backend === 'qmodem' ? 'QModem' : _('automatic selection')), 'run');
+		}
+		if (expected && state === 'connected') {
+			this.ownerStage(_('The managing service was changed and the modem is connected.'), 'ok');
+			this.ownerSwitch = null;
+		} else if (expected && Date.now() - (change.since || change.at) >= 120000) {
+			this.ownerStage(_('The managing service is selected, but the modem has not connected: %s').format(
+				why((d.session || {}).reason) || _('check Diagnostics and the network interface')), 'warn');
+			this.ownerSwitch = null;
+		} else if (!expected && elapsed >= 120000) {
+			this.ownerStage(_('The managing service was saved, but the modem is still managed by %s. Check Diagnostics and ModemManager inhibition.').format(
+				ctl || _('another service')), 'err');
+			this.ownerSwitch = null;
+		}
+	},
+
+
+
 	/* «Базовый» shows the main rows, «Подробный» everything; the empty rows («—») only at «Подробный» */
 	gate: function() {
 		var lv = this.level, lr = this.rowLevel;
@@ -4224,6 +4318,7 @@ return view.extend({
 		this.data = d;
 		recoveryNotes([d], function() { return model; });	/* a step's start and end in the corner (the owner, 2026-10-20) */
 		this.applyConnection(d);
+		this.followOwnerSwitch(d);
 		this.applyNetcheck(d);
 		this.applyClash(((d || {}).session || {}).clash);
 		this.notice(d, connected);
