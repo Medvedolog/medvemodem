@@ -41,6 +41,16 @@
       "antenna": "AT+QRSRP: PRX DRX RX2 RX3; EP06 two receive chains; -140/-32768 sentinel, never infer disconnected antenna",
       "temperature": "AT+QTEMP: 3 or 4 signed sensor values; report maximum valid sensor reading",
       "operator": "AT+QSPN: prefer SPN with nonnumeric fallback; network operator and SIM operator remain distinct"
+    },
+    "native_qmi": {
+      "enabled": true,
+      "requires_driver": "qmi_wwan",
+      "control": "cdc-wdm",
+      "protocol": "qmi",
+      "selection": "explicit-only",
+      "auto_selection": "retain existing qmodem/modemmanager precedence",
+      "ownership": "exclusive: release ModemManager before uqmi; never run direct QMI concurrently with MM",
+      "fallback": "restore previous ModemManager interface if bring-up fails"
     }
   },
   "radio": {
