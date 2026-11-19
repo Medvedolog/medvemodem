@@ -2159,10 +2159,18 @@ return view.extend({
 		 * for this composition yet is not offered): its first or fallback owner, or an AT dial recipe of its own (the Intel
 		 * XMM: ModemManager takes PPP on its ACM composition and gets no address, the owner: «xmm не надо скрывать»);
 		 * a recipe never run on a modem of ours says so. A choice saved earlier stays visible, greyed, until changed */
-		var p = d.profile || {}, nativeOk = p.prefer_owner === 'native' || p.fallback_owner === 'native' || p.native_qmi === true || !!p.dial;
+		var p = d.profile || {}, portCtl = ((d.port_roles || {}).control || {}), drv = portCtl.driver || '';
+		/* The netcfg engine supports explicit native QMI/MBIM by the actual USB
+		 * control driver, even when profile matching is incomplete. Previously
+		 * LuCI hid/disabled the choice until a model-specific profile opted in,
+		 * despite a working qmi_wwan / cdc-wdm control node on the router. */
+		var nativeTransport = !!portCtl.node && (/^qmi_wwan(?:_|$)/.test(drv) || drv === 'cdc_mbim');
+		var nativeOk = p.prefer_owner === 'native' || p.fallback_owner === 'native' || p.native_qmi === true || !!p.dial || nativeTransport;
 		c.nativeOpt.disabled = !nativeOk;
 		c.nativeOpt.hidden = !nativeOk && k.backend !== 'native';
-		text(c.nativeOpt, (p.dial || {}).status === 'unverified' ? _('MedveModem directly (AT; not yet checked on this model)') :
+		text(c.nativeOpt, (p.dial || {}).status === 'unverified' && !nativeTransport ? _('MedveModem directly (AT; not yet checked on this model)') :
+			nativeTransport && /^qmi_wwan(?:_|$)/.test(drv) ? _('MedveModem directly (native QMI, without ModemManager)') :
+			nativeTransport && drv === 'cdc_mbim' ? _('MedveModem directly (native MBIM, without ModemManager)') :
 			_('MedveModem directly (QMI, MBIM or AT)'));
 		if (!c.dirty && document.activeElement !== c.backend) c.backend.value = k.backend || 'auto';
 		if (!nativeOk && c.backend.value === 'native' && !this.ownerSwitch && !c.nativeDenied) {
