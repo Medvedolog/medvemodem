@@ -1665,7 +1665,7 @@ return view.extend({
 			}).finally(function() { u.check.disabled = false; });
 		}) }, _('Check for updates'));
 		u.btn = E('button', { type: 'button', 'class': 'mm-btn mm-up-install', hidden: '', click: mm.busy(function() {
-			if (!window.confirm(_('Update MedveModem to %s? The engine and its LuCI pages (and the Telegram bot, if installed) are replaced; the settings stay. LuCI reloads its pages afterwards.').format(u.latest || '')))
+			if (!window.confirm(_('Update MedveModem to %s? Only outdated package families are replaced: engine/LuCI and/or Telegram bot/LuCI. Settings stay. LuCI reloads its pages afterwards.').format(u.latest || '')))
 				return;
 			u.btn.disabled = true; text(u.out, _('Starting…'));
 			return fs.exec(SELFUP, ['start', mm.langArg()]).then(parse, function(e) { return { error: failText(e) }; }).then(function(j) {
