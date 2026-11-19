@@ -1938,7 +1938,7 @@ static bool usb_port_dir(const char *usb, char *out, size_t size)
  * network mode (allowed technologies and the preferred one), bands now and
  * possible, and how they were read (via). ModemManager's own report for a
  * modem it holds; for one QModem or the engine drives, the last reading of
- * `ubus call medvemodem radio` (QModem's modem_ctrl.sh, or the profile's AT
+ * `ubus call medvemodem radio` (QModem's rpcd cell_info, or the profile's AT
  * dialect), with its age. writable: a change can be carried out (stage 2,
  * radio_set); change: the last one and where it stands.
  */
@@ -7376,8 +7376,8 @@ reply:
 }
 
 /*
- * The SIM's identity of the modems ModemManager does not hold, read by the engine itself (r64): a job without a caller
- * (QModem's sim_info first, the AT port for an ICCID QModem did not give), once per attachment and every SIM_EVERY_MS.
+ * The SIM's identity of modems ModemManager does not hold, read by the engine itself (r64): QModem-owned ports are queried
+ * only through QModem send_at (CIMI and CRSM); other modems use the engine-owned AT port, once per attachment and every SIM_EVERY_MS.
  */
 static void sim_tick(struct uloop_timeout *t)
 {
