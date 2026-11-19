@@ -36,6 +36,7 @@ jobs:
           python3 tests/test-luci-frontend.py
           python3 tests/test-ep06-temperature.py
           python3 tests/test-ep06-cell-lock.py
+          python3 tests/test-qmodem-handover.py
           sh tools/check-web-version.sh
           sh tests/test-installer-release-selection.sh
           sh tests/test-installer-locks.sh

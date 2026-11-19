@@ -309,6 +309,7 @@ function remember(id, open) {
 function describe(device, status) {
 	var mm = device.modemmanager || {}, session = device.session || {}, net = session.netifd || {};
 	var owner = device.owner || {}, config = device.configuration || {}, stability = device.stability || {};
+	var qmodem = device.qmodem || {};
 	var uplink = device.uplink || {}, traffic = uplink.traffic || {}, health = device.health || {};
 	var mmAge = (status.modemmanager || {}).age_s;
 	/* ModemManager's view goes stale with its read; a modem it does not hold (HiLink web, QModem, AT) has its own reading,
@@ -372,7 +373,11 @@ function describe(device, status) {
 		/* bench 2026-10-20 (FM350): handed to QModem while QModem's services were stopped — no one drove it, and the card
 		 * said only «нет подключения», no operator, no signal, no «Исправить» */
 		var qmodemDown = owner.control === 'qmodem' && state !== 'connected' && !frozen && status.qmodemRunning === false;
-		if (qmodemDown)
+		if (qmodem.adoption_failed)
+			prob(status.qmodemRunning === false ?
+				_('QModem was selected but did not create a modem-device section, and qmodem_network is not running. It has not taken ownership; check the QModem service and AT-port detection, or choose another backend.') :
+				_('QModem was selected but did not create a modem-device section. It has not taken ownership; check AT-port detection or choose another backend.'));
+		else if (qmodemDown)
 			prob(_('QModem should manage the modem, but its modem connection service (qmodem_network) is not running: nobody connects the modem. “Fix” starts it (or Settings → MedveModem service → “Start QModem”); another way of management can also be chosen on the modem\'s page.'));
 		if (owner.conflict) prob(_('Management conflict: several services manage the modem.'));
 		if (mmFresh && mm.failed_reason === 'sim-missing') prob(_('The SIM card is not found: insert it until it clicks.'), true);
@@ -520,7 +525,8 @@ function describe(device, status) {
 		quality: quality !== null && quality >= 0 && quality <= 100 ? quality : null,
 		icon: mmFresh && present ? signalIcon(mm) : null,
 		/* how the modem is driven (bench 2026-10-15): the protocol of its control function and the service, «QMI · ModemManager» */
-		owner: [CTL_PROTO[((device.port_roles || {}).control || {}).driver] || '', owners[owner.control] || words(owner.control) || ''].filter(Boolean).join(' · ') || _('Not determined'),
+		owner: [CTL_PROTO[((device.port_roles || {}).control || {}).driver] || '',
+			qmodem.adoption_pending ? _('QModem handoff pending') : owners[owner.control] || words(owner.control) || ''].filter(Boolean).join(' · ') || _('Not determined'),
 		iface: words(session.interface), proto: words(session.proto),
 		/* the address itself and the interface, «10.187.44.19 · wwan0» (mockup): netifd's list (with the prefix), else
 		 * ModemManager's bearer address; a flag only says it was given (bench 2026-10-19: «IPv4 получен» with the list there) */
@@ -536,7 +542,7 @@ function describe(device, status) {
 		reason: words(session.reason) || (['unknown', 'ready', 'ok', 'expected'].indexOf(config.state) < 0 ? list(config.evidence).join('; ') : '') ||
 			chainLine(device.diagnosis) || '—',
 		generation: device.generation,
-		freshness: present && device.reading_stale ?
+		freshness: present && device.reading_stale && !qmodem.adoption_failed ?
 			(owner.control === 'qmodem' ? _('Last QModem reading is stale.') : _('Last modem reading is stale.')) :
 			present && owner.control === 'modemmanager' && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
 	};
