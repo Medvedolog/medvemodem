@@ -12432,3 +12432,15 @@ msgstr "Возможно ограничены: %d"
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable."
 msgstr "Настройки уведомлений Telegram и состояние их доставки управляются отдельным ботом. Включённое событие не гарантирует доставку, если Telegram недоступен."
+
+#: modem.js
+msgid "For EP06 cell locking, manually select MedveModem native QMI management. ModemManager reserves its AT port."
+msgstr "Для привязки EP06 к соте вручную выберите управление «MedveModem (native QMI)». ModemManager удерживает AT-порт модема."
+
+#: modem.js
+msgid "Only cell locking is available on EP06-E. Network modes and band masks are read-only."
+msgstr "Для EP06-E доступна только привязка к соте. Режимы сети и маски диапазонов доступны лишь для чтения."
+
+#: modem.js
+msgid "Locked cells: %d"
+msgstr "Закреплено сот: %d"
