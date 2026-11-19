@@ -144,6 +144,33 @@ highlights() {
 	printf ']'
 }
 
+# Share the package-manager lock with pkg-install and the SSH installer.
+PM_LOCK=${MEDVEMODEM_PM_LOCK:-/tmp/medvemodem/package-operation.lock}
+PM_HELD=0
+pm_lock() {
+	local owner
+	mkdir -p "${PM_LOCK%/*}" || return 1
+	if mkdir "$PM_LOCK" 2>/dev/null; then echo $ > "$PM_LOCK/owner"; PM_HELD=1; return 0; fi
+	owner=$(cat "$PM_LOCK/owner" 2>/dev/null)
+	if [ -n "$owner" ]; then
+		case "$owner" in *[!0-9]*|'') return 1 ;; esac
+		kill -0 "$owner" 2>/dev/null && return 1
+	else
+		[ -n "$(find "$PM_LOCK" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+	fi
+	mv "$PM_LOCK" "$PM_LOCK.stale.$" 2>/dev/null || return 1
+	rm -rf "$PM_LOCK.stale.$"
+	mkdir "$PM_LOCK" 2>/dev/null || return 1
+	echo $ > "$PM_LOCK/owner"
+	PM_HELD=1
+}
+pm_unlock() {
+	[ "$PM_HELD" = 1 ] || return 0
+	[ "$(cat "$PM_LOCK/owner" 2>/dev/null)" = "$" ] && rm -rf "$PM_LOCK"
+	PM_HELD=0
+	return 0
+}
+
 put_pid() { echo "$1" > "$RUN/pid.$1" && mv -f "$RUN/pid.$1" "$RUN/pid"; }
 running() { local pid; pid=$(cat "$RUN/pid" 2>/dev/null); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; }
 # BusyBox tr may treat [:print:] as literal letters. It previously changed
@@ -204,6 +231,7 @@ archive() {
 # «Драйверы и пакеты» (the owner, 2026-11-15: «уметь ставить нашу сборку»). In the foreground, its log on stdout: the
 # components installer runs it. The engine itself is not touched.
 addon() {
+	trap 'pm_unlock' EXIT
 	local kind="$1" latest tag url sums pkgs out rc wanted core ui
 	case "$kind" in lpac|bot|bot-luci) ;; *) echo "usage: self-update addon lpac|bot|bot-luci" >&2; exit 2 ;; esac
 	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
@@ -238,6 +266,7 @@ addon() {
 	# All archive assets have been SHA256 checked; simulate dependencies before
 	# replacing anything. Do not force APK dependencies or change the modem owner.
 	say "$(T "Checking package dependencies (dry run)" "Проверка зависимостей пакетов")"
+	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --simulate --allow-untrusted $pkgs 2>&1); rc=$? ;;
 		opkg) out=$(cd "$RUN/work" && opkg install --noaction $pkgs 2>&1); rc=$? ;;
@@ -250,12 +279,14 @@ addon() {
 		opkg) out=$(cd "$RUN/work" && opkg install $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
+	pm_unlock
 	rm -rf "$RUN/work"
 	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; exit 1; }
 	say "$(T "Installed: $kind. Configure the Telegram token separately." "Установлено: $kind. Токен Telegram настраивается отдельно.")"
 }
 
 run() {
+	trap 'pm_unlock' EXIT
 	local c latest tag url sums f got want pkgs out rc
 	mkdir -p "$RUN"
 	put_pid $$
@@ -278,11 +309,13 @@ run() {
 	esac
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"
 	say "$(T "Installing:" "Установка:") $(echo $pkgs)"
+	pm_lock || fail "$(T "another package installation is running" "уже выполняется другая установка пакетов")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
 		opkg) out=$(cd "$RUN/work" && opkg install --force-reinstall $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
+	pm_unlock
 	[ "$rc" -eq 0 ] || fail "$(T "the installation failed (code $rc)" "установка не прошла (код $rc)")"
 	say "$(T "Done: MedveModem $latest. LuCI reloads its pages in a moment." "Готово: MedveModem $latest. LuCI перезагрузит страницы через несколько секунд.")"
 	# rpcd reads the new ACL and LuCI's menu: after the log is written, the page asks again
