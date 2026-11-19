@@ -1,5 +1,7 @@
 config core 'core'
 	option enabled '1'
+	# Published releases are the safe default; bench is an explicit test channel.
+	option update_channel 'release'
 	option settle_ms '2500'
 	option log_level 'info'
 	# driver bindings bench-validated profiles declare (an AT port the stock driver misses)
