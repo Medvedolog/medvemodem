@@ -4,7 +4,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 view="$root/packages/medvemodem-bot/files/usr/share/medvemodem-bot/updview.uc"
 update="$root/files/usr/libexec/medvemodem/self-update"
-notes="$root/docs/RELEASE-HIGHLIGHTS-ALPHA1-R9.md"
+notes="$root/docs/RELEASE-HIGHLIGHTS-ALPHA1-R10.md"
 grep -Fq '0-9A-Za-z._+~-' "$view" || { echo 'Bot installed version regex must allow underscores' >&2; exit 1; }
 grep -Fq "const CHECK_EVERY = 12 * 3600" "$root/packages/medvemodem-bot/files/usr/share/medvemodem-bot/update.uc"
 grep -Fq '## 0.16.0-alpha1-r9' "$notes"
