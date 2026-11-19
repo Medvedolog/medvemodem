@@ -1054,8 +1054,7 @@ function ownerBadgeInfo(owner) {
 		'medvemodem-at': ['MV', 'MedveModem (native AT)', 'native'],
 		native: ['MV', 'MedveModem (native)', 'native'],
 		medvemodem: ['MV', 'MedveModem', 'native'],
-		hilink: ['WEB', 'Modem web interface (HiLink)', 'web']
-	};
+""	};
 	return b[owner] || null;
 }
 function setOwnerBadge(node, owner) {
