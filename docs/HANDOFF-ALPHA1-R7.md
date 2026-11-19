@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-19  
 **Release branch:** `release/alpha1-r7` — PR #12 to main.  
-**Status:** Release candidate, NOT published. Do not tag or announce r7 until CI is green, packages are built and assets have been verified.
+**Status:** r7 published as prerelease on 2026-11-18 22:21 UTC from `9a1f28f`. Later `main` commits are post-r7 source changes; they are **not** included in the published r7 packages.
 
 ## Changes
 
@@ -15,24 +15,7 @@
 - Shared LuCI/installer `neighbours` treats orphaned `/etc/config/5gmodem` as a warning rather than an installed manager; live hotplug and packages remain conflicts.
 - Added release-specific English highlights; GitHub Actions publishes only explicit version tags, not main pushes.
 
-- Installer lock ownership regression: earlier root installer wrote literal `# HANDOFF — MedveModem Alpha 1 r7 release
-
-**Date:** 2026-11-19  
-**Release branch:** `release/alpha1-r7` — PR #12 to main.  
-**Status:** Release candidate, NOT published. Do not tag or announce r7 until CI is green, packages are built and assets have been verified.
-
-## Changes
-
-- Synchronized `0.16.0_alpha1-r7` in engine, LuCI, Telegram bot and bot LuCI packages and `0.16.0-alpha1-r7` in the shared/browser JavaScript.
-- Corrected r6 blank modem page when a cached common.js lacks `mm.setOwnerBadge`: optional badge fails safely; RPC and rendering failures produce visible messages.
-- Added shared frontend API/version contracts and Chromium smoke tests before OpenWrt SDK builds and publication.
-- Added `medvemodem-install.sh` in the repository root and an SSH one-liner plus safety comments in the main README.
-- Installer selects newest *published* MedveModem v* release, stable OR prerelease, filtering out QModem releases and drafts by publication timestamp. Explicit `--tag` pins a version. No hard-coded older-version fallback.
-- Installer verifies archive SHA256, package architecture and dependencies before changing packages; warns about disconnects and checks foreign modem controllers.
-- Shared LuCI/installer `neighbours` treats orphaned `/etc/config/5gmodem` as a warning rather than an installed manager; live hotplug and packages remain conflicts.
-- Added release-specific English highlights; GitHub Actions publishes only explicit version tags, not main pushes.
-
- rather than the shell PID into lock owner files. Corrected to `$`; `tests/test-installer-locks.sh` executes live/contended/stale/release lock flows as a release gate.
+- Installer lock ownership regression: an earlier installer wrote a literal placeholder instead of its process PID into lock owner files. The current shell writes `$$` (its PID); `tests/test-installer-locks.sh` exercises live/contended/stale/release locks as a release gate. Corrected to `$`; `tests/test-installer-locks.sh` executes live/contended/stale/release lock flows as a release gate.
 
 ## Release gates
 
@@ -80,3 +63,28 @@ Creating the tag via `gh release create` inside this same workflow is necessary:
 - Regression tests: `tests/test-installer-release-runtime.py` extracts and executes the *actual* awk program with fixtures for unrelated QModem release, drafts, newer stable and prerelease, and empty selection; wired into `tests/test-installer-release-selection.sh` and the release CI gate.
 - Workaround with an old installer already present: `sh /tmp/medvemodem-install.sh --tag v0.16.0-alpha1-r7 --install` bypasses automatic release selection while preserving checksums and preflight. To test the fixed auto-selector, re-download the script from `main` and start again.
 - Post-release script changes do not overwrite published r7 assets. Verify on actual BusyBox ash and jsonfilter before declaring hardware acceptance; the CI fixture is still not a live router test.
+
+## Branch cleanup register (2026-11-19)
+
+Branch policy: continue on `main`; do not create a working branch for EP06-E. The following seven refs were checked against `main` through GitHub comparison: **ahead=0**, with the branch tip already an ancestor of `main`. They are **candidates for deletion after one final ref/PR check**, not deleted by this handoff:
+
+| Branch | Tip checked | Deletion criterion |
+| --- | --- | --- |
+| `ci/publish-r7-after-verified-build` | `22ce061` | merged / ancestor of `main` |
+| `ci/qmodem-persistent-release` | `80386fb` | merged / ancestor of `main` |
+| `fix/modem-view-version-owner-badges` | `d8ff453` | merged / ancestor of `main` |
+| `fix/qmodem-owner-failover-alerts` | `ebde82a` | merged / ancestor of `main` |
+| `fix/r4-whitelist-backup-labels` | `95388fd` | merged / ancestor of `main` |
+| `release/alpha1-r7` | `d25dec9` | merged / ancestor of `main` |
+| `release/r6` | `539c43d` | merged / ancestor of `main` |
+
+**Do not mark as merged or delete without reconciliation:** `ci/alpha1-qmodem-matrix`, `feat/owner-badges-optional-dashboard`, `feat/ssh-installer`, `fix/native-qmi-mbim-selector`, `fix/r6-luci-browser-ci`, `fix/r6-update-install-locks`, `fix/self-update-release-check`, `release/0.16.0-alpha1-r2`. These eight refs have unique commits relative to `main`, even when their functionality may already have been superseded. Review unique patches individually; do not merge old LuCI/installer code wholesale. Never delete `main`.
+
+## EP06-E follow-up in main (2026-11-19, post-r7)
+
+- Native QMI selection remains strictly opt-in. Do not change working ModemManager priority or claim that changing owners has been tested on the physical EP06-E.
+- Native, engine-owned AT cell reads now pair `QCAINFO` with read-only `QTEMP` for profile `quectel-ep06`. Maximum valid signed temperature is published as `heat.modem_c`. Invalid/unpopulated sensors are rejected; `tests/test-ep06-temperature.py` compiles the actual C parser and tests nine fixture replies before SDK jobs.
+- Existing `QCAINFO` parser already distinguishes SCC state=1 (configured/deactivated) from state=2 (activated). Keep the reporting semantic: idle SCC is not an active carrier.
+- ModemManager-owned AT ports remain off limits to native commands; no `QTEMP`, `QNWLOCK` or other background direct AT queries while MM owns EP06-E. MM telemetry remains the supported read path in that mode.
+- `QNWLOCK` is still a **nonimplemented, firmware-probe-required cell lock**. Do not expose a write control without exact read syntax, previous-state snapshot, exclusive AT ownership and rollback testing. `QRSRP` / `QENG` detailed metrics, SMS/PDU edge cases, and QMI UIM slot selection still require integration and hardware verification.
+- No release tag or package publication was created for these post-r7 commits. Confirm the newest `main` CI, then validate on physical EP06-E with independent recovery access.
