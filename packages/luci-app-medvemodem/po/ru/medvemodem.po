@@ -12524,3 +12524,7 @@ msgstr "MedveModem напрямую (native QMI, без ModemManager)"
 #: modem.js
 msgid "MedveModem directly (native MBIM, without ModemManager)"
 msgstr "MedveModem напрямую (native MBIM, без ModemManager)"
+
+#: modem.js
+msgid "The interface handover has started. Waiting for the modem to change its managing service…"
+msgstr "Передача сетевого интерфейса началась. Ожидаем переключения программы управления модемом…"
