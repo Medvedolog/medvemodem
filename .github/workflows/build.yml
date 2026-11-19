@@ -12,7 +12,7 @@ on:
         required: true
         default: false
       release_tag:
-        description: 'Version to publish from main after all six builds (for example v0.16.0-alpha1-r8)'
+        description: 'Version to publish from main after all six builds (for example v0.16.0-alpha1-r11)'
         type: string
         required: false
         default: ''
