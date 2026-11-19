@@ -125,6 +125,13 @@ function qmWords(j) {
 	if (j.state === 'failed') return _('not installed: the last attempt failed');
 	return _('not installed');
 }
+function updateWhy(w) {
+	w = String(w || '');
+	var m = /^no build for (.+) on OpenWrt (.+) in the (.+) releases$/.exec(w);
+	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('test') : _('stable'));
+	if (/^release channel changed|^old update result/.test(w)) return _('The update channel changed; check again.');
+	return w || _('no answer');
+}
 function agoLong(s) {
 	return s < 60 ? _('%d s ago').format(Math.round(s)) : s < 3600 ? _('%d min ago').format(Math.floor(s / 60)) : s < 172800 ? _('%d h ago').format(Math.floor(s / 3600)) : _('%d d ago').format(Math.floor(s / 86400));
 }
@@ -204,10 +211,10 @@ return view.extend({
 			/* the service's state first, a tab of its own (the owner, 2026-10-23) */
 			['service', _('Service status'), [c.service]],
 			['net', _('Internet and backup'), [c.priority, E('div', { 'class': 'mm-grid2' }, [c.fo, c.reach]), c.wl, c.svc, this.chansPref()]],
-			['rec', _('Modems'), [this.ownerBadgePref(), c.rec, c.radio, c.names]],
+			['rec', _('Modems'), [c.rec, c.radio, c.names]],
 			['notify', _('Notifications'), [c.alerts, c.forward, c.archive, c.bot]],
-			/* the emergency ModemManager restart, for every modem it drives: last (the owner, 2026-10-19) */
-			['diag', _('Diagnostics and components'), [c.check, c.up, E('div', { 'class': 'mm-grid2' }, [c.apn, c.qm]), c.pkgs, c.mmr]]
+			/* the emergency ModemManager restart and browser presentation preference belong at the very bottom */
+			['diag', _('Diagnostics and components'), [c.check, c.up, E('div', { 'class': 'mm-grid2' }, [c.apn, c.qm]), c.pkgs, c.mmr, this.ownerBadgePref()]]
 		]), [
 			this.message,
 			this.saveBar = E('div', { 'class': 'mm-actions mm-savebar' }, [this.save, this.undo])
@@ -667,18 +674,15 @@ return view.extend({
 			E('p', { 'class': 'mm-faint' }, _('Applies in this browser at once, without «Save».'))]);
 	},
 
-	/* Optional management-owner chips on both modem cards and individual modem pages.
-	 * Like the channel-table preference, this is local to the browser and
-	 * applies without UCI changes or a daemon restart. Off by default. */
+	/* Browser-local owner badges participate in the common Save/Revert form:
+	 * no daemon setting is changed, but the preference is committed only by Save. */
 	ownerBadgePref: function() {
-		var on = mm.ownerBadgesEnabled(), box;
-		box = E('input', { type: 'checkbox', id: 'mm-owner-badges-pref', change: function() {
-			try { localStorage.setItem('mm:owner-badges', box.checked ? '1' : '0'); } catch (e) {}
-		} });
-		box.checked = on;
-		return E('div', { 'class': 'mm-card mm-owner-pref' }, [E('label', { 'for': 'mm-owner-badges-pref', 'class': 'mm-check' }, [box, ' ',
-			_('Show modem management badges (MM / QM / MV)')]),
-			E('p', { 'class': 'mm-faint' }, _('Show the managing service on each modem card and modem page. Off by default; applies in this browser without Save.'))]);
+		var self = this, box = E('input', { type: 'checkbox', id: 'mm-owner-badges-pref', change: function() { self.dirty(); } });
+		this.boxes.owner_badges = box;
+		box.checked = mm.ownerBadgesEnabled();
+		return this.sec('set-owner-badges', _('Отображение бейджей управления'), [
+			E('label', { 'for': 'mm-owner-badges-pref', 'class': 'mm-check' }, [box, ' ', _('Показывать бейдж управления на карточке и странице каждого модема')]),
+			E('p', { 'class': 'mm-faint' }, _('Показывает, кто управляет модемом: ModemManager, QModem или MedveModem. Настройка сохраняется кнопкой «Сохранить» только в этом браузере.'))], '', false);
 	},
 
 	/* a group of switches inside a card, under its own small heading (the owner, 2026-11-09: «тематически визуально
