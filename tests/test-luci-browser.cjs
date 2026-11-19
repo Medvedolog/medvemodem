@@ -198,6 +198,7 @@ async function run() {
       '../profiles/generic/foxconn-t99w175-qmi.json'), 'utf8'));
     const t99Page = await browser.newPage();
     const t99 = await t99Page.evaluate(({ source, profile }) => {
+      String.prototype.format = function (...a) { let i = 0; return this.replace(/%[sd]/g, () => String(a[i++] ?? '')); };
       const _ = value => value;
       const mm = {
         VERSION: '0.16.0-alpha1-r10', LANG: 'en',
