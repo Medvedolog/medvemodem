@@ -53,7 +53,7 @@ json_object *mm_at_parse(const char *cmd, const char *raw);
 
 /* Normalized radio metrics from {"<command>": raw response}. New object. */
 json_object *mm_at_metrics(json_object *raw);
-/* The same from QModem's modem_ctrl.sh cell_info ({"cell_info": {"modem_info": [...]}}). New object. */
+/* The same from QModem rpcd cell_info ({"cell_info": {"modem_info": [...]}}). New object. */
 json_object *mm_qmodem_metrics(json_object *responses);
 /* The carriers in use from a Fibocom MediaTek modem's AT+GTCAINFO? answer (FM350): {"cells": [{role, type, band,
  * pci, earfcn, bandwidth_mhz}]}, the primary first; NULL when it names none. New object. */
