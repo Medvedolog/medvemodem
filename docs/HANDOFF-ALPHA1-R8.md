@@ -113,3 +113,20 @@ ubus call medvemodem devices
 logread -e medvemodemd -e ModemManager | tail -n 90
 ```
 Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inhibition just to collect evidence.
+
+
+## Branch cleanup — 2026-11-19 (explicit owner approval)
+
+- **Seven obsolete merged branches deleted** by owner-gated one-shot GitHub Actions run [#44504196840](https://github.com/Medvedolog/medvemodem/actions/runs/44504196840), successful. For every branch the workflow checked that its commit was an ancestor of `main`, no open PR existed, and the remote SHA still matched the fetched SHA, then deleted the exact allowlisted ref.
+- Deleted: `ci/publish-r7-after-verified-build`, `ci/qmodem-persistent-release`, `fix/modem-view-version-owner-badges`, `fix/qmodem-owner-failover-alerts`, `fix/r4-whitelist-backup-labels`, `release/alpha1-r7`, `release/r6`.
+- Verified afterward using the actual GitHub branches endpoint: **9 branches remain including `main`**. Existing tags and releases were untouched; SDK workflows were not invoked. The one-shot prune workflow is to be removed from `main` after execution.
+- **Eight branches retained pending content reconciliation**. Ahead counts below are *history differences*, not proof a feature is missing from current `main`; many changes have already been implemented through separate commits.
+  - `ci/alpha1-qmodem-matrix` (ahead 15; open PR #1): QModem workflow and installer — `main` already contains `.github/workflows/qmodem.yml` and `tools/build-qmodem.sh`, published QModem r2; compare tests before closing PR.
+  - `feat/owner-badges-optional-dashboard` (ahead 6): per-page badge UI/CSS. `main` already has badge handling; check whether any toggle UX/locale/CSS differences remain.
+  - `feat/ssh-installer` (ahead 86; open PR #6): standalone SSH install, tests, docs and various UI changes. `main` has `medvemodem-install.sh` and build artifacts, but `tests/test-ssh-installer.sh` is absent; identify whether tests carry reusable coverage before closing.
+  - `fix/native-qmi-mbim-selector` (ahead 1): LuCI option availability. Current `main` has a newer hardware-detected native QMI/MBIM selector; reconcile the isolated fix before pruning.
+  - `fix/r6-luci-browser-ci` (ahead 1; open PR #11): build workflow modifications. Current r8 includes passing Chromium smoke; avoid merging older CI rules.
+  - `fix/r6-update-install-locks` (ahead 2; open PR #10): `pkg-install` / `self-update` lock logic; both current files include locking, compare race/exit-path cases.
+  - `fix/self-update-release-check` (ahead 3; open PR #2): updater latest-tag logic and LuCI UI. Verify current r8 updater before deciding.
+  - `release/0.16.0-alpha1-r2` (ahead 19; open PR #3): old version/changelog/UI. **Never merge the stale r2 package versions into r8/main**; review any independent logic as individual commits only.
+- **Remaining action:** audit these eight for *functional* differences, close superseded PRs with rationale, and delete their branches only after confirming unique substantive fixes are ported or deliberately rejected. Do not auto-merge obsolete release branches.
