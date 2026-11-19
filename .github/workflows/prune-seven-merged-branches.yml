@@ -1,0 +1,76 @@
+# One-time owner-authorized housekeeping; never runs on pushes or PRs.
+# Exact scope: seven fully contained obsolete branches. No SDK builds.
+name: prune-seven-merged-branches
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: medvemodem-prune-seven-merged-branches
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Safely delete seven integrated branches
+    if: >-
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem prune seven 20261119' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Confirm ancestor relationship and no open PR, then delete exact allowlist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branches=(
+            "ci/publish-r7-after-verified-build"
+            "ci/qmodem-persistent-release"
+            "fix/modem-view-version-owner-badges"
+            "fix/qmodem-owner-failover-alerts"
+            "fix/r4-whitelist-backup-labels"
+            "release/alpha1-r7"
+            "release/r6"
+          )
+          git fetch --no-tags origin main
+          main_sha=$(git rev-parse refs/remotes/origin/main)
+          echo "main=$main_sha"
+          for branch in "${branches[@]}"; do
+            if ! git fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"; then
+              echo "::error::Cannot fetch $branch; refusing to continue"
+              exit 1
+            fi
+            local_sha=$(git rev-parse "refs/remotes/origin/$branch")
+            if ! git merge-base --is-ancestor "$local_sha" "$main_sha"; then
+              echo "::error::$branch has unique history, stopping without deleting it"
+              exit 1
+            fi
+            # Check all OPEN pull requests, not only PRs previously known to be merged.
+            open_prs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq '.[] | .head.repo.full_name + " " + .head.ref')
+            if printf '%s\n' "$open_prs" | grep -Fxq "$GITHUB_REPOSITORY $branch"; then
+              echo "::error::$branch has an open PR; refusing deletion"
+              exit 1
+            fi
+            remote_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$branch" --jq '.object.sha')
+            if [ "$remote_sha" != "$local_sha" ]; then
+              echo "::error::$branch changed since fetch; refusing deletion"
+              exit 1
+            fi
+            echo "Deleting fully integrated $branch at $remote_sha"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
+            printf 'DELETED %s %s\n' "$branch" "$remote_sha" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "All seven verified, then removed." >> "$GITHUB_STEP_SUMMARY"
