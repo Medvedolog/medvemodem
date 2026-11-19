@@ -13,6 +13,30 @@ For larger vendor/script dumps see [Extended QModem/other scripts AT reference](
 - **DESTRUCTIVE** — EFS/NV/transport operation with difficult recovery;
 - **UNSUPPORTED OBSERVED** — syntax/capability may be advertised but field evidence says the requested service does not work.
 
+## Foxconn T99W640 / Dell DW5934e / SDX72: research annex
+
+**Not the SDX55 dialect.** The owner's firmware analysis (v2.4, 2026-11-18) distinguishes ENG read-only live tests from Retail static reverse engineering. Detailed [T99W640 AT + 34 ftm + QCDM/NV/EFS inventory](modems/foxconn-t99w640-at-diag.md). **No commands below are auto-polled or enabled as write capabilities** under the experimental ModemManager-owned USB MBIM profile.
+
+| Command | Type | Risk / firmware rule |
+| --- | --- | --- |
+| \`AT+TEMP?\`, \`AT$QCTEMP\` | telemetry | **READ** ENG: four AP thermal sensors versus CP sensor. |
+| \`AT+CA_INFO?\` | radio.ca | **READ** ENG: PCC and SCC bands/MHz. |
+| \`AT$QCSQ\`, \`AT$QCRSRP\`, \`AT$QCRSRQ\` | radio.signal | **READ** ENG: serving signal, per-Rx RSRP/RSRQ. Do not use crashing VZW aliases. |
+| \`AT+RSSI=LTE,ALL\` | radio.signal | **READ-LIKE** parameterized antenna query, while \`AT+RSSI?\` fails with argument error. |
+| \`AT+LTE_LOCK?\` | cell.lock | **READ** ENG: current LTE lock. |
+| \`AT+LTE_LOCK=<PCI>,<EARFCN>\` | cell.lock | **MUTATING / UNTESTED** write; PCI FIRST; up to eight pairs. Not enabled. |
+| Bare \`AT+LTE_LOCK\` | cell.lock | **MUTATING** removal of an existing lock, not a query. |
+| \`AT+NR5G_LOCK?\` | cell.lock | **READ** ENG; NR write family has \`band,scs,dl_arfcn,pci_count,pci...\`; not enabled. |
+| \`AT+SLMODE?\` | radio.mode | **READ** ENG; writes take temporary/persistent flag plus enumeration 0..7 (not SDX55 mode mask). |
+| \`AT+SLBAND?\`, \`AT+BAND_PREF?\` | radio.band | **READ** ENG; \`SLBAND\` writes distinguish disable=1 / enable=2. |
+| \`AT+CA_ENABLE?\` | radio.ca | **READ**; a write of **0 ENABLES**, 1..255 DISABLES aggregation. |
+| \`AT+FCC_LOCK?\` | security | **READ** but may omit terminating \`OK\`; internal flag is not host QMI FCC authorization. |
+| \`AT+ODIS?\` | OEM | **READ**; bare \`AT+ODIS\` **RESETS** profile to defaults. |
+| \`AT+VZWRSRP?\`, \`AT+VZWRSRQ?\` | radio.signal | **KNOWN CRASH** on tested ENG, CP MHI SSR; do not query. |
+| \`AT+ULCA\`, \`AT+DPR=rm_all\` | CA / SAR | **MUTATING / DESTRUCTIVE** even without usual write form. |
+| \`ftm check_...\` | factory | **REFERENCE ONLY** over vendor QMI command 0x555D, not a standard AT channel; 34 subcommands documented. No enabled factory path. |
+| QCDM / DIAG | diagnostic | **REFERENCE ONLY**: separate HDLC binary channel; no background probe, NV/EFS writes or activation. |
+
 ## Foxconn T99W175 / SDX55 command corpus
 
 | Command | Category | Risk | Purpose | Source |
