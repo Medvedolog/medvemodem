@@ -6473,38 +6473,27 @@ static void at_exited(struct uloop_process *p, int ret)
 		/* the identifiers stay here: never in the reply, the log or the flash (the operator reads them on the page) */
 		char imsi[24] = "", iccid[24] = "";
 		bool qmodem = !j->node[0];
-		bool direct = false;
 		long long gen = rec ? json_object_get_int64(json_object_object_get(rec, "generation")) : -1;
 
-		if (!error && qmodem && !jstr(j->results, "via")) {
-			simid_from_qmodem(responses, imsi, sizeof(imsi), iccid, sizeof(iccid));
-		} else if (!error && qmodem) {
-			/* QModem's own send_at on its AT port: the same two commands as on the port */
+		if (!error && qmodem) {
+			/* QModem's owner-mediated send_at: only the two identifiers we need. */
 			simid_imsi_from_cimi(sim_send_at_res(responses, "step0"), imsi, sizeof(imsi));
 			simid_iccid_from_crsm(sim_send_at_res(responses, "step1"), iccid, sizeof(iccid));
 		} else if (!error) {
 			simid_imsi_from_cimi(jstr(responses, "AT+CIMI"), imsi, sizeof(imsi));
 			simid_iccid_from_crsm(jstr(responses, SIM_CRSM), iccid, sizeof(iccid));
 		}
-		/* QModem answered its sim_info without an ICCID: its send_at on the port is asked at once, by the timer. A
-		 * killed or failed read, and a fallback that gave nothing, wait (sim_fail): never a loop on QModem */
-		direct = !error && !j->killed && qmodem && !jstr(j->results, "via") && !iccid[0];
 		if (rec && gen == j->generation) {
-			if (!error && !j->killed && (imsi[0] || iccid[0] || direct))
-				sim_store(j->device_id, j->generation, qmodem && !jstr(j->results, "via") ? "qmodem" : "at", imsi, iccid, direct);
+			if (!error && !j->killed && (imsi[0] || iccid[0]))
+				sim_store(j->device_id, j->generation, qmodem ? "qmodem" : "at", imsi, iccid, false);
 			else
 				sim_fail(j->device_id, j->generation);
 		}
-		/* two lines for one QModem read were taken for a doubled read (bench 2026-10-20): each names its step */
 		ULOG_INFO("sim %s: identity %s%s\n", j->device_id,
-			  !qmodem ? "read on the AT port" : jstr(j->results, "via") ? "read through QModem's send_at" :
-			  "read through QModem's sim_info",
-			  error || j->killed ? " (no answer)" : direct ? " (no ICCID in it; asking its send_at)" :
-			  !imsi[0] && !iccid[0] ? " (nothing in the answer)" : "");
+			  !qmodem ? "read on the AT port" : "read through QModem's send_at",
+			  error || j->killed ? " (no answer)" : !imsi[0] && !iccid[0] ? " (nothing in the answer)" : "");
 		json_object_put(r);
-		at_finish(j, o);	/* puts the reply made above */
-		if (direct)
-			uloop_timeout_set(&sim_timer, 0);
+		at_finish(j, o);
 		return;
 	}
 	if (j->kind == AT_CELLS) {
@@ -7431,14 +7420,13 @@ static void sim_tick(struct uloop_timeout *t)
 		json_object *rec = json_object_array_get_idx(list, i), *srv, *mm, *e, *x, *cmds;
 		const char *id = jstr(rec, "device_id"), *why = NULL, *node, *section;
 		long long gen = json_object_get_int64(json_object_object_get(rec, "generation"));
-		bool direct, fresh;
+		bool fresh;
 
 		/* a frozen modem is touched by no one, QModem's methods included */
 		if (!id || !json_object_get_boolean(json_object_object_get(rec, "present")) || frozen(id))
 			continue;
 		e = sim_entry(id);
-		direct = e && json_object_get_boolean(json_object_object_get(e, "direct"));
-		fresh = e && json_object_get_int64(json_object_object_get(e, "generation")) == gen && !direct &&
+		fresh = e && json_object_get_int64(json_object_object_get(e, "generation")) == gen &&
 			now - json_object_get_int64(json_object_object_get(e, "at")) < sim_wait(e);
 		if (fresh)
 			continue;
