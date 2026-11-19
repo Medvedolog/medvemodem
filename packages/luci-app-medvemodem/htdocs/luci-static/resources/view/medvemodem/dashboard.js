@@ -1164,7 +1164,8 @@ return view.extend({
 			refs.sub = E('a', { 'class': 'mm-sum-sub mm-dots mm-to-radio', href: href.replace('#', '#radio:'), title: _('Network and signal: cells, bands') }),
 			refs.health, refs.firstNote, refs.sim, refs.usage,
 			refs.recovering, refs.problem, refs.autofix, refs.freshness, refs.known, refs.details, refs.goneNote,
-			E('div', { 'class': 'mm-actions' }, [refs.connect, refs.fix, refs.forget, refs.link, refs.more])
+			E('div', { 'class': 'mm-actions' }, [refs.connect, refs.fix, refs.forget, refs.link, refs.more]),
+			refs.ownerTag
 		]);
 		this.grid.appendChild(refs.node);
 		return refs;
