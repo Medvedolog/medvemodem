@@ -511,6 +511,20 @@ install_flow() {
     show_release
     with_bot=0
     choose_bot && with_bot=1
+    package_files='medvemodem luci-app-medvemodem'
+    [ "$with_bot" = 0 ] || package_files="$package_files medvemodem-bot luci-app-medvemodem-bot"
+    expected_version=$(printf '%s' "${TAG#v}" | sed 's/-alpha/_alpha/')
+    all_current=1
+    for name in $package_files; do
+        current_version=$(installed_version "$name")
+        if [ -z "$current_version" ] || [ "$current_version" != "$expected_version" ]; then
+            all_current=0
+        fi
+    done
+    if [ "$all_current" = 1 ] && [ "$FORCE" != 1 ]; then
+        say "All selected packages already match $TAG; no package transaction is needed."
+        return 0
+    fi
     base=$(printf '%s' "$TAG" | sed 's/^v//')
     archive="medvemodem-$base-$ARCH-$SDK_RELEASE.tar.gz"
     say "Downloading $archive"
@@ -536,20 +550,6 @@ install_flow() {
     fi
     tar -xzf "$TMP/$archive" -C "$TMP/pkg" || fail 'archive extraction failed'
     files=
-    package_files='medvemodem luci-app-medvemodem'
-    [ "$with_bot" = 0 ] || package_files="$package_files medvemodem-bot luci-app-medvemodem-bot"
-    expected_version=$(printf '%s' "${TAG#v}" | sed 's/-alpha/_alpha/')
-    all_current=1
-    for name in $package_files; do
-        current_version=$(installed_version "$name")
-        if [ -z "$current_version" ] || [ "$current_version" != "$expected_version" ]; then
-            all_current=0
-        fi
-    done
-    if [ "$all_current" = 1 ] && [ "$FORCE" != 1 ]; then
-        say "All selected packages already match $TAG; no package transaction is needed."
-        return 0
-    fi
     for name in $package_files; do
         match=
         # Package filenames start with the exact name followed by a numeric
