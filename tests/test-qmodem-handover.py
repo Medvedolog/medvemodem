@@ -20,7 +20,7 @@ require(leave, 'strcmp(preferred, "qmodem")', "qmodem_leaving")
 require(leave, 'qmodem_installed()', "qmodem_leaving")
 require(leave, "sec[0] = '\\0'", "qmodem_leaving")
 
-# If QModem never made a section, the engine must clear its own failed lease
+# If QModem never made a section, the engine must clear its failed lease
 # without invoking modem_scan.sh remove on a fabricated section name.
 go = ENGINE.split("static bool bringup_go(", 1)[1].split("static bool bringup_txn(", 1)[0]
 require(go, "bool have_section = sec[0] != '\\0'", "bringup_go")
@@ -36,9 +36,8 @@ require(after, "mm_return_wait(job.device_id, job.generation)", "bringup_after_q
 require(after, "inhibits_sync()", "bringup_after_qmodem")
 
 # A configured backend is not an owner until the QModem scanner exposes the
-# matching modem-device section. A missing section is surfaced as a failed
-# adoption, not QModem ownership.
-served = ENGINE.split("bool ours = native && backend", 1)[1].split("json_object_object_add(o, \"owner\"", 1)[0]
+# matching modem-device section. A missing section is surfaced as failed adoption.
+served = ENGINE.split("bool ours = native && backend", 1)[1].split("if (ours && qsec)", 1)[0]
 require(served, "if (qsec && !ours)", "served owner")
 require(served, 'json_object_new_string("unresolved")', "served owner")
 require(served, '"adoption_failed"', "served owner")
@@ -46,6 +45,7 @@ require(served, '"adoption_pending"', "served owner")
 
 # The dashboard explains failed adoption and does not present QModem telemetry
 # as stale data when QModem never took the modem.
+require(DASH, "var VIEW_VERSION = '0.16.0-alpha1-r11';", "dashboard version")
 require(DASH, "qmodem.adoption_failed", "dashboard")
 require(DASH, "QModem was selected but did not create a modem-device section", "dashboard")
 require(DASH, "qmodem.adoption_pending", "dashboard")
