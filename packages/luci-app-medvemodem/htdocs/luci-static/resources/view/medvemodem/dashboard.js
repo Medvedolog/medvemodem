@@ -1157,7 +1157,7 @@ return view.extend({
 		refs.title.appendChild(refs.titleLink);
 		refs.node = E('article', { 'class': 'mm-card mm-mcard mm-tile', 'data-device-id': id }, [
 			E('div', { 'class': 'mm-mcard-top mm-card-head' }, [E('div', { 'class': 'mm-mcard-id' }, [refs.title, refs.subtitle]),
-				E('div', { 'class': 'mm-row mm-mcard-icons' }, [refs.ownerTag, refs.autofixBadge, refs.web, refs.sms, refs.toggle])]),
+				E('div', { 'class': 'mm-row mm-mcard-icons' }, [refs.autofixBadge, refs.web, refs.sms, refs.toggle])]),
 			E('div', {}, refs.state),
 			refs.sum = E('div', { 'class': 'mm-sum mm-network' }, [E('a', { 'class': 'mm-to-radio', href: href.replace('#', '#radio:'),
 				title: _('Network and signal: cells, bands') }, refs.icon), refs.badge, refs.network]),
