@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "quectel-ep06",
   "extends": "quectel",
-  "description": "Quectel EP06-E / EP06-A / EG06 on USB 2c7c:0306 (LTE Cat 6). Ports by interface: 0 DIAG, 1 GNSS, 2 primary AT, 3 secondary AT/PPP; QMI data function follows, when qmi_wwan is loaded. EP06-E has no GSM radio; legacy QCFG nwscanmode (0 auto, 2 WCDMA, 3 LTE) and QCFG band masks (firmware-dependent); do not use 5G-generation QNWPREFCFG. Never alter QCFG usbnet automatically. On EP06-E/EG06-E raw AT+CUSD was reported to acknowledge without a network reply; MM USSD/firmware variants require separate live verification.",
+  "description": "Quectel EP06-E / EP06-A / EG06 on USB 2c7c:0306 (LTE Cat 6). Ports by interface: 0 DIAG, 1 GNSS, 2 primary AT, 3 secondary AT/PPP; QMI data function follows, when qmi_wwan is loaded. EP06-E has no GSM radio; legacy QCFG nwscanmode (0 auto, 2 WCDMA, 3 LTE) and QCFG band masks (firmware-dependent); do not use 5G-generation QNWPREFCFG. Never alter QCFG usbnet automatically. On EP06-E/EG06-E raw AT+CUSD was reported to acknowledge without a network reply; MM USSD/firmware variants require separate live verification. Field confirmation 2026-11-19: firmware EP06ELAR04A06M4G on OpenWrt 25.12.6 (qmi_wwan 2-1:1.4, /dev/cdc-wdm1, wwan1; ttyUSB5 AT/PPP, ttyUSB6 AT). ModemManager is connected with backend auto; native handover remains unverified.",
   "match": {
     "bus": "usb",
     "vid": "2c7c",
@@ -12,7 +12,7 @@
     "at_interface_numbers": [
       2
     ],
-    "at_source": "ModemManager port-type rules for 2c7c:0306, Linux qmi_wwan matching, validated EP06-E live composition: AT on interface 2 and optionally 3; map by USB interface, not changing ttyUSB index",
+    "at_source": "ModemManager port-type rules for 2c7c:0306, Linux qmi_wwan matching, validated EP06-E live composition: AT on interface 2 and optionally 3; map by USB interface, not changing ttyUSB index; field report 2026-11-19 confirms ttyUSB5 for USB interface 02 and ttyUSB6 for 03 (MM selected ttyUSB6 as preferred AT), with role distinctions not stable tty indexes",
     "ussd": "unconfirmed",
     "ussd_source": "EP06-E/EG06-E raw AT+CUSD acknowledgement without useful network reply; do not treat command OK as network delivery",
     "sms": {
@@ -48,7 +48,7 @@
       "control": "cdc-wdm",
       "protocol": "qmi",
       "selection": "explicit-only",
-      "auto_selection": "retain existing qmodem/modemmanager precedence",
+      "auto_selection": "ModemManager first; native QMI explicit-only, QModem explicit-only on EP06-E. Do not inherit generic Quectel QModem-first policy.",
       "ownership": "exclusive: release ModemManager before uqmi; never run direct QMI concurrently with MM",
       "fallback": "restore previous ModemManager interface if bring-up fails"
     },
@@ -56,11 +56,34 @@
       "status": "variant-check-required",
       "read": "QMI UIM slot-status through the exclusive QMI owner",
       "policy": "Do not assume AT+QUIMSLOT? on EP06-E: observed ERROR/no reply; verify the exact firmware and active slot before exposing a switch."
+    },
+    "field_validation": {
+      "observed_at": "2026-11-19 09:22 router report",
+      "firmware": "EP06ELAR04A06M4G",
+      "system": "OpenWrt 25.12.6 rockchip/armv8 aarch64_generic kernel 6.12.112",
+      "usb": "2c7c:0306; interface 0 option ttyUSB3 unknown, 1 ttyUSB4 GNSS, 2 ttyUSB5 AT/PPP, 3 ttyUSB6 AT, 4 qmi_wwan cdc-wdm1/wwan1",
+      "identity": "exact Quectel EP06-E profile match; ModemManager quectel plugin, /org/freedesktop/ModemManager1/Modem/3 at capture",
+      "management": "MM owns control, session, AT; connected via netifd proto modemmanager mm5, wwan1; backend option still auto despite attempted native selection on r8",
+      "connectivity": "MTS RUS LTE: RSRP -82 dBm, RSRQ -12 dB, SINR 3.4 dB; standby-ready measured reachability; no native QMI session confirmed",
+      "logs": "09:08:40 operator freeze inhibits MM and drops mm5; 09:08:42 operator unfreeze restores MM ports; 09:08:59 MM connected again; short freeze/unfreeze is not proof of successful owner handover",
+      "caveats": "One previous qmi_wwan driver bind caused session disruption and MM object churn, but no current instability. ModemManager may use ttyUSB5 for PPP even when qmi_wwan exists; native QMI must use a correctly validated cdc-wdm/netdev pair and exclusive port ownership.",
+      "native_acceptance": "NOT TESTED; no active native QMI, AT QNWLOCK readback, or cell lock proof from this report"
     }
   },
   "radio": {
     "dialect": "quectel-ep06",
     "status": "field-reported",
     "source": "EP06-E hardware-specific QCFG/QENG/QCAINFO/QNWLOCK/QRSRP/QTEMP observations; per-firmware feature detection mandatory; docs/modem-zoo/modems/quectel-lte-ec25-ep06-em12.md"
+  },
+  "policy": {
+    "owner_priority": [
+      "modemmanager",
+      "netifd-qmi",
+      "qmodem"
+    ],
+    "allow_direct_at_when_mm_owned": false,
+    "allow_dynamic_new_id": false,
+    "allow_usb_rebind": false,
+    "mm_ports": "control"
   }
 }
