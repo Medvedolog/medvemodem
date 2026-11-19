@@ -2165,8 +2165,10 @@ return view.extend({
 		text(c.nativeOpt, (p.dial || {}).status === 'unverified' ? _('MedveModem directly (AT; not yet checked on this model)') :
 			_('MedveModem directly (QMI, MBIM or AT)'));
 		if (!c.dirty && document.activeElement !== c.backend) c.backend.value = k.backend || 'auto';
-		if (!nativeOk && c.backend.value === 'native' && !this.ownerSwitch)
+		if (!nativeOk && c.backend.value === 'native' && !this.ownerSwitch && !c.nativeDenied) {
+			c.nativeDenied = true;
 			this.ownerStage(_('Native modem management is unavailable: this modem profile or its QMI/MBIM capability was not detected.'), 'err');
+		} else if (nativeOk) c.nativeDenied = false;
 		if (!c.dirty && document.activeElement !== c.ttl) c.ttl.checked = !!k.ttl;
 		if (!c.dirty && document.activeElement !== c.dns) c.dns.value = (k.dns || []).join(' ');
 		if (!c.dirty && document.activeElement !== c.dnsMode) c.dnsMode.value = k.dns_mode === 'replace' ? 'replace' : 'add';
