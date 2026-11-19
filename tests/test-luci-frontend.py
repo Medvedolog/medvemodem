@@ -101,7 +101,7 @@ if "c.pkgs, c.mmr, this.ownerBadgePref()" not in settings:
 # Owner badges belong in the lower-right corner of each modem card/page,
 # not beside the modem title or in the toolbar/table. HiLink's WEB link
 # already identifies that interface and must not be duplicated as an owner.
-for token in ("refs.ownerTag\\n", "mm-mcard > .mm-owner-tag"):
+for token in ("refs.ownerTag\n", "mm-mcard > .mm-owner-tag"):
     if token not in dashboard:
         failures.append(f"dashboard.js: missing bottom-right owner badge placement: {token}")
 for token in ("h.ownerTag]);", "mm-hero > .mm-owner-tag"):
