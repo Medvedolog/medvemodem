@@ -1,6 +1,6 @@
 # MedveModem Bot — Telegram Interface
 
-[Русский оригинал](README.md) · [MedveModem](../../README.md) · [Documentation](../../docs/README.md)
+[Русский оригинал](README.md) · [MedveModem](../../README.md) · [Documentation](../../docs/README.md) · [Bot architecture and Telegram screen wireframes (RU)](../../docs/BOT-ARCHITECTURE.md)
 
 MedveModem Bot provides modem and uplink alerts, status summaries, incoming SMS and diagnostic events in the administrator's private Telegram chat. It ships as `medvemodem-bot` alongside the optional LuCI panel `luci-app-medvemodem-bot`. Written in ucode, it supports OpenWrt 24.10 and 25.12 on every package architecture (`all` / `noarch`). The bot talks to the modem **only through the MedveModem engine's ubus interface** and can perform no operation that the engine disallows.
 
@@ -32,7 +32,7 @@ Languages: `option lang` accepts `auto`, `ru` or `en`.
 
 ### Optional control
 
-When `allow_control '1'` is enabled, a bound administrator may connect/disconnect a modem, freeze/unfreeze it, make it primary and change automatic failover exceptions. **Every action requires confirmation.** Administrative actions are recorded in the system log as `admin_*`. When disabled, the bot only reads state.
+When `allow_control '1'` is enabled, a bound administrator may connect/disconnect, reconnect, re-register, restart, pause/resume management, make a modem primary and change automatic failover exceptions. Disconnect, reconnect, re-register, restart, make-primary and pause-management require confirmation; connect and resume do not use a separate confirmation page. Administrative actions are recorded in the system log as `admin_*`. When disabled, the bot only reads state.
 
 ### Telegram connectivity
 
@@ -64,7 +64,7 @@ Use only the commands matching the router's package manager. Runtime dependencie
 ## First-time setup
 
 1. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and copy its token.
-2. In LuCI open **Modem → MedveModem → Telegram bot**. Follow the wizard: token → link administrator through a one-time code sent to the bot → choose Telegram path (direct, proxy or modem) → **Enable and start bot**.
+2. In LuCI open **Modem → MedveModem → Telegram bot**. The current wizard is: token → check the Telegram route → enter the administrator's numeric Telegram user ID → **Enable and start bot**. Note: one-time pairing RPC methods exist in the backend but are not called by the current wizard page; use the numeric ID field.
 3. Use **Send test message**, then send `/menu` in Telegram.
 
 Commands:

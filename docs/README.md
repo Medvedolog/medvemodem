@@ -20,7 +20,7 @@
 | Техническое ТЗ: SIM-слоты и eSIM / SIM-slot and eSIM handoff | [HANDOFF-SIM-SLOTS-ESIM.md](HANDOFF-SIM-SLOTS-ESIM.md) | [Технические идентификаторы сохранены](HANDOFF-SIM-SLOTS-ESIM.md) |
 | Темы LuCI / LuCI themes | [LUCI-THEMES.ru.md](LUCI-THEMES.ru.md) | [LUCI-THEMES.md](LUCI-THEMES.md) |
 | История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (all 238 entries) |
-| Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) |
+| Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) · [Архитектура и макеты экранов](BOT-ARCHITECTURE.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) · [Architecture and Telegram screen wireframes (RU)](BOT-ARCHITECTURE.md) |
 | Modem Zoo / Зоопарк модемов | [modem-zoo/README.md](modem-zoo/README.md) | [Original field notes](modem-zoo/README.md) |
 
 ## eSIM — возможности Alpha 1 / Alpha 1 capabilities

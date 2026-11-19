@@ -16,7 +16,7 @@
 
 **RU: [Установка](docs/INSTALL.md) · [Краткая инструкция](docs/USER-GUIDE.md) · [Руководство](docs/MANUAL.md) · [Белые списки оператора: настройка](docs/WHITELISTS-RU.md)**  
 **EN: [Installation](docs/INSTALL.en.md) · [Quick Start](docs/USER-GUIDE.en.md) · [Full Manual](docs/MANUAL.en.md)**
-**[Documentation / Документация](docs/README.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
+**[Documentation / Документация](docs/README.md) · [Telegram bot: architecture & screen layouts / Архитектура и макеты Telegram-бота](docs/BOT-ARCHITECTURE.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
 [Отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report)
 
@@ -45,7 +45,7 @@ wget -O /tmp/medvemodem-install.sh https://raw.githubusercontent.com/Medvedolog/
 
 ## English overview
 
-**[Quick Start (EN)](docs/USER-GUIDE.en.md) · [Installation (EN)](docs/INSTALL.en.md) · [Full Manual (EN)](docs/MANUAL.en.md)**
+**[Quick Start (EN)](docs/USER-GUIDE.en.md) · [Installation (EN)](docs/INSTALL.en.md) · [Full Manual (EN)](docs/MANUAL.en.md) · [Telegram bot architecture and screen layouts](docs/BOT-ARCHITECTURE.md)**
 
 MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C daemon, LuCI interface, CLI/TUI and optional Telegram bot. It coordinates modem ownership across ModemManager, QModem and native QMI/MBIM/AT paths; supervises connectivity, failover and staged recovery. The hardware knowledge base covers device profiles, modem-specific quirks and field reports.
 
@@ -136,7 +136,7 @@ MedveModem is a modem orchestration engine for OpenWrt 24.10 / 25.12, with a C d
 **Интерфейсы**
 - **LuCI** («Модем» → «MedveModem»): обзор модемов [карточками](screenshots/01-modems-cards.png) или [таблицей](screenshots/11-modems-table.png) с действиями над выбранными, [страница модема с вкладками](screenshots/02-modem-overview.png), настройки, три уровня подробности, переключатель «Скрыть идентификаторы», строка на модем
   в [«Статус» → «Обзор»](screenshots/10-openwrt-status.png).
-- **Telegram-бот** (отдельный пакет, [описание](packages/medvemodem-bot/README.md)):
+- **Telegram-бот** (отдельный пакет, [описание](packages/medvemodem-bot/README.md), [архитектура и макеты экранов](docs/BOT-ARCHITECTURE.md)):
   оповещения и сводка за сутки, карточки модемов, входящие SMS, тест блокировок, журнал файлом; по желанию —
   управление модемами. Ходит в Telegram напрямую, через прокси (в том числе podkop) или через любой модем и при
   блокировке переключает маршрут.
