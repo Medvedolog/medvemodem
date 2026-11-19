@@ -1,0 +1,61 @@
+# Owner-authorized bridge for publishing MedveModem Alpha 1 r10.
+# The actual SDK matrix and release publication remain in build.yml.
+name: publish-alpha1-r10
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: owner-publish-alpha1-r10
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch verified r10 build and prerelease
+    if: >-
+      ${{ github.repository == 'Medvedolog/medvemodem' &&
+          github.event.issue.number == 14 &&
+          github.event.comment.user.login == 'Medvedolog' &&
+          github.event.comment.body == '/medvemodem publish r10' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Verify r10 source, highlights and publication eligibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=v0.16.0-alpha1-r10
+          grep -Fxq 'PKG_VERSION:=0.16.0_alpha1' Makefile
+          grep -Fxq 'PKG_RELEASE:=10' Makefile
+          for file in packages/luci-app-medvemodem/Makefile packages/medvemodem-bot/Makefile packages/luci-app-medvemodem-bot/Makefile; do
+            grep -Fxq 'PKG_RELEASE:=10' "$file"
+          done
+          grep -Fq '## 0.16.0-alpha1-r10' docs/RELEASE-HIGHLIGHTS-ALPHA1-R10.md
+          test -s docs/RELEASE-HIGHLIGHTS-ALPHA1-R10.md
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing duplicate publication." >&2
+            exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; refusing to publish against an unverified tag." >&2
+            exit 1
+          fi
+      - name: Dispatch full six-target SDK build with prerelease publication enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f publish_release=true \
+            -f release_tag=v0.16.0-alpha1-r10
+          echo 'Dispatched r10 SDK matrix; build.yml will publish only after all six targets and release-asset checks pass.'
