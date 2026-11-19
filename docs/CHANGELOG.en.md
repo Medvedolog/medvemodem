@@ -20,6 +20,15 @@
 - Expanded the experimental profile's firmware knowledge without enabling any production write, DIAG/FTM access or auto-poll; ModemManager ownership remains unchanged. Already published r8 artifacts are unchanged.
 
 
+
+### Post-r8 EP06-E hardware diagnosis (2026-11-19; source only)
+
+- A physical OpenWrt 25.12.6 EP06-E report confirms firmware `EP06ELAR04A06M4G`, `qmi_wwan`, `/dev/cdc-wdm1`, `wwan1`, two AT ports, and a functional ModemManager LTE session.
+- `connection.backend=auto` after the attempted native selection proves that native QMI was not persisted at capture; a short operator-requested MM freeze/unfreeze is not native handover evidence. The specific Save failure cannot be determined without UI/RPC/UCI traces.
+- EP06 now overrides the inherited generic Quectel QModem-first priority: **retain working ModemManager by default, native QMI and QModem by explicit selection only**. Stored live port topology, firmware and safety caveats without enabling conflicting AT/QMI probes.
+- Published r8 is unchanged; a later package plus physical EP06 owner-switch/lock tests are still required.
+
+
 ## 0.16.0-alpha1-r8 — 2026-11-19
 
 - **Quectel EP06-E:** add an isolated native-AT radio dialect with firmware-gated LTE cell lock/unlock by EARFCN and PCI. Read both `QNWLOCK` families: `common/4g` (cell count and frequency/PCI pairs) and `common/lte` (action, frequency, PCI and completion status).
