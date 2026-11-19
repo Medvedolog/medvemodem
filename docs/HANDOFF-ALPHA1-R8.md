@@ -141,3 +141,12 @@ Do **not** issue bare `AT+QNWLOCK`, change modem USB composition or force MM inh
 - Current native QMI/MBIM selector recognizes a discovered `qmi_wwan`/`cdc_mbim` control port and has post-r8 owner-handover monitoring, superseding the one-commit old selector. Physical EP06 owner acceptance remains outstanding.
 - The `feat/ssh-installer` branch carries an older 185-line installer test and branch-triggered CI workflow absent from main; they need adaptation rather than wholesale copying because release versions and behavior have changed. PR #6 remains open.
 - Owner-badges branch and old r2 branch still need individual UI/feature reconciliation. No new build/release was requested or triggered, and **none of the eight retained branches has been deleted**. Their commit histories remain available pending final source and test acceptance.
+
+
+## SSH installer confirmation UX — 2026-11-19
+
+- Updated `medvemodem-install.sh`: an already installed Telegram bot (either bot package present) is automatically included in the engine/LuCI upgrade set. The optional bot prompt is now reserved for first-time installation; `--bot` / `--no-bot` remain explicit overrides.
+- Removed the separate package-install YES and the later service-disruption YES. After SHA256 verification and package-manager dry-run, one final confirmation names the selected package set and, when detectable, the running services that will be stopped and the possibility of losing SSH/mobile connectivity.
+- Service shutdown begins only after that confirmation. Noninteractive operation still requires `--allow-disconnect`; first-time optional bot selection defaults to no when no TTY is present.
+- Added regression assertions to `tests/test-installer-release-selection.sh` for automatic bot carry-forward, the single final confirmation, warning text and dry-run/confirm/stop ordering.
+- This changes the raw `main` SSH installer used by future runs; it does not modify the already published r8 package archive. No SDK build or release was triggered. GitHub Actions execution of the updated test has not yet been observed.
