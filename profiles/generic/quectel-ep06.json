@@ -27,7 +27,7 @@
         "AT+QNWLOCK=\"common/4g\"",
         "AT+QNWLOCK=\"common/lte\""
       ],
-      "write_policy": "Never write unless matching query returned a supported response, ownership exclusive and rollback recorded; common/4g cell uses mode 1, common/lte cell uses mode 2; unlock uses mode 0. In ModemManager ownership this is not currently exposed.",
+      "write_policy": "Do not expose a write until the exact QNWLOCK read dialect is confirmed by this firmware, the previous lock is captured, an exclusive engine-owned AT port is leased, and rollback is available. common/4g and common/lte forms are not interchangeable; MM ownership is read-only/no direct AT access.",
       "identifiers": [
         "EARFCN",
         "PCI"
@@ -35,11 +35,11 @@
       "persistence": "firmware-dependent"
     },
     "telemetry": {
-      "serving": "AT+QENG=\"servingcell\": serving LTE PCI EARFCN TAC RSRP RSRQ RSSI SINR; SINR is already dB",
-      "ca": "AT+QCAINFO: PCC/SCC EARFCN band bandwidth PCI state; SCC state 1 inactive 2 active",
-      "neighbours": "AT+QENG=\"neighbourcell\": LTE intra rows EARFCN PCI RSRQ RSRP RSSI (RSRQ before RSRP); drop invalid/truncated rows",
-      "antenna": "AT+QRSRP: PRX DRX RX2 RX3; EP06 two receive chains; -140/-32768 sentinel, never infer disconnected antenna",
-      "temperature": "AT+QTEMP: 3 or 4 signed sensor values; report maximum valid sensor reading",
+      "serving": "AT+QENG=\"servingcell\": LTE PCI EARFCN TAC RSRP RSRQ RSSI SINR, LTE bandwidth is an index (0=1.4,1=3,2=5,3=10,4=15,5=20 MHz); SINR is already dB, do not rescale.",
+      "ca": "AT+QCAINFO: LTE PCC/SCC EARFCN band bandwidth PCI signal; SCC state 1=deactivated (listed, not aggregated now), 2=activated. OK without PCC is no confirmed CA, not proof of absent LTE-A capability.",
+      "neighbours": "AT+QENG=\"neighbourcell\": LTE intra EARFCN PCI RSRQ RSRP RSSI (RSRQ before RSRP); drop invalid/truncated rows and avoid offering serving PCI/EARFCN as a neighbour lock target.",
+      "antenna": "AT+QRSRP: PRX DRX RX2 RX3 (optionally RAT fifth field); EP06 has two physical Rx chains, ignore -140/-32768 and unused RX2/RX3; neither weak readings nor RXDIV identify a disconnected antenna.",
+      "temperature": "AT+QTEMP: 3/4 signed sensor values; native engine-owned AT reads this beside QCAINFO and displays the maximum in modem_c. Reject 255/-140/-32768 and nonnumeric or out-of-range readings; never access the MM-owned port.",
       "operator": "AT+QSPN: prefer SPN with nonnumeric fallback; network operator and SIM operator remain distinct"
     },
     "native_qmi": {
@@ -51,6 +51,11 @@
       "auto_selection": "retain existing qmodem/modemmanager precedence",
       "ownership": "exclusive: release ModemManager before uqmi; never run direct QMI concurrently with MM",
       "fallback": "restore previous ModemManager interface if bring-up fails"
+    },
+    "sim_slots": {
+      "status": "variant-check-required",
+      "read": "QMI UIM slot-status through the exclusive QMI owner",
+      "policy": "Do not assume AT+QUIMSLOT? on EP06-E: observed ERROR/no reply; verify the exact firmware and active slot before exposing a switch."
     }
   },
   "radio": {
