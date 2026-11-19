@@ -320,7 +320,7 @@ addon() {
 
 run() {
 	trap 'pm_unlock' EXIT
-	local c latest tag url sums f got want pkgs out rc
+	local c latest tag url sums f got want pkgs family out rc
 	mkdir -p "$RUN"
 	put_pid $$
 	exec >>"$LOG" 2>&1
