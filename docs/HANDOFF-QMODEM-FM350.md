@@ -87,3 +87,15 @@ Upstream documented APIs (verify availability and JSON schema in pinned installe
 **Scope:** eSIM/EUICC operations are allowed when **MedveModem natively owns the required transport** or when **ModemManager explicitly permits a supported, safely shared transport** (such as MBIM through the correct proxy under existing owner-aware rules). **QModem-owned devices are intentionally excluded:** `src/esim.c:mm_esim_target()` must retain `owner_busy` for `owner.control=qmodem`. Do **not** create a QModem-mediated CCHO/CGLA/CCHC bridge, open QModem/tom_modem tty ports directly, forcibly claim the port, or stop QModem merely to read a profile.
 
 This decision supersedes the earlier proposal for r6. Issue [#7](https://github.com/Medvedolog/medvemodem/issues/7) was closed as **not planned**. The Fildunsky bridge investigation is retained as a technical reference, not an implementation requirement. r5's operator/CA telemetry via QModem does not change eSIM eligibility. Maintain clear eSIM UI explanations of allowed ModemManager access and unavailable QModem access. No unsupported promises in the README or release notes.
+
+
+## Implementation follow-up — branch only, 2026-11-19
+
+Branch: `fix/fm350-qmodem-telemetry-r9` (based on current `main`). No merge, SDK build, release publication or router mutation has been performed.
+
+- Replaced the engine's QModem `modem_ctrl.sh` worker path with the pinned QModem rpcd interface: `ubus call qmodem <method> {config_section,params}`. Calls have a per-method ubus timeout, use the absolute `/bin/ubus` path, and log method start/completion and elapsed time without logging AT payloads. `send_at` remains QModem-owned and uses its `qmodem_at_lock` path; MedveModem never opens the owned tty.
+- Reduced FM350 metrics to one structured/cached `cell_info` call. Removed the extra `GTCURCAR` and `GTCAINFO` calls from the critical metrics transaction: the former is optional operator-name enrichment (MCC/MNC is already in cell_info and LuCI maps the PLMN); the latter duplicates QModem's own GTCAINFO read. An optional second AT call can no longer hold the core signal snapshot hostage.
+- Extended `mm_qmodem_metrics` to normalize QModem LTE/NR serving-cell fields: RSRP, RSRQ, RSSNR/SINR, RSSI, MCC/MNC, RAT, band, EARFCN/ARFCN, PCI, TAC, cell ID and downlink bandwidth.
+- Replaced periodic full `sim_info` polling (many unrelated AT queries) with only the two owner-mediated reads needed by MedveModem: `AT+CIMI` and `AT+CRSM=176,12258,0,0,10`, through QModem `send_at`. No direct AT access was added.
+- Added a host C fixture test for LTE and EN-DC/NR QModem cell_info parsing and wired it into the manual build's pre-SDK test gate. The parser fixture was compiled and passed locally in the model's host container; the complete shell wrapper and the router's live QModem rpcd response have not yet been verified.
+- Outstanding: run one read-only live `ubus call qmodem cell_info` on the stable FM350, then run the full host/frontend gates. Only after that should an r9 package be built for `aarch64_cortex-a53` / OpenWrt 25.12.5 or 25.12.6. The already published r8 remains unchanged.
