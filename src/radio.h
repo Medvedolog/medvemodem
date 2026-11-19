@@ -73,6 +73,8 @@ json_object *mm_heat_from_at(const char *temp, const char *therm);
 
 /* EP06-E: optional read-only sensor query on the engine-owned AT port. */
 #define MM_EP06_TEMP_COMMAND "AT+QTEMP"
+#define MM_EP06_SERVING_COMMAND "AT+QENG=\"servingcell\""
+#define MM_EP06_NEIGHBOUR_COMMAND "AT+QENG=\"neighbourcell\""
 json_object *mm_quectel_temp_from_at(const char *raw);
 
 #endif
