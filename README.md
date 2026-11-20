@@ -362,9 +362,9 @@ MedveModem is a profile-driven modem manager for OpenWrt 24.10 and 25.12. For ev
 ModemManager, QModem or its own native path (QMI, MBIM, AT dial through netifd) — keeps the others off the device,
 watches the connection and recovers what breaks without touching a working channel. It comes with a LuCI app, a
 console (CLI and TUI) and an optional Telegram bot. Bench builds are published as `bench-v*` pre-releases; the
-changelog is [docs/CHANGELOG.md](docs/CHANGELOG.md) (in Russian). The LuCI app is in English and Russian (LuCI's
+changelogs are available in [Russian](docs/CHANGELOG.md) and [English](docs/CHANGELOG.en.md). The LuCI app is in English and Russian (LuCI's
 language picks one), the bot in Russian or English (its own setting), the console and the system log in English;
-the main manuals and guides are available in English and Russian via the [documentation index](docs/README.md). The complete historical changelog is currently in Russian; recent entries are [translated](docs/CHANGELOG.en.md). The Telegram bot has a full [English guide](packages/medvemodem-bot/README.en.md).
+the main manuals and guides are available in English and Russian via the [documentation index](docs/README.md). The English changelog covers the same 251 versioned entries as the Russian original; some older descriptions are condensed. The Telegram bot has a full [English guide](packages/medvemodem-bot/README.en.md).
 GPL-3.0-only; an independent implementation, no code copied from the projects studied.
 
 ![MedveModem diagram: the front ends (LuCI, console, Telegram bot) talk to the medvemodemd engine over ubus; each modem has exactly one executor — ModemManager, QModem, MedveModem itself or the modem's web](docs/img/architecture-en.svg)
