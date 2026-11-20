@@ -28,12 +28,12 @@ bool mm_quota_period(const char *today, int reset_day, char *start, char *next);
 json_object *mm_quota_add(json_object *usage, const char *iccid, const char *start, long long bytes);
 
 /*
- * The SIM's quota as served: {"iccid", "used_bytes", "limit_bytes"?,
+ * The SIM's quota as served: {"key" (its label key, never the ICCID), "used_bytes", "limit_bytes"?,
  * "percent"?, "warn_percent", "state": "none" (no limit) | "ok" | "warn" |
  * "exceeded", "period_start", "resets_on", "action": "warn" | "backup"}.
  * limit_bytes <= 0 means no limit. New object.
  */
-json_object *mm_quota_view(json_object *entry, const char *iccid, long long limit_bytes, int warn_percent,
+json_object *mm_quota_view(json_object *entry, const char *key, long long limit_bytes, int warn_percent,
 			   const char *start, const char *next, const char *action);
 
 /*

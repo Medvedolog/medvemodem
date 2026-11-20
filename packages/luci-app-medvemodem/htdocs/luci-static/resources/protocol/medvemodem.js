@@ -42,7 +42,7 @@ return network.registerProtocol('medvemodem', {
 		o = s.taboption('general', form.DummyValue, '_mm_note', _('Managed by'));
 		o.rawhtml = false;
 		o.cfgvalue = function() {
-			return _('MedveModem: the modem, its APN and the connection are set on the modem\'s page (Modem → MedveModem).');
+			return _('Managed by MedveModem. Configure modem, APN, and connection under Modem → MedveModem.');
 		};
 
 		o = s.taboption('general', form.Value, 'device_id', _('Modem'));

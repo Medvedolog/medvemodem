@@ -10,7 +10,7 @@ Current sources associate this command family with Dell/Foxconn identities inclu
 
 - `413c:81d7` — Dell DW5821e;
 - `413c:81e0` — Dell DW5821e eSIM;
-- `0489:e0b4` / `0489:e0b5` — Foxconn IDs in current archived modem utility profiles.
+- `0489:e0b4` / `0489:e0b5` — Foxconn IDs in current another modem manager profiles.
 
 other scripts tables also group `1bc7:1910/1911` with this broad family/AT heritage; OEM naming must be treated cautiously.
 
@@ -81,13 +81,13 @@ These values are not T99W175 masks.
 The field corpus establishes `AT^ULCA?` and `AT^ULCA` (enable). It does not establish a reliable disable form, so Zoo does not invent one.
 
 ### Telemetry
-The current archived modem utility profile parses `AT^CA_INFO?;^DEBUG?` for serving and secondary carriers, PCI, EARFCN, RSRP/RSRQ/RSSI/SINR, RI, CQI, Tx power and antenna-chain data, with WCDMA fallbacks.
+The current another modem manager profile parses `AT^CA_INFO?;^DEBUG?` for serving and secondary carriers, PCI, EARFCN, RSRP/RSRQ/RSSI/SINR, RI, CQI, Tx power and antenna-chain data, with WCDMA fallbacks.
 
 ## Provenance
 
 - a field report: current profile, band/mode/telemetry logic;
 - QModem: QMI+MBIM model evidence;
-- other scripts/archived modem utility: historical IDs/port observations and MM-oriented bring-up;
+- other scripts/another modem manager: historical IDs/port observations and MM-oriented bring-up;
 - ModemManager/libqmi: owner-aware FCC path.
 
 ## Telegram field evidence — firmware profiles, transport rebinding and RFNV
@@ -113,8 +113,8 @@ See [Telegram field notes](../TELEGRAM-FIELD-NOTES.md) for provenance.
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-field-notes-v3.5.2:start -->
-## Field incidents — archived field notes
+<!-- upstream-another modem manager-v3.5.2:start -->
+## Field incidents — a field report another modem manager
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -155,4 +155,4 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 - **`dw5821e-usb-config-restoration`** — `DRIVER_COMPOSITION_REPAIR`; 413c:81d7/81e0 config 0 with no cdc-wdm/wwan → last known good USB bConfigurationValue; explicit approval required; Never treat config=0 as a selectable working mode.
 - **`foxconn-fastboot-exit`** — `BOOTLOADER_EXIT_ONLY`; DW5821e true fastboot ff/42/03 or 413c:81d6 / 81e1 → normal USB modem, after one reboot; explicit approval required; 413c:81e4 and 413c:81e6 are WORKING DW5829e compositions, not fastboot.
 
-<!-- upstream-field-notes-v3.5.2:end -->
+<!-- upstream-another modem manager-v3.5.2:end -->

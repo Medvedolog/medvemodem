@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=medvemodem
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=10
+PKG_RELEASE:=12
 
 # QModem's core, built from its source by CI for the LuCI installer
 # (files/usr/libexec/medvemodem/qmodem-install);
@@ -122,6 +122,13 @@ define Build/Compile
 		-o $(PKG_BUILD_DIR)/esim-apdu \
 		$(PKG_BUILD_DIR)/esim_apdu.c $(PKG_BUILD_DIR)/apdu.c $(PKG_BUILD_DIR)/atport.c $(PKG_BUILD_DIR)/at.c \
 		$(TARGET_LDFLAGS) -ljson-c
+endef
+
+# the router owner's settings: an upgrade keeps them, a new default goes beside as -opkg / .apk-new (CI/CD audit PKG-01,
+# 2026-11-19: without the list opkg and apk replaced /etc/config/medvemodem with the default on every upgrade)
+define Package/medvemodem/conffiles
+/etc/config/medvemodem
+/etc/config/medvemodem-secret
 endef
 
 define Package/medvemodem/install

@@ -7,6 +7,13 @@
 # Only the commands below run (the speed test too: it was refused and ran as a plain call, «XHR request timed out»,
 # the owner 2026-11-16); the rpcd ACL names each of them per access level as well.
 D=${MEDVEMODEM_BG_DIR:-/tmp/medvemodem/bg}
+# what a caller's environment could slip into the command it starts: a preload, a library path, a shell start file,
+# a field separator; PATH is the system's (audit SEC-01, 2026-11-19)
+unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT ENV BASH_ENV CDPATH
+IFS=' 	
+'
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
 
 case "$2" in ''|*[!a-z0-9-]*) echo "bg: bad key" >&2; exit 2 ;; esac
 [ "${#2}" -le 32 ] || { echo "bg: bad key" >&2; exit 2; }

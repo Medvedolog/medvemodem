@@ -155,6 +155,6 @@
     "usb_reauthorize": false,
     "power_cycle": false,
     "settle_ms": 90000,
-    "source": "experimental: reconnect, radio and reset through ModemManager on the operator's request only; no rebind or re-authorize (toolkit: a runtime driver switch gave «Device died»); the thermal fault is not cured by any reset; T99W640 firmware reference v2.4 (2026-11-18) confirms native PCIe AT can be absent on Retail and contains dangerous AT/DIAG/FTM traps; neither owner nor recovery policy changed"
+    "source": "experimental: reconnect, radio and reset through ModemManager on the operator's request only; no rebind or re-authorize (toolkit: a runtime driver switch gave «Device died»); the thermal fault is not cured by any reset; firmware traps: hints.firmware_research"
   }
 }

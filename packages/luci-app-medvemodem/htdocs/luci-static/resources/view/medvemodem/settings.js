@@ -50,8 +50,8 @@ var PKG_NAMES = { modemmanager: ['ModemManager', _('manages most modems; without
 	ipheth: [_('Driver %s and %s').format('ipheth', 'usbmuxd'), _('an iPhone as a modem over USB (usbmuxd: for “Trust this computer”)')],
 	/* MedveModem's own pinned lpac (the owner, 2026-11-15), from its release, not from the router's feeds */
 	lpac: ['lpac (eSIM)', _('reads the eSIM chip and switches its profiles; MedveModem\'s own build, from its release on GitHub')],
-	bot: ['MedveModem Telegram bot', _('Bot core: notifications, modem status and Telegram commands; installs from the MedveModem release, even if not installed before')],
-	'bot-luci': ['LuCI for Telegram bot', _('Web setup and bot controls; installs the bot core too when missing, from the MedveModem release')] };
+	bot: ['MedveModem Telegram bot', _('Bot service: alerts, modem status, and Telegram commands (installed from the MedveModem release).')],
+	'bot-luci': ['LuCI for Telegram bot', _('Bot web interface; also installs the bot service from the MedveModem release if missing.')] };
 var PKG_WHY = { running: _('an installation is already running'), 'no package manager': _('the router has no package manager'), 'install failed': _('the installation failed'),
 	'install failed: lpac': _('lpac did not install: the release was not reached or has no build for this router') };
 function pkgState(c) {
@@ -128,7 +128,7 @@ function qmWords(j) {
 function updateWhy(w) {
 	w = String(w || '');
 	var m = /^no build for (.+) on OpenWrt (.+) in the (.+) releases$/.exec(w);
-	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Published releases'));
+	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Official releases'));
 	if (/^release channel changed|^old update result/.test(w)) return _('The update channel changed; check again.');
 	return w || _('no answer');
 }
@@ -142,7 +142,7 @@ function parse(r) { try { return JSON.parse((r && r.stdout) || '{}'); } catch (e
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r10';
+var VIEW_VERSION = '0.16.0-alpha1-r12';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -269,7 +269,7 @@ return view.extend({
 		k.form = E('div', { 'class': 'mm-px-form', hidden: '' });
 		k.add = E('button', { type: 'button', 'class': 'mm-btn mm-px-add', click: function() { self.pxEdit(null); } }, _('Add a proxy'));
 		return this.sec('set-wl-proxy', _('Local proxies'), [
-			E('p', { 'class': 'mm-faint' }, _('The tunnel\'s proxies on the router. When direct access to GitHub or the OpenWrt package server is blocked, MedveModem downloads and installs through them, in this order. A found proxy is read from its program and never changed there: a correction is kept in MedveModem\'s settings.')),
+			E('p', { 'class': 'mm-faint' }, _('Local proxies on the router. If GitHub or OpenWrt feeds are unreachable directly, MedveModem downloads packages through these in order. Detected proxies are read-only in their source apps; overrides are stored in MedveModem config.')),
 			E('div', { 'class': 'mm-table-scroll' }, E('table', { 'class': 'mm-table mm-px-table' }, [
 				E('thead', {}, E('tr', {}, [E('th', {}, _('Address')), E('th', {}, _('Source')), E('th', {}, _('Login')), E('th', {}, _('Check')), E('th', {}, '')])),
 				k.body])),
@@ -296,7 +296,7 @@ return view.extend({
 		}
 		k.body.replaceChildren.apply(k.body, items.map(function(x) {
 			var cell = E('span', { 'class': 'mm-faint mm-px-check' }, '—');
-			var acts = [E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-px-test', click: mm.busy(function() { return self.pxCheck(x, cell); }) }, _('Run the check')),
+			var acts = [E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-px-test', click: mm.busy(function() { return self.pxCheck(x, cell); }) }, _('Check')),
 				E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-px-edit', click: function() { self.pxEdit(x); } }, _('Change'))];
 			if (x.source === 'own')
 				acts.push(E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-px-drop', click: mm.busy(function() { return self.pxDrop(x); }) }, _('Delete')));
@@ -411,20 +411,20 @@ return view.extend({
 			if (!main(p)) backup++;
 			var title = names[p.device_id] || words(p.name) || words(p.device) || words(p.interface) || '—';
 			var op = operators[p.device_id] || words(p.operator_name) || '';
-			var status = limited ? [_('Limited access'), 'warn'] : r.ok === true ? [_('Full internet'), 'ok'] :
+			var status = limited ? [_('Whitelist only'), 'warn'] : r.ok === true ? [_('Full internet'), 'ok'] :
 				r.ok === false ? [_('No internet'), 'err'] : [_('Not checked'), 'idle'];
 			values.push({ title: title, operator: op, status: status, main: main(p), checked: r.at,
-				role: main(p) ? _('main') : _('backup') });
+				role: main(p) ? _('primary') : _('backup') });
 		});
 		var total = E('strong', {}, String(checked) + ' / ' + paths.length);
 		var limitedCount = E('strong', {}, String(restricted));
 		var counter = E('div', { 'class': 'mm-wl-summary' }, [
 			E('div', { 'class': 'mm-wl-counter' }, [E('span', {}, _('Checked channels')), total]),
-			E('div', { 'class': 'mm-wl-counter' }, [E('span', {}, _('Limited access')), limitedCount])
+			E('div', { 'class': 'mm-wl-counter' }, [E('span', {}, _('Whitelist only')), limitedCount])
 		]);
 		var rows = values.map(function(v) {
 			var date = typeof v.checked === 'number' && v.checked > 0 ?
-				new Date(v.checked * 1000).toLocaleString(mm.LANG) : _('not checked');
+				new Date(v.checked * 1000).toLocaleString(mm.LANG) : _('not tested');
 			return E('div', { 'class': 'mm-wl-channel' + (v.main ? ' is-main' : '') }, [
 				E('div', { 'class': 'mm-wl-channel-ident' }, [
 					E('strong', {}, v.title), v.operator ? E('span', { 'class': 'mm-faint' }, v.operator) : ''
@@ -436,7 +436,7 @@ return view.extend({
 		return this.sec('set-wl-now', _('Channel status'), [counter,
 			rows.length ? E('div', { 'class': 'mm-wl-channels' }, rows) :
 			E('p', { 'class': 'mm-faint' }, _('No channel is checked yet.')),
-			E('p', { 'class': 'mm-faint' }, _('Limited access means the main targets did not answer, but the restricted group did. It does not mean the modem has failed.'))]);
+			E('p', { 'class': 'mm-faint' }, _('Limited access means primary probe hosts failed while whitelisted hosts responded — the modem itself is working fine.'))]);
 	},
 
 	/* Advanced sections remain available without crowding the diagnosis view. */
@@ -474,7 +474,7 @@ return view.extend({
 		})).then(function(groups) {
 			var data = [].concat.apply([], groups).sort(function(a, b) { return b.t - a.t; }).slice(0, 30);
 			if (!data.length) { text(k.out, _('No recorded access changes yet.')); return; }
-			var label = { limited: _('Limited access'), ok: _('Full internet restored'), down: _('No internet') };
+			var label = { limited: _('Whitelist only'), ok: _('Full internet restored'), down: _('No internet') };
 			k.out.replaceChildren.apply(k.out, data.map(function(e) {
 				return E('div', { 'class': 'mm-wl-history-row' }, [
 					E('time', { 'class': 'mm-faint' }, e.t ? new Date(e.t * 1000).toLocaleString(mm.LANG) : '—'),
@@ -562,7 +562,7 @@ return view.extend({
 		}
 		if (!key && path.interface) key = 'iface:' + path.interface;
 		var i = order.indexOf(key);
-		return i === 0 ? _('main') : i > 0 ? _('backup %d').format(i) : '';
+		return i === 0 ? _('primary') : i > 0 ? _('backup %d').format(i) : '';
 	},
 	wlDrawResults: function() {
 		var k = this.wlc, got = k.got || [];
@@ -611,7 +611,7 @@ return view.extend({
 				var y = g.res ? g.res.filter(function(z) { return z.id === x.id; })[0] : null;
 				var cell = y ? mm.ncCell(y) : { text: g.err || '—', tone: '' }, state = tone(y);
 				return E('td', { title: y ? (mm.ncName(x) + ': ' + cell.text + (y.ms ? ' · ' + y.ms + ' ms' : '')) :
-					(g.err || _('not checked')) }, [
+					(g.err || _('not tested')) }, [
 					E('span', { 'class': 'mm-light is-' + state + ' mm-wlc-result' }, [
 						E('i', { 'aria-hidden': 'true' }), E('span', {}, cell.text)
 					])
@@ -649,7 +649,7 @@ return view.extend({
 		return this.sec('set-wl-alerts', _('Notifications'), [
 			this.group(_('SMS alert')), a.wlRows[0], a.wlRows[1], E('div', { 'class': 'mm-actions' }, [save, a.test]), a.out, a.state, off,
 			this.group(_('Telegram bot')),
-			E('p', { 'class': 'mm-faint' }, _('Telegram notification settings and delivery status are managed by the separate bot. An enabled event does not guarantee delivery when Telegram is unreachable.')),
+			E('p', { 'class': 'mm-faint' }, _('Telegram alerts are configured separately on the bot page. Enabling an event does not guarantee delivery if Telegram is unreachable.')),
 			E('div', { 'class': 'mm-row' }, bot)]);
 	},
 
@@ -671,7 +671,7 @@ return view.extend({
 		box.checked = on;
 		return E('div', { 'class': 'mm-card mm-chans-pref' }, [E('label', { 'for': 'mm-chans-pref', 'class': 'mm-check' }, [box, ' ',
 			_('Show the channels table on the main page («Detailed» level)')]),
-			E('p', { 'class': 'mm-faint' }, _('Applies in this browser at once, without «Save».'))]);
+			E('p', { 'class': 'mm-faint' }, _('Takes effect immediately in this browser (no Save required).'))]);
 	},
 
 	/* Browser-local owner badges participate in the common Save/Revert form:
@@ -682,7 +682,7 @@ return view.extend({
 		box.checked = mm.ownerBadgesEnabled();
 		return this.sec('set-owner-badges', _('Modem management badges'), [
 			E('label', { 'for': 'mm-owner-badges-pref', 'class': 'mm-check' }, [box, ' ', _('Show a management badge on each modem card and modem page')]),
-			E('p', { 'class': 'mm-faint' }, _('Shows whether ModemManager, QModem or MedveModem controls the modem. This browser-only preference is saved with Save.'))], '', false);
+			E('p', { 'class': 'mm-faint' }, _('Displays which service controls each modem (ModemManager, QModem, or MedveModem). Saved per browser when you click Save.'))], '', false);
 	},
 
 	/* a group of switches inside a card, under its own small heading (the owner, 2026-11-09: «тематически визуально
@@ -782,7 +782,7 @@ return view.extend({
 		c.svc = E('button', { type: 'button', 'class': 'mm-btn mm-chk-svc', disabled: true, click: mm.busy(function() { return self.runCheck('svc'); }) }, _('Check the services'));
 		c.dnsBtn = E('button', { type: 'button', 'class': 'mm-btn mm-chk-dns', disabled: true, click: mm.busy(function() { return self.runCheck('dns'); }) }, _('Check DNS'));
 		var card = this.sec('set-check', _('Channel check'), [
-			E('p', { 'class': 'mm-faint' }, _('Through the chosen channel, even if another one is main: do the services open and does the provider not replace DNS. The services take about 10 seconds, DNS up to a minute; less than 1 MB of traffic.')),
+			E('p', { 'class': 'mm-faint' }, _('Tests service reachability and DNS integrity over the selected uplink (even if not primary). Services take ~10 s, DNS up to 1 min (<1 MB traffic).')),
 			E('label', { 'for': 'mm-chk-dev', 'class': 'mm-field' }, [E('span', { 'class': 'mm-dim' }, _('Channel')), c.pick]),
 			E('div', { 'class': 'mm-row' }, [c.svc, c.dnsBtn]), c.say, c.ncVerdict, c.ncTable, c.dns]);
 		return card;
@@ -864,11 +864,11 @@ return view.extend({
 		p.apply = E('button', { type: 'button', 'class': 'mm-btn mm-prio-apply', disabled: true, click: mm.busy(function() { return self.applyPriority(); }) }, _('Apply the order'));
 		this.drawPriority();
 		var wiredNote = this.wired.length ? E('p', { 'class': 'mm-faint mm-prio-wired' }, this.core.failover === '1' ?
-			_('A wired channel is in the list: when the cable is unplugged or the provider\'s link breaks, the traffic goes to the next channel by itself; when the wire answers again, it comes back.') :
+			_('Wired WAN is included: if the cable is unplugged or ISP connectivity drops, traffic fails over to the next available uplink and returns once wired WAN recovers.') :
 			_('A wired channel is in the list. When the cable is unplugged, the traffic goes to the next channel by itself; to switch also when the wire is connected but the internet does not answer, turn on “Switch the internet to a working channel” on the “Internet and backup” tab.')) : '';
 		return this.sec('set-priority', this.wired.length ? _('Channel priority') : _('Modem priority'), [
 			p.rows.length ? p.list : E('p', { 'class': 'mm-faint' }, _('No modems with a network interface. The order can be set after the first connection.')),
-			E('p', { 'class': 'mm-faint' }, _('The first is the main channel, the rest are backups in this order. “Apply” gives the interfaces the route metrics 100, 110, 120… at once: the traffic goes through the modem with the lower one, on a failure it switches to the next. The cards on “Modems” follow the same order.')),
+			E('p', { 'class': 'mm-faint' }, _('Top entry is primary; others act as backups in order. "Apply" immediately assigns route metrics 100, 110, 120… (lowest carries traffic; failover moves down the list). Modem cards follow this same order.')),
 			wiredNote, p.rows.length > 1 ? E('div', { 'class': 'mm-actions' }, [p.apply]) : ''],
 			p.rows.length ? _('main: %s').format(this.prioName(p.rows[0])) : '');
 	},
@@ -887,11 +887,11 @@ return view.extend({
 			var r = byKey[key], d = r.d, w = r.w, name = d ? (words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || _('USB modem')) :
 				_('Wired channel “%s”').format(w.interface);
 			var where = d ? _('interface %s').format(d.connection.interface) + (d.present === false ? ' · ' + _('disconnected from USB') : '') :
-				[w.proto, words(w.device), w.up ? '' : _('no link')].filter(Boolean).join(' · ');
+				[w.proto, words(w.device), w.up ? '' : _('no connection')].filter(Boolean).join(' · ');
 			return E('li', { 'class': 'mm-contact mm-prio-row' + (w ? ' is-wired' : ''), 'data-id': key }, [
 				E('b', { 'class': 'mm-prio-n' }, String(i + 1)),
 				E('div', { 'class': 'mm-field' }, [E('span', {}, name), E('span', { 'class': 'mm-faint' },
-					(i ? _('backup %d').format(i) : _('main')) + ' · ' + where)]),
+					(i ? _('backup %d').format(i) : _('primary')) + ' · ' + where)]),
 				E('span', { 'class': 'mm-row' }, [
 					E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-prio-up', disabled: i === 0 ? '' : null, 'aria-label': _('Up: %s').format(name),
 						click: function() { move(i, -1); } }, '↑'),
@@ -928,7 +928,7 @@ return view.extend({
 			/* a DPI bypass on mobile internet (the owner's whitelist guide, 2026-11-08): it does not help under a whitelist and
 			 * often breaks the mobile channel; the tunnel does the work there */
 			dpiOf(this.services).length ? E('p', { 'class': 'mm-faint mm-svc-dpi' }, _('%s: on mobile internet such a bypass usually works badly, and under the operator\'s whitelist it does not help and may break the tunnel. If the modem is your main channel, stop it or remove it.').format(dpiOf(this.services).join(', '))) : '',
-			E('p', { 'class': 'mm-faint' }, _('A tunnel or a bypass starts at the router\'s boot before the modem has connected, finds no internet and waits for its own check, sometimes ten minutes. The checked ones restart when the channel that carries the traffic starts answering: after a boot and after it was without internet for a minute or more; not when a backup comes up. Under the operator\'s whitelist a channel with limited access counts as working: the server of the tunnel on an allowed address answers through it.'))],
+			E('p', { 'class': 'mm-faint' }, _('Tunnels and bypass services often start at boot before the modem connects and stall for minutes waiting to retry. Selected services restart automatically once the active uplink comes online (after boot or an outage ≥1 min; ignored for backups). Under a whitelist, a restricted uplink counts as online if the tunnel server is reachable through it.'))],
 			N_(this.svcChosen(this.core).length, '%d service', '%d services').format(this.svcChosen(this.core).length));
 	},
 
@@ -970,19 +970,19 @@ return view.extend({
 		}
 		/* the owner, 2026-10-17: a new modem connects by itself, its APN by the SIM */
 		var ac = check('auto_connect', _('Connect a new modem automatically'),
-			_('A modem with no interface yet connects by itself as soon as the managing service sees it; the access point (APN) is picked by the SIM card. Once for each connection of the modem to USB. Modems with an interface set up by hand and QModem\'s modems are not touched.'));
+			_('Automatically connects newly plugged-in modems that have no interface yet, picking the APN by SIM card (once per USB attach). Manually configured interfaces and QModem devices are untouched.'));
 		var a = check('auto_recovery', _('Restore the link automatically'),
 			_('Reconnecting the session works for all models; restarting and resetting the modem only for models tested on the bench. The other steps are by hand, on the modem\'s page.'));
 		var h = check('host_fixes', _('Bind the modem\'s service ports'),
 			_('The router binds a driver to the AT command port itself when the standard driver does not serve that port.'));
 		/* the owner, 2026-10-20: a PC with a proxy client in TUN mode could not open 192.168.8.1; the router's address it can */
 		var wf = check('web_forward', _('Access to the modems\' web pages through the router'),
-			_('Modems in router mode (HiLink, UFI) have their own web page (for example 192.168.8.1). The router opens it at its own address on a separate port as well (the “Open the modem\'s web interface” button leads there): so the page opens from a computer with a VPN or a proxy in TUN mode too. Only from the local network and only for 15 minutes after the button is pressed. The modem\'s page opens over HTTP without encryption, as directly: better not to enter the modem\'s password from a guest network.'));
+			_('Router-mode modems (HiLink, UFI) host their own web UI (e.g., 192.168.8.1). The router temporarily proxies it on a dedicated LAN port for 15 minutes when requested, allowing access even from PCs running TUN-mode VPNs. Served over unencrypted HTTP — avoid entering the password from guest networks.'));
 		/* the owner, 2026-10-30: the table on «Status → Overview» can be switched off; on by default */
 		var so = check('status_overview', _('Modems table on the OpenWrt overview page'),
 			_('“Status → Overview” shows a table of the modems: which one carries the internet, the operator and signal, the protocol, the address and the state.'));
 		var f = check('failover', _('Switch the internet to a working channel'),
-			_('If the channel with the default route (wire, Wi-Fi, modem) loses the internet, the router lowers its priority and the traffic goes through another available channel. When the channel answers again, the priority comes back. The network settings do not change. Does not work with mwan3 installed: it manages the routes.'));
+			_('Automatically lowers the priority of the primary uplink (wired, Wi-Fi, or modem) if internet fails, switching traffic to another working uplink and restoring priority upon recovery. Does not modify network config. Incompatible with mwan3.'));
 		var d = check('failover_dns', _('DNS follows the traffic'),
 			_('While a channel has no internet, its DNS servers are taken off the router\'s list, so site names do not go into a channel without a link. When the channel\'s link comes back, the servers come back.'));
 		var g = check('proxy_guard', _('Do not restart the modem if a firewall blocks the checks'),
@@ -990,10 +990,10 @@ return view.extend({
 		/* off by default (the owner, 2026-11-03: under the TSPU nearly every operator intercepts DNS, and the warning only
 		 * frightened people); the check by hand on the modem's page stays */
 		var dc = check('dns_check', _('Check whether the operator intercepts DNS'),
-			_('Once per connection the router asks the operator\'s DNS a few test questions and warns when it answers for other servers, gives stub addresses or rewrites «no such name». In Russia this is so on almost every operator, so it is off by default; the check by hand («DNS through this modem» in the site access check on the modem\'s page) works anyway.'));
+			_('Runs a one-time DNS check per connection to detect hijacking, stub redirects, or NXDOMAIN spoofing. Disabled by default (common on most Russian carriers); manual DNS testing on the modem page remains available.'));
 		var fb = E('select', { 'class': 'mm-input', id: 'mm-failback', change: function() { self.dirty(); } }, [
 			E('option', { value: 'restore' }, _('restore the priority at once')),
-			E('option', { value: 'demote' }, _('keep it last until restored by hand'))]);
+			E('option', { value: 'demote' }, _('keep as lowest priority until manually restored'))]);
 		/* the connections tracked through the channel the traffic left (mwan3's flush_conntrack; field request 2026-10-23) */
 		var fl = E('select', { 'class': 'mm-input', id: 'mm-failover_flush', change: function() { self.dirty(); } }, [
 			E('option', { value: 'link' }, _('those of the channel the traffic left')),
@@ -1034,7 +1034,7 @@ return view.extend({
 			E('label', { 'class': 'mm-check', 'for': 'mm-sms_keep_all' }, [all, ' ' + _('Keep all SMS in the router')]),
 			E('p', { 'class': 'mm-faint' }, _('Every incoming message is copied to the router\'s flash as soon as MedveModem reads it; nothing is deleted from the modem. While the modem keeps a message, the list shows it once; when the modem loses it (some lose their messages at a restart), the router\'s copy stays. A message deleted in the SMS tab is gone from the router too. The router keeps the last 500 per modem.')),
 			E('label', { 'class': 'mm-check', 'for': 'mm-sms_archive' }, [box, ' ' + _('Move the oldest SMS to the router when the modem\'s storage fills up')]),
-			E('p', { 'class': 'mm-faint' }, _('When the SIM card or the modem is three quarters full, the oldest incoming messages that have been on the modem for at least ten minutes are written to the router\'s flash and only then deleted from the modem, down to half its storage. New messages keep coming. The router keeps the last 500 per modem; a message deleted in the SMS tab is gone from the router too. Off: the modem keeps its messages, and a full storage stops new ones.'))
+			E('p', { 'class': 'mm-faint' }, _('At 75% SIM/modem SMS capacity, incoming messages older than 10 minutes are archived to router flash and then removed from the modem down to 50% usage. Keeps up to 500 messages per modem; deleting an SMS in the UI removes it from both. When off, full memory blocks new incoming SMS.'))
 		]);
 	},
 
@@ -1061,7 +1061,7 @@ return view.extend({
 		f.out = E('p', { 'class': 'mm-faint mm-fw-out', role: 'status' });
 		f.save = E('button', { type: 'button', 'class': 'mm-btn is-primary mm-fw-save', click: mm.busy(function() { return self.forwardSave(); }) }, _('Save'));
 		f.test = E('button', { type: 'button', 'class': 'mm-btn mm-fw-test', click: mm.busy(function() { return self.forwardTest(); }) }, _('Send a test'));
-		f.drop = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-fw-drop', hidden: '', click: mm.busy(function() { return self.forwardSave(true); }) }, _('Delete the token'));
+		f.drop = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-fw-drop', hidden: '', click: mm.busy(function() { return self.forwardSave(true); }) }, _('Delete token'));
 		var field = function(id, label, node) { return E('label', { 'class': 'mm-field', 'for': id }, [E('span', { 'class': 'mm-dim' }, label), node]); };
 		f.webBox = E('div', { 'class': 'mm-fw-webbox' }, [field('mm-fw-kind', _('Service'), f.kind), field('mm-fw-url', _('Address'), f.url),
 			field('mm-fw-token', _('Token (optional)'), f.token),
@@ -1122,7 +1122,7 @@ return view.extend({
 			E('label', { 'class': 'mm-field', 'for': 'mm-al-modem' }, [E('span', { 'class': 'mm-dim' }, _('Send through')), a.modem]),
 			E('label', { 'class': 'mm-field', 'for': 'mm-al-rate' }, [E('span', { 'class': 'mm-dim' }, _('At most SMS an hour')), a.rate]),
 			E('div', { 'class': 'mm-actions' }, [a.save, a.test]), a.out, a.state,
-			E('p', { 'class': 'mm-faint' }, _('An SMS goes over the radio, so it gets out while the internet is gone, and through a SIM with the whitelist only. A short whitelist or a blip is not sent: each event waits its minutes, and its end waits until it works that long. If the chosen modem cannot send, the next one does. SMS cost money: Cyrillic is 70 characters an SMS, an alert takes one or two. The numbers are not written to the log.'))]);
+			E('p', { 'class': 'mm-faint' }, _('SMS uses the cellular network directly, working even without internet or under whitelists. Brief outages are debounced using the delays below. Falls back to the next modem if the chosen one fails. Carrier SMS rates apply (Cyrillic: 70 chars/part; 1–2 parts per alert). Phone numbers are never logged.'))]);
 		card.id = 'alerts';
 		this.alGist = card.querySelector('.mm-sec-gist');
 		this.alertsLoad();
@@ -1293,7 +1293,7 @@ return view.extend({
 			return uciCommit('medvemodem');
 		}).then(function() {
 			return dropToken ? fwTokenClear() : token ? fwTokenSet(token).then(function(r) {
-				if (!r || !r.ok) throw new Error(_('the token is not saved'));
+				if (!r || !r.ok) throw new Error(_('token not saved'));
 			}) : null;
 		}).then(function() {
 			text(f.out, dropToken ? _('The token is deleted.') : _('Saved.'));
@@ -1331,12 +1331,12 @@ return view.extend({
 	failoverCard: function() {
 		var p = this.foParts;
 		this.foFine = [
-			E('label', { 'class': 'mm-field', 'for': 'mm-failback' }, [E('span', { 'class': 'mm-dim' }, _('A channel that answers again')), p.fb]),
+			E('label', { 'class': 'mm-field', 'for': 'mm-failback' }, [E('span', { 'class': 'mm-dim' }, _('When a recovered uplink returns')), p.fb]),
 			E('p', { 'class': 'mm-faint' }, _('“Keep it last” is for an unreliable channel: the traffic does not come back to it until “Restore the priority” is pressed on the main page.')),
 			E('label', { 'class': 'mm-field', 'for': 'mm-failover_manual' }, [E('span', { 'class': 'mm-dim' }, _('Manual-only channels')), p.man]),
 			E('p', { 'class': 'mm-faint' }, _('Network devices separated by spaces. Such a channel gets no traffic by itself even when it works, only if it is first in the network settings. For example, sharing from a smartphone.')),
 			E('label', { 'class': 'mm-field', 'for': 'mm-failover_flush' }, [E('span', { 'class': 'mm-dim' }, _('Connections to drop on a switch')), p.fl]),
-			E('p', { 'class': 'mm-faint' }, _('After a switch the open connections keep the old channel\'s address and hang until their timeouts; dropped, they start anew through the new channel at once. Only those of the channel the traffic left need the conntrack package; without it the whole table is dropped.')),
+			E('p', { 'class': 'mm-faint' }, _('After failover, existing connections stay bound to the old IP until timeout. Flushing forces immediate reconnection via the new uplink. Per-uplink flushing requires the conntrack package; otherwise the entire table is flushed.')),
 			E('p', { 'class': 'mm-faint mm-hooks-note' }, _('Your own scripts: put them in /etc/hotplug.d/medvemodem/. They run on a switch (ACTION=switch, DEVICE, PREVIOUS), a failover move (ACTION=failover), a modem\'s session up or down (ACTION=session, DEVICE_ID, STATE, INTERFACE), a recovery step, a modem\'s arrival or departure, and when the internet works again (ACTION=ready, DEVICE, LEVEL).'))];
 		return this.sec('set-fo', _('Backup channel'), [this.group(_('Switching')), p.f[1], p.f[2], p.d[1], p.d[2],
 			this.group(_('Fine tuning'))].concat(this.foFine.slice(0, -1), [this.group(_('Your scripts')), this.foFine[this.foFine.length - 1]]));
@@ -1378,7 +1378,7 @@ return view.extend({
 		w.form = E('div', { 'class': 'mm-wl-form', hidden: true }, [
 			this.group(_('Switching on')),
 			box('enabled', _('Use the whitelist mode')),
-			box('auto', _('Turn on by itself when the operator\'s whitelist starts, off when it ends')),
+			box('auto', _('Automatically enable when a carrier whitelist is detected and disable once lifted')),
 			this.group(_('The tunnel\'s servers')),
 			E('label', { 'class': 'mm-field', 'for': 'mm-wl-mgr' }, [E('span', { 'class': 'mm-dim' }, _('Manager')), w.mgr]),
 			E('label', { 'class': 'mm-field', 'for': 'mm-wl-sec' }, [E('span', { 'class': 'mm-dim' }, _('Section')), w.sec]),
@@ -1390,11 +1390,11 @@ return view.extend({
 			box('lan', _('The whole LAN through the tunnel')),
 			box('router', _('The router itself through the tunnel (apk, opkg, curl)')),
 			w.warn = E('p', { 'class': 'mm-callout is-err mm-wl-warn', hidden: true },
-				_('MedveModem will change the settings of the manager (fully_routed_ips of this section) and reload it while the whitelist lasts; your edits of this section meanwhile may be overwritten. The original is kept and put back when the mode ends.')),
+				_('While whitelist mode is active, MedveModem updates fully_routed_ips in this section and reloads the proxy manager; manual edits made during this time may be overwritten. Original settings are restored when disabled.')),
 			E('div', { 'class': 'mm-actions' }, [save, w.onBtn, w.offBtn]), w.out]);
 		[w.lan, w.router].forEach(function(b) { b.addEventListener('change', function() { w.warn.hidden = !(w.lan.checked || w.router.checked); }); });
 		var node = this.sec('set-wl', _('Whitelist mode'), [
-			E('p', { 'class': 'mm-faint' }, _('When the operator lets only its whitelist through, a server of the tunnel that survives it is chosen in podkop 0.8 or forkop 2, and the traffic can go through it whole.')),
+			E('p', { 'class': 'mm-faint' }, _('Under a carrier whitelist, selects a reachable tunnel server in podkop 0.8 or forkop 2 and optionally routes all traffic through it.')),
 			w.state, w.live, w.found, w.form]);
 		/* the managers are asked when the card is opened, not with every page */
 		node.mmOnOpen = function() { if (!w.asked) { w.asked = true; self.wlLoad(); } };
@@ -1416,7 +1416,7 @@ return view.extend({
 			var other = w.managers.filter(function(m) { return !m.switchable; }).map(function(m) {
 				return m.kind === 'forkop1' ? _('forkop 1.x') : m.kind === 'podkop-classic' ? _('podkop (classic, before 0.8)') : m.name; });
 			text(w.found, ok.length ? _('Found: %s.').format(ok.map(function(m) { return m.kind === 'forkop2' ? 'forkop 2' : 'podkop 0.8'; }).join(', ')) :
-				other.length ? _('Found %s: it cannot switch its servers while it runs. The mode needs podkop 0.8 (podkop-exp) or forkop 2.').format(other.join(', ')) :
+				other.length ? _('Found %s, which does not support runtime server switching. Requires podkop 0.8 (podkop-exp) or forkop 2.').format(other.join(', ')) :
 				_('No podkop or forkop on the router: the mode needs podkop 0.8 (podkop-exp) or forkop 2.'));
 			w.form.hidden = !ok.length;
 			w.mgr.replaceChildren.apply(w.mgr, ok.map(function(m) { return E('option', { value: m.name }, m.kind === 'forkop2' ? 'forkop 2' : 'podkop 0.8'); }));
@@ -1517,7 +1517,7 @@ return view.extend({
 			w.boxes.forEach(function(x) {
 				var h = (d.hints || {})[x[0].value], tag = x[1].querySelector('.mm-wl-hint-mark');
 				if (tag) tag.remove();
-				if (h === true) { n++; x[1].append(E('span', { 'class': 'mm-wl-hint-mark mm-ok-text' }, ' ✓ ' + _('likely to live under the whitelist'))); }
+				if (h === true) { n++; x[1].append(E('span', { 'class': 'mm-wl-hint-mark mm-ok-text' }, ' ✓ ' + _('likely reachable under whitelists'))); }
 			});
 			text(w.out, n ? N_(n, '%d server is in the community lists of addresses open under the whitelists.', '%d servers are in the community lists of addresses open under the whitelists.').format(n) :
 				_('None of the servers is in the community lists (a server named by a domain is not judged).'));
@@ -1547,7 +1547,7 @@ return view.extend({
 		var self = this, w = this.wl;
 		return wlmodeCall(action).then(function(r) {
 			r = r || {};
-			text(w.out, r.result === 'started' ? (action === 'on' ? _('Turning on…') : _('Turning off: the manager\'s settings are given back…')) :
+			text(w.out, r.result === 'started' ? (action === 'on' ? _('Enabling…') : _('Turning off: the manager\'s settings are given back…')) :
 				r.result === 'busy' ? _('Busy: try again in a minute.') : _('Not done: %s.').format(r.reason || r.result || _('no answer')));
 			if (r.result !== 'started') return;
 			/* the helper tries the servers one by one (3 s each) and the manager reloads: watched until the engine is done
@@ -1578,7 +1578,7 @@ return view.extend({
 		var r = area('reach_restricted', _('Whitelist addresses'), '77.88.55.242:443 87.240.132.72:443');
 		this.areas = Object.assign(this.areas || {}, { reach_target: w[0], reach_restricted: r[0] });
 		/* the whitelist addresses live on «Белые списки» (the owner, 2026-11-12); here a pointer to them */
-		this.reachWl = [r[1], E('p', { 'class': 'mm-faint' }, _('If the main addresses are silent and these answer, access is limited (the operator may restrict it): the state is “Access limited” and the modem is not restarted. Empty means ya.ru and vk.com (77.88.55.242:443, 87.240.132.72:443); the word none switches this check off.'))];
+		this.reachWl = [r[1], E('p', { 'class': 'mm-faint' }, _('If primary hosts fail while these respond, the uplink is marked "Whitelist only" without restarting the modem (likely carrier whitelist). Defaults to ya.ru and vk.com (77.88.55.242:443, 87.240.132.72:443); enter "none" to disable.'))];
 		return this.sec('set-reach', _('Connection check'), [w[1],
 			E('p', { 'class': 'mm-faint' }, _('Through each modem the router checks whether these addresses answer. Any answer, even a refused connection, means there is a link. Empty means 1.1.1.1:443 and 8.8.8.8:443.')),
 			this.wlPage ? '' : this.movedNote(_('The whitelist addresses'))].concat(this.wlPage ? this.reachWl : []).filter(Boolean));
@@ -1635,7 +1635,7 @@ return view.extend({
 				_('Fibocom FM350-GL and Quectel modules (RM5xx, EM/EP06, EC2x): QModem is made for their USB modes and AT commands.')]),
 			E('p', { 'class': 'mm-qm-when' }, [E('strong', {}, _('When it is not needed:')), ' ',
 				_('modems that ModemManager drives over plain QMI or MBIM (Foxconn T99W175, Dell DW5821e / T77W968, Sierra, Telit, Fibocom L850 / L860), modems with a router inside (Huawei HiLink, ZTE, UFI sticks) and phones. There it adds nothing and is one more program at the modem. Without QModem MedveModem connects an FM350 by itself.')]),
-			E('p', { 'class': 'mm-faint' }, _('Needed for modems that QModem manages by their profile (Quectel) and for those you chose QModem for by hand. Only QModem\'s core is installed, without its LuCI pages, built by MedveModem for this OpenWrt version; what is missing comes from the router\'s feeds. If something is not in the feeds, nothing is installed. After the installation QModem gets only the modems MedveModem hands to it. QModem\'s licence forbids commercial use.'))]);
+			E('p', { 'class': 'mm-faint' }, _('Required for modems assigned to QModem (Quectel or manually selected). Installs QModem core only (no QModem LuCI UI), built by MedveModem for this OpenWrt release, with dependencies from router feeds. Aborts if dependencies are missing. QModem manages only modems handed over by MedveModem. Note: QModem\'s license prohibits commercial use.'))]);
 		card.id = 'qmodem';
 		this.qmGist = card.querySelector('.mm-sec-gist');
 		this.qmodemRefresh();
@@ -1653,7 +1653,7 @@ return view.extend({
 		u.pre = E('pre', { 'class': 'mm-pre mm-up-text' }, '');
 		u.log = E('details', { 'class': 'mm-up-log', hidden: '' }, [E('summary', {}, _('Update log')), u.pre]);
 		u.channel = E('select', { 'class': 'mm-select', id: 'mm-update-channel', change: function() { self.dirty(); } }, [
-			E('option', { value: 'release' }, _('Published releases')),
+			E('option', { value: 'release' }, _('Official releases')),
 			E('option', { value: 'bench' }, _('Test builds (bench)'))]);
 		this.selects.update_channel = u.channel;
 		u.check = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-up-check', click: mm.busy(function() {
@@ -1665,7 +1665,7 @@ return view.extend({
 			}).finally(function() { u.check.disabled = false; });
 		}) }, _('Check for updates'));
 		u.btn = E('button', { type: 'button', 'class': 'mm-btn mm-up-install', hidden: '', click: mm.busy(function() {
-			if (!window.confirm(_('Update MedveModem to %s? Only outdated package families are replaced: engine/LuCI and/or Telegram bot/LuCI. Settings stay. LuCI reloads its pages afterwards.').format(u.latest || '')))
+			if (!window.confirm(_('Update MedveModem to %s? Only outdated components will be upgraded (core/LuCI and/or Telegram bot). Settings are preserved, and LuCI will reload afterward.').format(u.latest || '')))
 				return;
 			u.btn.disabled = true; text(u.out, _('Starting…'));
 			return fs.exec(SELFUP, ['start', mm.langArg()]).then(parse, function(e) { return { error: failText(e) }; }).then(function(j) {
@@ -1676,7 +1676,7 @@ return view.extend({
 		}) }, _('Update'));
 		var card = this.sec('set-update', _('MedveModem update'), [
 			E('label', { 'class': 'mm-field', 'for': 'mm-update-channel' }, [E('span', { 'class': 'mm-dim' }, _('Update channel')), u.channel]),
-			E('p', { 'class': 'mm-faint' }, _('Published versioned releases, including tagged prereleases such as Alpha, are the normal channel. Test builds (bench) are experimental and may not exist for every router architecture or OpenWrt version. Save the selected channel before checking.')),
+			E('p', { 'class': 'mm-faint' }, _('Main channel: official versioned releases (including tagged Alpha prereleases). Experimental test builds (bench) may not cover all architectures or OpenWrt versions. Save after changing the channel before checking.')),
 			u.kv, u.news, E('div', { 'class': 'mm-actions' }, [u.btn, u.check]), u.out, u.log,
 			E('p', { 'class': 'mm-faint' }, _('From the project\'s releases on GitHub; when GitHub does not open directly, through the router\'s tunnel proxies (Whitelists → Local proxies). The archive is checked against the release\'s SHA256SUMS before anything is installed. Bench builds are tests, not releases.'))]);
 		card.id = 'update';
@@ -1694,8 +1694,8 @@ return view.extend({
 			row(_('LuCI MedveModem'), ins.luci),
 			row(_('Telegram bot'), ins.bot),
 			row(_('LuCI Telegram bot'), ins.luci_bot),
-			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('update available') : ' · ' + _('up to date')) : j.error ? _('unknown: %s').format(updateWhy(j.error)) : _('not checked yet')),
-			row(_('Channel'), j.channel === 'bench' ? _('Test builds (bench)') : _('Published releases')),
+			row(_('Available'), j.latest ? j.latest + (j.newer ? ' · ' + _('update available') : ' · ' + _('up to date')) : j.error ? _('unknown: %s').format(updateWhy(j.error)) : _('not tested yet')),
+			row(_('Channel'), j.channel === 'bench' ? _('Test builds (bench)') : _('Official releases')),
 			row(_('Checked'), j.checked_at ? new Date(j.checked_at * 1000).toLocaleString(mm.LANG) : '—')));
 		/* what is new since the installed version: the release's short highlights, by version (the owner, 2026-11-14) */
 		var news = list(j.highlights).filter(function(h) { return h && h.t; }), by = [], cur = null;
@@ -1783,7 +1783,7 @@ return view.extend({
 			this.sv.kv, this.sv.procs,
 			E('label', { 'class': 'mm-check mm-svc-box' }, [this.sv.box, ' ', this.sv.boxText]),
 			E('div', { 'class': 'mm-actions' }, [this.sv.run, this.sv.again, this.sv.qm, this.sv.qmHard, this.sv.btn]), this.sv.out,
-			E('p', { 'class': 'mm-faint' }, _('“Stop” and “Start” act now; after a router restart the service starts again if it is switched on. A switched-off service does not start after a restart either, until it is switched on here. Without the box the other modem services keep working and take the modems themselves. With the box they stop too and do not start at boot; “Switch on” with the box starts exactly those stopped here. The modems\' network interfaces are not deleted.'))]);
+			E('p', { 'class': 'mm-faint' }, _('"Stop" and "Start" apply immediately without changing boot behavior. Disabling prevents autostart on reboot until re-enabled. Leave the checkbox unchecked to let other modem services run; check it to stop and disable them too (re-enabling with it checked restarts only those stopped here). Modem network interfaces are preserved.'))]);
 		card.id = 'service';
 		this.svGist = card.querySelector('.mm-sec-gist');
 		this.serviceRefresh();
@@ -1794,7 +1794,7 @@ return view.extend({
 	serviceDraw: function() {
 		var v = this.sv, j = this.svState || {}, me = this.svSelf || {}, rows = [];
 		function lit(tone, words) { return E('span', { 'class': 'mm-svc-state' }, [E('span', { 'class': 'mm-svc-dot is-' + tone }), words]); }
-		var said = typeof j.enabled !== 'boolean' ? _('no data') : !j.enabled ? _('inactive') : j.running ? _('works') : _('enabled, not running');
+		var said = typeof j.enabled !== 'boolean' ? _('no data') : !j.enabled ? _('inactive') : j.running ? _('online') : _('enabled, not running');
 		rows.push(['MedveModem', lit(typeof j.enabled !== 'boolean' ? 'off' : j.running ? 'ok' : j.enabled ? 'bad' : 'off', said)]);
 		rows.push([_('Engine version'), me.version || '—']);
 		rows.push([_('Web interface version'), mm.VERSION]);
@@ -1809,7 +1809,7 @@ return view.extend({
 		var others = j.others || {}, stopped = this.svStopped || [];
 		Object.keys(SVC_NAMES).filter(function(n) { return (others[n] || {}).installed; }).forEach(function(n) {
 			var o = others[n];
-			rows.push([SVC_NAMES[n], lit(o.running ? 'ok' : 'off', (o.running ? _('works') : _('not running')) + (o.enabled ? '' : ', ' + _('does not start at boot')) +
+			rows.push([SVC_NAMES[n], lit(o.running ? 'ok' : 'off', (o.running ? _('online') : _('not running')) + (o.enabled ? '' : ', ' + _('does not start at boot')) +
 				(stopped.indexOf(n) >= 0 ? ' (' + _('stopped here') + ')' : ''))]);
 		});
 		v.kv.replaceChildren.apply(v.kv, [].concat.apply([], rows.map(function(r) { return [E('dt', {}, r[0]), E('dd', {}, r[1])]; })));
@@ -1839,7 +1839,7 @@ return view.extend({
 			var o = sv[k[0]];
 			if (!o) return;
 			if (!o.running) {
-				rows.push([k[1], '—', '—', _('not running'), again(o.restarts_24h || 0, o.stops_24h ? N_(o.stops_24h, 'stopped %d time', 'stopped %d times').format(o.stops_24h) : '')]);
+				rows.push([k[1], '—', '—', _('service stopped'), again(o.restarts_24h || 0, o.stops_24h ? N_(o.stops_24h, 'stopped %d time', 'stopped %d times').format(o.stops_24h) : '')]);
 				return;
 			}
 			rows.push([k[1] + (o.processes > 1 ? ' (' + N_(o.processes, '%d process', '%d processes').format(o.processes) + ')' : ''), String(o.pid), mb(o.rss_kb), up(o.up_s),
@@ -1910,7 +1910,7 @@ return view.extend({
 	 * emergency restart hangs every dial up and restarts the network (bench 2026-10-20: the LAN went down with it) */
 	serviceQmodem: function(hard) {
 		var self = this, running = !!(((this.svState || {}).others || {}).qmodem_network || {}).running;
-		if (hard && !window.confirm(_('QModem emergency restart: QModem breaks all its connections and restarts the whole router network: for half a minute the internet through all modems and the link to the router over LAN are gone, this page included. “Restart QModem” is usually enough. Continue?')))
+		if (hard && !window.confirm(_('Emergency QModem restart: drops all QModem links and reloads the entire router network, interrupting internet and LAN access (including this page) for ~30 s. Regular "Restart QModem" is usually sufficient. Continue?')))
 			return Promise.resolve();
 		var how = hard ? 'hard-restart' : running ? 'reload' : 'start';
 		text(this.sv.out, hard ? _('QModem emergency restart…') : running ? _('Restarting QModem…') : _('Starting QModem…'));
@@ -1936,7 +1936,7 @@ return view.extend({
 		m.state = E('p', { 'class': 'mm-faint', hidden: '' });
 		m.btn = E('button', { type: 'button', 'class': 'mm-btn is-danger mm-mmr', click: mm.busy(function() { return self.restartMM(); }) }, _('Restart ModemManager'));
 		m.node = this.sec('set-mmr', _('Emergency: ModemManager'), [m.call,
-			E('p', { 'class': 'mm-faint' }, _('If ModemManager hangs (the modems do not answer, the data does not refresh for several minutes, recovery steps do not help), it can be restarted. The link breaks through all the router\'s modems it manages for about a minute. At most once in 5 minutes; after it automatic recovery stays out for 3 minutes.')),
+			E('p', { 'class': 'mm-faint' }, _('Restart ModemManager if it hangs (unresponsive modems, stale data, failed recovery). Interrupts all ModemManager-managed modems for ~1 minute. Rate-limited to once per 5 minutes; auto-recovery pauses for 3 minutes afterward.')),
 			m.state, E('div', { 'class': 'mm-row' }, m.btn)]);
 		m.node.id = 'mmr';
 		m.node.hidden = true;
@@ -1949,11 +1949,11 @@ return view.extend({
 		var m = this.mmr;
 		return getStatus().then(function(st) {
 			var mmb = (st || {}).modemmanager || {}, r = mmb.restart;
-			var trouble = mmb.installed === false ? '' : { timeout: _('does not answer the requests'), error: _('answers with an error'), unavailable: _('is not running') }[mmb.backend];
+			var trouble = mmb.installed === false ? '' : { timeout: _('does not answer the requests'), error: _('answers with an error'), unavailable: _('not running') }[mmb.backend];
 			m.node.hidden = !mmb.backend || mmb.backend === 'disabled' || mmb.installed === false;
 			text(m.call, trouble ? _('ModemManager %s').format(trouble) + (mmb.age_s != null ? '; ' + _('the last answer %s').format(agoLong(mmb.age_s)) : '') + '.' : '');
 			m.call.hidden = !trouble;
-			if (m.gist) text(m.gist, trouble ? _('ModemManager %s').format(trouble) : _('works'));
+			if (m.gist) text(m.gist, trouble ? _('ModemManager %s').format(trouble) : _('online'));
 			var wait = r && r.next_allowed_s > 0 ? Math.ceil(r.next_allowed_s / 60) : 0;
 			text(m.state, !r ? '' : r.state === 'running' ? _('ModemManager is restarting…') :
 				_('The last restart: %s').format(new Date(r.at * 1000).toLocaleTimeString(mm.LANG)) + (r.state === 'failed' ? ' — ' + _('failed') : '') +

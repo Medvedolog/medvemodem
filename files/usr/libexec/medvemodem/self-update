@@ -270,12 +270,12 @@ addon() {
 	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
 	fail() { say "$(T ERROR ОШИБКА): $1"; rm -rf "$RUN/work"; exit 1; }
 	RUN="$RUN/addon"; mkdir -p "$RUN"; CHECK="$RUN/check"
-	say "$(T "Asking the releases of $REPO for $kind" "Запрос выпусков $REPO: пакет $kind")"
+	say "$(T "Asking the releases of $REPO for $kind" "Проверка релизов $REPO: пакет $kind")"
 	# Explicitly select a published MedveModem release; bench artifacts are not
 	# permanent release downloads and may not have these optional packages.
 	CHANNEL=release
 	check || fail "$(sed 's/^error //' "$CHECK")"
-	set -- $(cat "$CHECK"); latest=$3; tag=$4; url=$5; sums=$6
+	set -- $(cat "$CHECK"); latest=$4; tag=$5; url=$6; sums=$7	# ok <channel> <time> <version> <tag> <url> <sums>
 	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"
 	say "$(T "Downloading the archive of $latest ($tag)" "Загрузка архива $latest ($tag)")"
 	archive "$url" "$sums"
@@ -295,7 +295,7 @@ addon() {
 	esac
 	case "$kind" in lpac|bot-luci) wanted=2 ;; *) wanted=1 ;; esac
 	[ "$(printf '%s\n' "$pkgs" | sed '/^$/d' | wc -l)" -eq "$wanted" ] ||
-		fail "$(T "the release has no complete package set for $kind" "в выпуске нет полного набора пакетов $kind")"
+		fail "$(T "the release has no complete package set for $kind" "в релизе нет полного комплекта пакетов ($kind)")"
 	# All archive assets have been SHA256 checked; simulate dependencies before
 	# replacing anything. Do not force APK dependencies or change the modem owner.
 	say "$(T "Checking package dependencies (dry run)" "Проверка зависимостей пакетов")"
@@ -305,7 +305,7 @@ addon() {
 		opkg) out=$(cd "$RUN/work" && opkg install --noaction $pkgs 2>&1); rc=$? ;;
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
-	[ "$rc" -eq 0 ] || fail "$(T "dependencies are missing or package versions conflict" "нет зависимостей либо версии пакетов несовместимы")"
+	[ "$rc" -eq 0 ] || fail "$(T "dependencies are missing or package versions conflict" "не хватает зависимостей или версии пакетов несовместимы")"
 	say "$(T "Installing: $kind" "Установка: $kind")"
 	case "$PM" in
 		apk) out=$(cd "$RUN/work" && apk add --allow-untrusted $pkgs 2>&1); rc=$? ;;
@@ -315,7 +315,10 @@ addon() {
 	pm_unlock
 	rm -rf "$RUN/work"
 	[ "$rc" -eq 0 ] || { say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не прошла (код $rc)")"; exit 1; }
-	say "$(T "Installed: $kind. Configure the Telegram token separately." "Установлено: $kind. Токен Telegram настраивается отдельно.")"
+	case "$kind" in
+	lpac) say "$(T "lpac is installed: the eSIM tab can read the chip." "lpac установлен: чтение чипа eSIM доступно.")" ;;
+	*) say "$(T "Installed: $kind. Configure the Telegram token separately." "Установлено: $kind. Токен Telegram настраивается отдельно.")" ;;
+	esac
 }
 
 run() {
@@ -341,7 +344,7 @@ run() {
 			apk) family=$(cd "$RUN/work" && ls medvemodem-0*.apk luci-app-medvemodem-[0-9]*.apk 2>/dev/null) ;;
 			opkg) family=$(cd "$RUN/work" && ls medvemodem_*.ipk luci-app-medvemodem_*.ipk 2>/dev/null) ;;
 		esac
-		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete engine/LuCI package set" "в выпуске нет полного комплекта движка и LuCI")"
+		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete engine/LuCI package set" "в релизе нет полного комплекта службы и веб-интерфейса (LuCI)")"
 		pkgs="$pkgs $family"
 	fi
 	if component_needs_update "$latest" medvemodem-bot luci-app-medvemodem-bot; then
@@ -349,7 +352,7 @@ run() {
 			apk) family=$(cd "$RUN/work" && ls medvemodem-bot-[0-9]*.apk luci-app-medvemodem-bot-[0-9]*.apk 2>/dev/null) ;;
 			opkg) family=$(cd "$RUN/work" && ls medvemodem-bot_*.ipk luci-app-medvemodem-bot_*.ipk 2>/dev/null) ;;
 		esac
-		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete Telegram bot package set" "в выпуске нет полного комплекта Telegram-бота")"
+		[ "$(printf '%s\n' "$family" | sed '/^$/d' | wc -l)" -eq 2 ] || fail "$(T "the release has no complete Telegram bot package set" "в релизе нет полного комплекта пакетов Telegram-бота")"
 		pkgs="$pkgs $family"
 	fi
 	[ -n "$(printf '%s' "$pkgs" | tr -d ' ')" ] || fail "$(T "no MedveModem packages for $PM in the archive" "в архиве нет пакетов MedveModem для $PM")"

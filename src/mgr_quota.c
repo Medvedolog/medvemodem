@@ -27,21 +27,22 @@
  * itself). A modem without an ICCID (no ModemManager) has none.
  */
 #define QUOTA_SAVE_MS 1800000	/* the counters reach the flash every 30 min and at stop (the owner, 2026-10-19: «и флеш тоже») */
-static json_object *sim_usage;		/* mm_quota_key(iccid) -> {period, bytes, warned?, exceeded?} */
+static json_object *sim_usage;		/* the SIM's label key -> {period, bytes, warned?, exceeded?} */
 static json_object *quota_views;	/* device_id -> served quota + {dev, pass}: links counted in the last pass only */
 static long long quota_pass;		/* uplink_tick's pass number */
 static bool sim_usage_dirty;
 static long long sim_usage_saved_ms;
 
-static json_object *sim_section(const char *iccid)
+/* the SIM's label section by its salted key (config sim / option key, r12) */
+static json_object *sim_section(const char *key)
 {
 	json_object *img = medvemodem_uci();
 
-	if (!img || !iccid || !*iccid)
+	if (!img || !key || !*key)
 		return NULL;
 	json_object_object_foreach(img, sec, s) {
 		(void)sec;
-		if (!strcmp(jstr(s, ".type") ? jstr(s, ".type") : "", "sim") && jstr(s, "iccid") && !strcmp(jstr(s, "iccid"), iccid))
+		if (!strcmp(jstr(s, ".type") ? jstr(s, ".type") : "", "sim") && jstr(s, "key") && !strcmp(jstr(s, "key"), key))
 			return s;
 	}
 	return NULL;
@@ -79,22 +80,28 @@ void quota_count(const char *id, json_object *srv, const char *dev, long long by
 	/* ModemManager's card, else the SIM the engine read for this modem (QModem's or the AT port's, r64) */
 	const char *iccid = jstr(json_object_object_get(json_object_object_get(srv, "modemmanager"), "sim_card"), "iccid");
 	json_object *sec, *entry, *view;
-	char start[11], next[11], key[24];
+	char start[11], next[11], key[24], lkey[MM_IMEI_KEY_SIZE];
 	const char *news;
 
 	if (!quota_views)
 		quota_views = json_object_new_object();
 	if (!iccid || !*iccid || !strcmp(iccid, "--"))
 		iccid = jstr(json_object_object_get(srv, "sim"), "iccid");
-	if (!iccid || !*iccid || !strcmp(iccid, "--") || !sim_usage) {
+	if (!iccid || !*iccid || !strcmp(iccid, "--") || !sim_usage || !sim_label_key_of(iccid, lkey)) {
 		json_object_object_del(quota_views, id);
 		return;
 	}
-	sec = sim_section(iccid);
+	sec = sim_section(lkey);
 	if (!mm_quota_period(today, jstr(sec, "quota_day") ? atoi(jstr(sec, "quota_day")) : 1, start, next))
 		return;
+	/* the books by the salted key since r12; the old unsalted hash of the ICCID is moved over once */
 	mm_quota_key(iccid, key);
-	entry = mm_quota_add(sim_usage, key, start, bytes);
+	if (!json_object_object_get(sim_usage, lkey) && json_object_object_get(sim_usage, key)) {
+		json_object_object_add(sim_usage, lkey, json_object_get(json_object_object_get(sim_usage, key)));
+		json_object_object_del(sim_usage, key);
+		sim_usage_dirty = true;
+	}
+	entry = mm_quota_add(sim_usage, lkey, start, bytes);
 	if (jstr(entry, "period") && strcmp(jstr(entry, "period"), start)) {
 		/* the clock went back: judged in the period the books are in */
 		char was[11];
@@ -105,7 +112,7 @@ void quota_count(const char *id, json_object *srv, const char *dev, long long by
 	}
 	if (bytes > 0)
 		sim_usage_dirty = true;
-	view = mm_quota_view(entry, iccid, mm_quota_bytes(jstr(sec, "quota_gb")),
+	view = mm_quota_view(entry, lkey, mm_quota_bytes(jstr(sec, "quota_gb")),
 			     jstr(sec, "quota_warn") ? atoi(jstr(sec, "quota_warn")) : 80, start, next, jstr(sec, "quota_action"));
 	if ((news = mm_quota_news(entry, view))) {
 		char detail[96];

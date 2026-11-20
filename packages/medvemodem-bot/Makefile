@@ -4,7 +4,7 @@ PKG_NAME:=medvemodem-bot
 # the engine's version, as luci-app-medvemodem (tests/test_bench_notes.py checks it): no path
 # arithmetic, which the SDK's package scan does not resolve like a build
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=10
+PKG_RELEASE:=12
 PKG_LICENSE:=GPL-3.0-only
 PKG_MAINTAINER:=Medvedolog
 
@@ -14,7 +14,7 @@ define Package/medvemodem-bot
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=WWAN
-  TITLE:=MedveModem read-only Telegram event client
+  TITLE:=Telegram bot for MedveModem
   PKGARCH:=all
   DEPENDS:=+medvemodem +ucode +ucode-mod-ubus +ucode-mod-uloop +ucode-mod-fs +ucode-mod-uci +ucode-mod-log +ucode-mod-digest +curl +ca-bundle +jq
   EXTRA_DEPENDS:=medvemodem (>=$(PKG_VERSION)-r$(PKG_RELEASE))
@@ -42,12 +42,15 @@ define Package/medvemodem-bot/install
 	$(INSTALL_BIN) ./files/usr/libexec/medvemodem-bot/why $(1)/usr/libexec/medvemodem-bot/why
 	$(INSTALL_BIN) ./files/usr/libexec/medvemodem-bot/netinfo $(1)/usr/libexec/medvemodem-bot/netinfo
 	$(INSTALL_DIR) $(1)/etc/medvemodem-bot
+	# the token and the salt are made on the router: sysupgrade keeps them (as the bench feed's package does)
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
+	printf '%s\n' /etc/config/medvemodem-bot-secret /etc/medvemodem-bot/salt > $(1)/lib/upgrade/keep.d/medvemodem-bot
 endef
 
 define Package/medvemodem-bot/description
- A Telegram bot for the MedveModem engine, read only: notices of sessions,
- quotas, outages and the main link, and the state of the modems on request,
- with a keyboard and buttons. It runs as root like the engine and never touches
+ A Telegram bot for the MedveModem service: notices of sessions, quotas,
+ outages and the main link, the state of the modems on request, and, when the
+ owner allows it, modem control, SMS and USSD, with a keyboard and buttons. It runs as root like the engine and never touches
  ubusd; the token and the proxy passwords stay on the router
  (/etc/config/medvemodem-bot-secret, root 0600). TLS is always verified.
 endef

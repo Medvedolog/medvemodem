@@ -74,8 +74,8 @@ tar xzf medvemodem-bot-*-24.10.tar.gz && opkg install ./medvemodem-bot_*.ipk ./l
 ## Первый запуск
 
 1. Создайте бота у [@BotFather](https://t.me/BotFather) и скопируйте токен.
-2. LuCI: «Модем» → «MedveModem» → «Telegram-бот». Текущий мастер: токен → проверка пути до Telegram → числовой Telegram user ID администратора → «Включить и запустить бота».
-   Примечание: backend pairing через одноразовый код присутствует в RPC, но текущая страница мастера его не вызывает; для настройки используйте поле Telegram user ID.
+2. LuCI: «Модем» → «MedveModem» → «Telegram-бот». Мастер настройки: токен → проверка пути до Telegram → числовой
+   Telegram user ID администратора (его подскажет @userinfobot) → «Включить и запустить бота».
 3. Проверка — «Отправить тестовое сообщение»; в Telegram — `/menu`.
 
 Команды: `/menu`, `/status`, `/modems`, `/channels`, `/sms`, `/send`, `/ussd`, `/network`, `/quota`, `/events`, `/log`, `/logall`,
@@ -90,7 +90,7 @@ tar xzf medvemodem-bot-*-24.10.tar.gz && opkg install ./medvemodem-bot_*.ipk ./l
 - `logread -e medvemodem-bot` — коды состояния без личных данных.
 - Отчёт — «Скачать журнал» в боте или «Диагностика» → «Отчёт о модеме» в LuCI.
 
-Подробности: [архитектура бота и макеты Telegram-карточек](../../docs/BOT-ARCHITECTURE.md),
+Подробности: [архитектура бота и макеты Telegram-карточек](../../docs/BOT-ARCHITECTURE.md), ТЗ бота, заметки к сборкам,
 [история изменений](../../docs/CHANGELOG.md).
 
 ---

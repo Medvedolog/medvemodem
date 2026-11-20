@@ -47,34 +47,34 @@ function tokenFormat(value) { return /^\d{6,12}:[A-Za-z0-9_-]{30,}$/.test(String
 function telegramId(value) { return /^\d{3,20}$/.test(String(value || '')); }
 function validInterface(value) {
 	return !value || /^[A-Za-z0-9_.-]{1,15}$/.test(String(value)) ? true :
-		_('Enter a Linux interface name (up to 15 characters), for example wwan0');
+		_('Enter a Linux interface name (up to 15 characters, e.g., wwan0)');
 }
 function validEndpoint(value) {
 	value = String(value || '');
-	if (value.length > 256) return _('The proxy address must not exceed 256 characters');
+	if (value.length > 256) return _('Proxy address cannot exceed 256 characters');
 	/* Credentials in public UCI would leak. Never accept userinfo, paths or queries. */
 	var m = /^(socks5h|http|https):\/\/([A-Za-z0-9.-]+|\[[0-9a-fA-F:]+\]):(\d{1,5})$/.exec(value);
 	if (!m || Number(m[3]) < 1 || Number(m[3]) > 65535)
-		return _('Format: socks5h://127.0.0.1:2080 or https://proxy.example:443; without logins and passwords');
+		return _('Format: socks5h://127.0.0.1:2080 or https://proxy.example:443 (without credentials)');
 	return true;
 }
 function validPriority(value) {
-	return /^\d{1,3}$/.test(String(value)) && +value <= 999 ? true : _('Priority: a whole number from 0 to 999');
+	return /^\d{1,3}$/.test(String(value)) && +value <= 999 ? true : _('Priority: integer from 0 to 999');
 }
 /* tunnel: the direct call reached a fake-IP, the router's own tunnel (podkop's sing-box) carried it */
 /* title: the modem's name for a modem route (the owner 2026-11-03: «имена или модели модемов, интерфейс в скобочках») */
 function routeMessage(tier, tunnel, title) {
-	if (tier === 'direct' && tunnel === true) return _('through the router\'s tunnel (sing-box)');
-	if (tier === 'direct') return _('directly (no proxy)');
+	if (tier === 'direct' && tunnel === true) return _('via router tunnel (sing-box)');
+	if (tier === 'direct') return _('direct (no proxy)');
 	if (String(tier || '').indexOf('emergency_') === 0) return _('emergency IP (with TLS verification)');
 	/* routes.uc's names: modem:<dev>, <package>:<section> of a local mixed proxy, a proxy section's own name */
-	if (/^modem:/.test(String(tier || ''))) return _('through the modem %s').format(title && title !== String(tier).slice(6) ?
+	if (/^modem:/.test(String(tier || ''))) return _('via modem %s').format(title && title !== String(tier).slice(6) ?
 		title + ' (' + String(tier).slice(6) + ')' : String(tier).slice(6));
 	if (/^(podkop|podkop-plus|forkop|netshift):/.test(String(tier || ''))) return _('local proxy %s').format(String(tier).split(':')[0]);
 	if (/^ssclash:/.test(String(tier || ''))) return _('local proxy %s').format('SSClash');
 	if (/^nikki:/.test(String(tier || ''))) return _('local proxy %s').format('nikki');
 	if (tier && tier !== 'none') return _('proxy “%s”').format(tier);
-	return _('no route chosen');
+	return _('no route selected');
 }
 /* SSClash and nikki without a usable mixed port (the owner, 2026-11-03: «если не включено - рекомендуем включить для
    бота в первую очередь»): what to switch on; the bot reads their configs only. list: the bot's routes reply .clash */
@@ -84,28 +84,28 @@ function clashAdvice(list) {
 		if (!m) return null;
 		if (m.state === 'no_mixed')
 			return m.name === 'nikki' ?
-				_('nikki has no mixed port. Set it in nikki\'s settings (Mixin → Mixed Port, e.g. 7890) and restart nikki: the bot then reaches Telegram through it by itself. For the bot this comes first.') :
-				_('SSClash has no mixed port. Add the line %s to %s and restart Clash: the bot then reaches Telegram through it by itself. For the bot this comes first.')
+				_('nikki has no mixed port configured. Set it in nikki (Mixin → Mixed Port, e.g., 7890) and restart nikki so the bot can reach Telegram automatically (recommended first step).') :
+				_('SSClash has no mixed port configured. Add %s to %s and restart Clash so the bot can reach Telegram automatically (recommended first step).')
 					.format('mixed-port: 7890', String(m.config || '/opt/clash/config.yaml'));
 		if (m.state === 'login')
-			return _('%s asks a login on its mixed port, and the bot found no usable one: give it a user with a password (authentication).').format(name);
+			return _('%s requires authentication on its mixed port, but no valid credentials were found. Configure a username and password.').format(name);
 		if (m.state === 'unread')
-			return _('%s: the bot could not read where its mixed port listens (%s).').format(name, String(m.config || ''));
+			return _('%s: failed to detect the mixed-port listen address (%s).').format(name, String(m.config || ''));
 		return null;
 	}).filter(function(x) { return x; });
 }
 /* the transport's states in words (second audit 2026-10-21: the code was shown as it is); an unknown one with its code */
-var ROUTE_STATES = { ok: _('works'), checking: _('not checked yet'), network: _('no link to Telegram'), unreachable: _('no link to Telegram'),
-	poll_conflict: _('the bot runs somewhere else with this token'), rate_limited: _('Telegram asks to wait'),
-	tls_untrusted: _('the secure connection could not be verified'), tls_failure: _('secure connection error'),
-	bad_token: _('Telegram did not take the token'), forbidden: _('Telegram denied access (the bot is blocked?)'),
-	telegram_rejected: _('Telegram refused the request'), telegram_error: _('an error on Telegram\'s side'),
-	malformed_ack: _('an unclear answer from Telegram'), malformed_poll: _('an unclear answer from Telegram'),
+var ROUTE_STATES = { ok: _('online'), checking: _('not tested yet'), network: _('cannot reach Telegram'), unreachable: _('cannot reach Telegram'),
+	poll_conflict: _('another instance is already running with this token'), rate_limited: _('Telegram rate limit exceeded (retry later)'),
+	tls_untrusted: _('TLS verification failed'), tls_failure: _('secure connection error'),
+	bad_token: _('Telegram rejected the token'), forbidden: _('Access denied by Telegram (bot blocked?)'),
+	telegram_rejected: _('Telegram rejected the request'), telegram_error: _('Telegram server error'),
+	malformed_ack: _('unexpected response from Telegram'), malformed_poll: _('unexpected response from Telegram'),
 	/* the bot's own codes in words (audit 12: they came through the general fallback) */
-	task_unavailable: _('the router did not let the bot start a request (short of memory?): it restarts itself'),
-	task_watchdog: _('a request hung and was stopped'), no_permitted_route: _('the settings allow no way to Telegram'),
-	offset_persistence: _('the bot cannot write its state to /tmp') };
-function routeState(s) { return !s ? _('no link') : ROUTE_STATES[s] || _('the operation failed (%s)').format(txt(s, '')); }
+	task_unavailable: _('router failed to spawn request (low memory?): bot will restart automatically'),
+	task_watchdog: _('request timed out and was aborted'), no_permitted_route: _('no Telegram route allowed by current settings'),
+	offset_persistence: _('bot cannot write state file to /tmp') };
+function routeState(s) { return !s ? _('no connection') : ROUTE_STATES[s] || _('operation failed (%s)').format(txt(s, '')); }
 function routeInfo(info, polling) {
 	info = safe(info);
 	return routeState(info.state) + ' · ' + routeMessage(info.tier, info.tunnel) + ' · ' + _('last success: %s').format(timeLabel(info.last_ok)) +
@@ -113,31 +113,31 @@ function routeInfo(info, polling) {
 }
 /* why the bot does not run (medvemodem-bot's why, by its code): the router's words are English, for its log */
 var WHY_WORDS = {
-	disabled: _('the bot is switched off in its settings: “Enable and start the bot” on its page'),
-	ucode_missing: _('no ucode: install the ucode package'),
-	ca_bundle_missing: _('no TLS certificates: install the ca-bundle package'),
-	token_missing: _('the token is not set or incomplete: step 1 on the bot\'s page'),
+	disabled: _('bot is disabled — use "Enable and start bot" on the bot page'),
+	ucode_missing: _('ucode not found: install the ucode package'),
+	ca_bundle_missing: _('missing TLS certificates: install ca-bundle'),
+	token_missing: _('token missing or incomplete (see Step 1 on the bot page)'),
 	/* the wizard's step by its name, not a number that moves (audit r101 R06: it sent to the one-time code it no longer has) */
-	administrator_missing: _('no administrator assigned: in the “Setup wizard”, step “Administrator”, enter your Telegram ID'),
-	secret_permissions: _('wrong permissions on the token file: run /usr/libexec/medvemodem-bot/init-secrets'),
-	exits: _('the checks passed, but the bot exited after it started')
+	administrator_missing: _('no administrator set: enter your Telegram ID in Setup Wizard → Administrator'),
+	secret_permissions: _('invalid token file permissions: run /usr/libexec/medvemodem-bot/init-secrets'),
+	exits: _('checks passed, but the bot exited immediately after startup')
 };
 function whyWords(r) {
 	var m = r && r.code === 'module_missing' && /ucode-mod-[a-z]+/.exec(r.words || '');
-	return m ? _('no module %s: install the package of the same name').format(m[0]) : WHY_WORDS[r && r.code] || (r && r.words) || '';
+	return m ? _('missing module %s: install the corresponding package').format(m[0]) : WHY_WORDS[r && r.code] || (r && r.words) || '';
 }
 
 var CHECK_WORDS = {
-	token_missing: _('the token is not saved'),
-	token_rejected: _('Telegram did not take the token: check it in @BotFather'),
-	telegram_unreachable: _('Telegram is reachable neither directly nor through a proxy'),
-	not_bot_api: _('Telegram was reached, but the answer was not the Bot API\'s: a proxy or a filter on the way answers instead'),
-	no_proxy: _('no proxy is switched on'),
-	no_route: _('the settings allow no way to Telegram'),
-	no_such_proxy: _('save the settings first'),
-	bad_endpoint: _('the proxy address is wrong'),
-	proxy_failed: _('the proxy does not answer or does not let through to Telegram'),
-	proxy_auth: _('the proxy did not take the login or the password')
+	token_missing: _('token not saved'),
+	token_rejected: _('Telegram rejected the token — verify it in @BotFather'),
+	telegram_unreachable: _('Telegram is unreachable both directly and via proxy'),
+	not_bot_api: _('Unexpected response instead of Telegram Bot API (likely intercepted by a proxy or filter)'),
+	no_proxy: _('no proxy enabled'),
+	no_route: _('no Telegram route allowed by current settings'),
+	no_such_proxy: _('save settings first'),
+	bad_endpoint: _('invalid proxy address'),
+	proxy_failed: _('proxy unreachable or unable to reach Telegram'),
+	proxy_auth: _('proxy rejected username or password')
 };
 function notify(message, error) {
 	ui.addNotification(null, el('p', { 'class': error ? 'alert-message warning' : '' }, [message]));
@@ -217,15 +217,15 @@ function checkWords(r) {
 	if (r.queued) return [_('checking…'), 'wait'];
 	if (c.at) {
 		var when = new Date(c.at * 1000).toLocaleTimeString(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' });
-		if (c.bot_api_ok) return [_('works: the Bot API answered in %d ms (%s)').format(c.latency_ms || 0, when), 'ok'];
-		if (c.transport_reached) return [_('Telegram reached, but the Bot API did not confirm the token (%s)').format(when), 'bad'];
-		return [_('no link: %s (%s)').format(routeState(c.state), when), 'bad'];
+		if (c.bot_api_ok) return [_('online: Bot API responded in %d ms (%s)').format(c.latency_ms || 0, when), 'ok'];
+		if (c.transport_reached) return [_('Telegram reachable, but Bot API rejected the token (%s)').format(when), 'bad'];
+		return [_('no connection: %s (%s)').format(routeState(c.state), when), 'bad'];
 	}
-	if (f.at) return [_('did not answer at %s: %s').format(new Date(f.at * 1000).toLocaleTimeString(document.documentElement.lang || undefined,
+	if (f.at) return [_('no response at %s: %s').format(new Date(f.at * 1000).toLocaleTimeString(document.documentElement.lang || undefined,
 		{ hour: '2-digit', minute: '2-digit' }), routeState(f.state)), 'bad'];
-	return [_('not checked'), 'off'];
+	return [_('not tested'), 'off'];
 }
-var KIND_WORDS = { proxy: _('proxy'), direct: _('direct'), modem: _('through a modem'), emergency: _('emergency IP') };
+var KIND_WORDS = { proxy: _('proxy'), direct: _('direct'), modem: _('via modem'), emergency: _('emergency IP') };
 
 return baseclass.extend({
 	calls: calls, el: el, txt: txt, bool: bool, safe: safe, timeLabel: timeLabel, tokenFormat: tokenFormat,

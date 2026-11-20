@@ -58,7 +58,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 usage() {
     cat <<'HELP'
 Usage: sh medvemodem-install.sh [--install|--update|--reinstall|--remove|--remove-bot]
-  [--tag v0.16.0-alpha1-r8] [--bot|--no-bot] [--proxy http://host:port] [--force]
+  [--tag v0.16.0-alpha1-r11] [--bot|--no-bot] [--proxy http://host:port] [--force]
   [--allow-disconnect]
 --install      install or upgrade engine + LuCI
 --update       update an existing installation
@@ -194,7 +194,7 @@ command -v jsonfilter >/dev/null 2>&1 || fail 'jsonfilter required for GitHub re
 NEIGHBOURS_COMMIT=4bd47a3a5d48234eb0a17675bbb1810e3fd1ac0d
 audit_modem_owners() {
     local level kind name evidence conflicts=0 five_count=0 five_more=0 five_list=
-    say 'Checking existing modem controllers using MedveModem neighbours detector...'
+    say 'Checking for conflicting modem managers...'
     detector="https://raw.githubusercontent.com/Medvedolog/medvemodem/$NEIGHBOURS_COMMIT/files/usr/libexec/medvemodem/neighbours"
     fetch "$detector" "$TMP/neighbours" ||
         fail 'cannot download the shared modem audit; refusing to install without preflight'
@@ -281,7 +281,7 @@ remove_flow() {
         ask 'Remove engine, LuCI and optional bot? QModem is not removed.' no || return 0
         remove_packages luci-app-medvemodem-bot medvemodem-bot luci-app-medvemodem medvemodem
     fi
-    say 'Done. No explicit deletion of configuration or credentials performed.'
+    say 'Done. Existing configuration and credentials were preserved.'
 }
 # GitHub /releases/latest EXCLUDES prereleases. Use the published release list,
 # sort by published_at (not tag spelling/created_at) and ignore QModem,
@@ -341,7 +341,7 @@ prepare_network() {
         if fetch_direct "https://api.github.com" "$TMP/api-probe"; then
             fail "GitHub is reachable, but $TAG is not published (or not accessible). Select an existing --tag; a proxy cannot fix HTTP 404."
         fi
-        say 'GitHub direct unavailable (network or API inaccessible)'
+        say 'Direct GitHub access unavailable (network or API unreachable)'
         select_proxy
         fetch "$manifest" "$TMP/SHA256SUMS" || fail 'GitHub release or SHA256SUMS missing/inaccessible via proxy'
     fi
@@ -466,7 +466,7 @@ confirm_installation() {
     if [ -n "$SERVICE_RESTORE" ]; then
         warning="This will temporarily stop:$SERVICE_RESTORE. SSH/mobile internet may disconnect."
     fi
-    ask "Install $TAG packages ($package_files) now? $warning Continue?" no
+    ask "Install $TAG ($package_files)? $warning" no
 }
 quiesce_for_upgrade() {
     # Interactive users authorize service interruption in confirm_installation.
@@ -503,7 +503,7 @@ install_flow() {
     fi
     say "OpenWrt $REL / $ARCH / $PM; available release archive built for $SDK_RELEASE"
     if [ "$REL" != "$SDK_RELEASE" ]; then
-        say "WARNING: firmware and package SDK patch version differ; dependency dry-run must succeed."
+        say "WARNING: firmware and SDK patch versions differ; running dependency check first."
     fi
     take_package_lock
     prepare_network
@@ -522,7 +522,7 @@ install_flow() {
         fi
     done
     if [ "$all_current" = 1 ] && [ "$FORCE" != 1 ]; then
-        say "All selected packages already match $TAG; no package transaction is needed."
+        say "Selected packages are already at $TAG; nothing to do."
         return 0
     fi
     base=$(printf '%s' "$TAG" | sed 's/^v//')

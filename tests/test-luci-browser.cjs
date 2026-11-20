@@ -201,7 +201,7 @@ async function run() {
       String.prototype.format = function (...a) { let i = 0; return this.replace(/%[sd]/g, () => String(a[i++] ?? '')); };
       const _ = value => value;
       const mm = {
-        VERSION: '0.16.0-alpha1-r10', LANG: 'en',
+        VERSION: '0.16.0-alpha1-r12', LANG: 'en',
         text: (node, value) => { node.textContent = value == null ? '' : String(value); }
       };
       let view;

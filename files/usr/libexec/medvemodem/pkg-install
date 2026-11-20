@@ -303,7 +303,7 @@ EOF
 run() {
 	local id pkgs= drivers= ours= out rc
 	mkdir -p "$RUN"
-	put_pid $
+	put_pid $$
 	trap 'pm_unlock' EXIT
 	exec >>"$LOG" 2>&1
 	check_ids "$@" >/dev/null || fail "$(T "unknown component" "неизвестный компонент")"
@@ -332,8 +332,8 @@ run() {
 	esac
 	printf '%s\n' "$out" | sed 's/^/    /'
 	if [ "$rc" -ne 0 ]; then
-		[ -z "$drivers" ] || say "$(T "Kernel modules are missing from the feeds when the firmware is not a release build (a snapshot or your own build): they fit only their own kernel." "Для нерелизной прошивки (SNAPSHOT или собственной сборки) совместимые модули ядра могут быть недоступны в репозиториях: они должны соответствовать её ядру.")"
-		fail "$(T "the dry run failed: something is missing from the router's feeds (see above)" "проверка не пройдена: части пакетов нет в репозиториях роутера (см. выше)")"
+		[ -z "$drivers" ] || say "$(T "Kernel modules are unavailable in feeds for non-release firmware (SNAPSHOT or custom builds), as they require an exact kernel match." "Для нерелизной прошивки (SNAPSHOT или собственной сборки) совместимые модули ядра могут быть недоступны в репозиториях: они должны соответствовать её ядру.")"
+		fail "$(T "dry run failed: required packages are missing from router repositories (see above)" "проверка не пройдена: части пакетов нет в репозиториях роутера (см. выше)")"
 	fi
 	say "$(T "Installing" "Установка")"
 	case "$PM" in

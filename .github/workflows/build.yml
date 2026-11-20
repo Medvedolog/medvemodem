@@ -12,7 +12,7 @@ on:
         required: true
         default: false
       release_tag:
-        description: 'Version to publish from main after all six builds (for example v0.16.0-alpha1-r8)'
+        description: 'Version to publish from main after all six builds (for example v0.16.0-alpha1-r11)'
         type: string
         required: false
         default: ''
@@ -36,6 +36,7 @@ jobs:
           python3 tests/test-luci-frontend.py
           python3 tests/test-ep06-temperature.py
           python3 tests/test-ep06-cell-lock.py
+          python3 tests/test-qmodem-handover.py
           sh tools/check-web-version.sh
           sh tests/test-installer-release-selection.sh
           sh tests/test-installer-locks.sh
@@ -110,10 +111,28 @@ jobs:
           done
           [ "$(find release-assets -name '*.tar.gz' | wc -l)" -eq 6 ] || { echo "Expected six build targets" >&2; exit 1; }
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          revision="${tag##*-}"
-          notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
-          [ -s "$notes" ] || { echo "Release highlights missing: $notes" >&2; exit 1; }
+          # an alpha's or beta's own highlights by its tag (v0.16.0-alpha1-r11 -> ALPHA1-R11), else the changelog below
+          notes=
+          if [[ "$tag" =~ -(alpha|beta)([0-9]+)-r([0-9]+)$ ]]; then
+            stage="${BASH_REMATCH[1]^^}"
+            notes="docs/RELEASE-HIGHLIGHTS-${stage}${BASH_REMATCH[2]}-R${BASH_REMATCH[3]}.md"
+          fi
+          # no highlights file of its own (0.16.1 and later): this version's section of the changelog
+          if [ -z "$notes" ] || [ ! -s "$notes" ]; then
+            awk -v v="${tag#v}" 'index($0, "## " v " ") == 1 { on = 1; print "## " v; next } on && /^## / { exit } on' docs/CHANGELOG.md > release-notes.md
+            notes=release-notes.md
+          fi
+          [ -s "$notes" ] || { echo "Release highlights missing: $notes and no changelog section for ${tag#v}" >&2; exit 1; }
           cp "$notes" release-assets/HIGHLIGHTS.txt
+          # the release page: the English highlights, then this version's Russian changelog section (the owner,
+          # 2026-11-20: «хайлайты на англ и описание на русском»); HIGHLIGHTS.txt stays the highlights alone
+          ru=$(awk -v v="${tag#v}" 'index($0, "## " v " ") == 1 { on = 1; next } on && /^## / { exit } on' docs/CHANGELOG.md |
+               sed '/^Стендовая сборка:/d')
+          cp "$notes" release-body.md
+          if [ -n "$ru" ] && [ "$notes" != release-notes.md ]; then
+            printf '\n---\n\n## По-русски\n%s\n' "$ru" >> release-body.md
+          fi
+          echo "RELEASE_NOTES=release-body.md" >> "$GITHUB_ENV"
       - name: Publish draft and verify GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -121,8 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="$RELEASE_TAG"
-          revision="${tag##*-}"
-          notes="docs/RELEASE-HIGHLIGHTS-ALPHA1-${revision^^}.md"
+          notes="$RELEASE_NOTES"
           [ -s "$notes" ] || { echo "Release notes missing: $notes" >&2; exit 1; }
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Refusing to overwrite existing release $tag" >&2

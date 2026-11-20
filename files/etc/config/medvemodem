@@ -41,8 +41,9 @@ config core 'core'
 #	option device_id 'usb-serial:790cac97'
 #	option name 'Дача'
 
-# the operator's label of a SIM card, by its ICCID, in whichever modem it sits
+# the operator's label of a SIM card, in whichever modem it sits: keyed by a salted hash of its ICCID (the service
+# writes the key; LuCI and the bot save labels under it), never the ICCID itself
 #config sim
-#	option iccid '8970199123456789012'
+#	option key 'a1b2:0123456789abcdef'
 #	option number '+79001234567'
 #	option description 'Рабочая, безлимит'

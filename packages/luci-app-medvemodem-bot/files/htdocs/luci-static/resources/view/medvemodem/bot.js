@@ -30,15 +30,15 @@ return view.extend({
 		var enabled = bc.bool(uciGet('main', 'enabled')), admin = uciGet('primary', 'user_id'), done = bc.setupDone(st);
 		this.running = !!bot.running;
 		if (bot.running)
-			this.botState.set('ok', _('works') + (bot.username ? ' · @' + bot.username : '') + ' · ' + _('modems: %s').format(txt(bot.modems, '0')) +
-				' · ' + _('engine: %s').format(txt(({ ok: _('works'), offline: _('is not running'), starting: _('starting') })[bot.engine], _('not known'))));
+			this.botState.set('ok', _('online') + (bot.username ? ' · @' + bot.username : '') + ' · ' + _('modems: %s').format(txt(bot.modems, '0')) +
+				' · ' + _('service: %s').format(txt(({ ok: _('online'), offline: _('not running'), starting: _('starting') })[bot.engine], _('unknown'))));
 		else if (enabled && bot.unanswered === 'timeout') {
 			/* busy on its own call to the engine: asked again, not called dead (HANDOFF 199 item 10) */
-			this.botState.set('wait', _('works, but is busy now and did not answer in time: asking again in 15 s'));
+			this.botState.set('wait', _('running, but busy (timed out); retrying in 15 s'));
 			window.clearTimeout(this.again);
 			this.again = window.setTimeout(function() { if (!document.hidden) self.refresh(); }, 15000);
 		} else if (enabled)
-			this.botState.set('bad', _('enabled, but does not answer: press “Restart the bot”'));
+			this.botState.set('bad', _('enabled, not responding — click "Restart bot"'));
 		else
 			this.botState.set('off', _('disabled'));
 		if (!bot.running && bot.unanswered !== 'timeout') this.explain();
@@ -46,19 +46,19 @@ return view.extend({
 		this.adminState.set(admin ? 'ok' : 'off', admin ? _('assigned (ID %s)').format(admin) : _('not assigned'));
 		[[this.pollState, t.poll, true], [this.sendState, t.send, false]].forEach(function(x) {
 			var info = bc.safe(x[1]);
-			x[0].set(info.state === 'ok' ? 'ok' : bot.running ? 'bad' : 'off', bot.running || info.state ? bc.routeInfo(info, x[2]) : _('the bot is not started'));
+			x[0].set(info.state === 'ok' ? 'ok' : bot.running ? 'bad' : 'off', bot.running || info.state ? bc.routeInfo(info, x[2]) : _('bot not running'));
 		});
-		this.tlsState.set(tls.ok ? 'ok' : 'bad', tls.ok ? _('the router\'s certificates and clock are fine') : _('the check failed: %s').format(txt(tls.code, _('no answer'))));
+		this.tlsState.set(tls.ok ? 'ok' : 'bad', tls.ok ? _('router certificates and system clock OK') : _('check failed: %s').format(txt(tls.code, _('no answer'))));
 		this.conflictNote.hidden = !(Number(bc.safe(t.poll).conflicts) > 0);
-		this.queueState.textContent = _('waiting: %s · sending: %s · delivery not confirmed: %s · dropped: %s').format(txt(q.pending, '0'), txt(q.inflight, '0'),
-			txt(q.uncertain, '0'), txt(q.dropped_info, '0')) + (q.persistence_error ? ' · ' + _('the queue is not written to /tmp!') : '');
+		this.queueState.textContent = _('queued: %s · sending: %s · unconfirmed: %s · dropped: %s').format(txt(q.pending, '0'), txt(q.inflight, '0'),
+			txt(q.uncertain, '0'), txt(q.dropped_info, '0')) + (q.persistence_error ? ' · ' + _('cannot write queue to /tmp!') : '');
 		var show = bc.bool(uciGet('main', 'allow_sms_content')), fwd = show && bc.bool(uciGet('main', 'sms_forward'));
-		this.smsState.set(show ? 'ok' : 'off', !show ? _('not shown') : fwd ? _('shown by a button and sent by themselves') : _('shown by the “Incoming SMS” button'));
+		this.smsState.set(show ? 'ok' : 'off', !show ? _('not shown') : fwd ? _('available on demand and auto-forwarded') : _('available via "Incoming SMS" button'));
 		this.controlState.set(bc.bool(uciGet('main', 'allow_control')) ? 'ok' : 'off',
 			bc.bool(uciGet('main', 'allow_control')) ? _('allowed') : _('view only'));
 		/* the first setup, not finished: said on top, with the way to it */
 		this.setupNote.hidden = !done.left;
-		this.setupWords.textContent = _('The first setup is not finished: steps left — %s of 4.').format(done.left);
+		this.setupWords.textContent = _('Initial setup incomplete (%s of 4 steps remaining).').format(done.left);
 	},
 
 	/* the bot's routes with their checks (audit R02, 11.3): what it uses for commands and for sending, each checkable */
@@ -98,7 +98,7 @@ return view.extend({
 					lamp.set(w[1], w[1] === 'ok' ? _('OK · %d ms').format(c.latency_ms || 0) :
 						w[1] === 'bad' ? _('Error: %s').format(c.at && c.transport_reached ? _('token not confirmed') :
 							bc.routeState(c.at ? c.state : bc.safe(x.failed).state)) :
-						w[1] === 'wait' ? (r.probing === x.name ? _('Checking…') : _('In the queue…')) : _('Not checked'));
+						w[1] === 'wait' ? (r.probing === x.name ? _('Checking…') : _('Queued…')) : _('Not checked'));
 					var button = el('button', { type: 'button', 'class': 'btn cbi-button-action mmb-probe' }, [_('Check')]);
 					button.disabled = !!x.queued;
 					var detail = el('details', { 'class': 'mmb-check-detail', 'data-key': key + '|' + role }, [
@@ -111,17 +111,17 @@ return view.extend({
 					return detail;
 				});
 				return el('tr', { 'class': active ? 'is-current' : '' }, [
-					el('td', { 'data-title': _('Path') }, [bc.routeMessage(g.name, false, g.title) + (active ? ' · ' + _('in use') : '')]),
-					el('td', { 'data-title': _('Kind') }, [(bc.KIND_WORDS[g.kind] || g.kind || '—') + (g.auth ? ' · ' + _('with a login') : '')]),
+					el('td', { 'data-title': _('Route') }, [bc.routeMessage(g.name, false, g.title) + (active ? ' · ' + _('in use') : '')]),
+					el('td', { 'data-title': _('Kind') }, [(bc.KIND_WORDS[g.kind] || g.kind || '—') + (g.auth ? ' · ' + _('authenticated') : '')]),
 					el('td', { 'data-title': _('Commands') }, [details[0]]),
 					el('td', { 'data-title': _('Sending') }, [details[1]])
 				]);
 			});
 			/* a check under way: which path and how many wait, the way a phone shows a test's progress */
 			var busy = r.probing || Number(r.waiting) > 0;
-			self.routesSummary.textContent = busy ? _('Checking: %s · waiting: %d').format(r.probing ? bc.routeMessage(r.probing, false,
+			self.routesSummary.textContent = busy ? _('Testing: %s · queued: %d').format(r.probing ? bc.routeMessage(r.probing, false,
 				(groups[keys.filter(function(k) { return groups[k].name === r.probing; })[0]] || {}).title) : '…', Number(r.waiting) || 0) :
-				keys.length ? _('Paths: %d · in use: %d · checks OK: %d · errors: %d').format(keys.length, current, ok, bad) :
+				keys.length ? _('Routes: %d · active: %d · OK: %d · errors: %d').format(keys.length, current, ok, bad) :
 				_('No routes available');
 			if (self.probeAll) self.probeAll.disabled = !!(busy || self.probing);
 			/* SSClash's or nikki's mixed port to switch on, above the routes */
@@ -129,11 +129,11 @@ return view.extend({
 			self.clashNote.hidden = !advice.length;
 			self.clashNote.replaceChildren.apply(self.clashNote, advice.map(function(a) { return el('div', {}, [a]); }));
 			self.routesBody.replaceChildren.apply(self.routesBody, rows.length ? rows :
-				[el('tr', {}, [el('td', { colspan: 4 }, [self.running ? _('The bot has no route to Telegram: none is allowed by its settings.') : _('The bot is not started: its routes are known while it runs.')])])]);
+				[el('tr', {}, [el('td', { colspan: 4 }, [self.running ? _('No route to Telegram allowed by current settings.') : _('Bot is not running; routes are visible only while active.')])])]);
 			return r;
 		}).catch(function() {
 			self.routesSummary.textContent = _('Routes unavailable');
-			self.routesBody.replaceChildren(el('tr', {}, [el('td', { colspan: 4 }, [_('Route data is unavailable.')])]));
+			self.routesBody.replaceChildren(el('tr', {}, [el('td', { colspan: 4 }, [_('Route data unavailable.')])]));
 			return {};
 		});
 	},
@@ -145,9 +145,9 @@ return view.extend({
 		this.until = Date.now() + 90000;
 		this.probeAll.disabled = true;
 		this.routesDetails.open = true;
-		if (!this.probing) this.routesSummary.textContent = _('Checking routes…');
+		if (!this.probing) this.routesSummary.textContent = _('Testing routes…');
 		return calls.probe(kind || '', name || '').then(function(r) {
-			if (!r || !r.ok) { bc.notify(_('The check did not start: %s').format(txt(r && r.code, _('nothing to check'))), true); return self.routesRefresh(); }
+			if (!r || !r.ok) { bc.notify(_('Failed to start check: %s').format(txt(r && r.code, _('nothing to check'))), true); return self.routesRefresh(); }
 			if (self.probing) return;
 			self.probing = true;
 			var poll = function() {
@@ -157,7 +157,7 @@ return view.extend({
 				});
 			};
 			return poll().finally(function() { self.probing = false; return self.routesRefresh(); });
-		}).catch(function() { bc.notify(_('The bot is not started or has no rights.'), true); self.probeAll.disabled = false; });
+		}).catch(function() { bc.notify(_('Bot is not running or lacks permissions.'), true); self.probeAll.disabled = false; });
 	},
 
 	/* the router says why the bot is not running: the init script's checks, else the bot's last log line */
@@ -166,7 +166,7 @@ return view.extend({
 		return calls.why().then(function(r) {
 			r = bc.safe(r);
 			if (r.running || !r.code || self.running) return;
-			self.botState.set(r.code === 'disabled' ? 'off' : 'bad', _('not running: %s').format(txt(bc.whyWords(r), _('the reason is unknown'))) +
+			self.botState.set(r.code === 'disabled' ? 'off' : 'bad', _('not running: %s').format(txt(bc.whyWords(r), _('unknown error'))) +
 				(r.code === 'exits' && r.last_log ? ' · ' + _('log: %s').format(r.last_log) : ''));
 		}).catch(function() {});
 	},
@@ -174,36 +174,36 @@ return view.extend({
 	render: function(data) {
 		bc.css();
 		if (!data[0]) return el('div', { 'class': 'cbi-map' }, [el('h2', {}, [_('MedveModem Telegram bot')]),
-			el('p', { 'class': 'alert-message warning' }, [_('The medvemodem-bot package is not installed or its settings are unavailable.')])]);
+			el('p', { 'class': 'alert-message warning' }, [_('Package medvemodem-bot is not installed or its config is unavailable.')])]);
 		var self = this;
 		['botState', 'tokenState', 'adminState', 'pollState', 'sendState', 'tlsState', 'smsState', 'controlState'].forEach(function(k) { self[k] = indicator(); });
 		this.queueState = el('span');
 		this.setupWords = el('span');
 		this.setupNote = el('div', { 'class': 'alert-message notice mmb-setup-note', hidden: true }, [this.setupWords, ' ',
-			el('a', { 'class': 'btn cbi-button-action', href: L.url('admin/modem/medvemodem/bot/setup') }, [_('Open the setup wizard')])]);
+			el('a', { 'class': 'btn cbi-button-action', href: L.url('admin/modem/medvemodem/bot/setup') }, [_('Open setup wizard')])]);
 		this.refreshButton = el('button', { type: 'button', 'class': 'btn cbi-button-neutral' }, [_('Refresh')]);
 		this.refreshButton.addEventListener('click', function() { self.refresh(); });
-		var restart = el('button', { type: 'button', 'class': 'btn cbi-button-apply' }, [_('Restart the bot')]);
+		var restart = el('button', { type: 'button', 'class': 'btn cbi-button-apply' }, [_('Restart bot')]);
 		restart.addEventListener('click', function() {
-			if (!window.confirm(_('Restart the bot only? The link to Telegram breaks for a few seconds; the modems are not touched.'))) return;
+			if (!window.confirm(_('Restart only the bot? Telegram connectivity will drop for a few seconds; modems are unaffected.'))) return;
 			restart.disabled = true;
 			calls.restart().then(function(r) {
-				if (!r || !r.ok) { bc.notify(_('The bot restart failed: %s').format(txt(r && r.code)), true); return; }
-				bc.notify(_('The bot is restarted.'));
+				if (!r || !r.ok) { bc.notify(_('Failed to restart bot: %s').format(txt(r && r.code)), true); return; }
+				bc.notify(_('Bot restarted.'));
 				window.setTimeout(function() { self.refresh(); }, 4000);
-			}).catch(function() { bc.notify(_('No answer from the bot\'s management service.'), true); })
+			}).catch(function() { bc.notify(_('No response from bot management service.'), true); })
 				.finally(function() { restart.disabled = false; });
 		});
-		var test = el('button', { type: 'button', 'class': 'btn cbi-button-action' }, [_('Send a test message')]);
+		var test = el('button', { type: 'button', 'class': 'btn cbi-button-action' }, [_('Send test message')]);
 		test.addEventListener('click', function() {
 			test.disabled = true;
 			calls.chatTest().then(function(r) {
-				bc.notify(r && r.ok ? _('The test message is queued.') : _('Sending is unavailable: check the settings.'), !(r && r.ok));
-			}).catch(function() { bc.notify(_('The bot is not started or has no rights.'), true); }).finally(function() { test.disabled = false; });
+				bc.notify(r && r.ok ? _('Test message queued.') : _('Cannot send — check settings.'), !(r && r.ok));
+			}).catch(function() { bc.notify(_('Bot is not running or lacks permissions.'), true); }).finally(function() { test.disabled = false; });
 		});
 		var root = el('div', { 'class': 'mm-bot-panel' }, [
 			el('h2', {}, [_('MedveModem Telegram bot')]),
-			el('p', { 'class': 'description' }, [_('The bot reports on the modems and answers status requests. Here is what it does now; the first setup is the “Setup wizard”, the parameters are in “Settings”.')]),
+			el('p', { 'class': 'description' }, [_('Monitors modems and replies to status commands. Current state is shown below; use "Setup wizard" for initial setup or "Settings" for advanced options.')]),
 			this.setupNote,
 			this.clashNote = el('div', { 'class': 'alert-message notice mmb-clash-note', hidden: true }),
 			el('div', { 'class': 'cbi-section', id: 'mm-bot-overview' }, [
@@ -213,21 +213,21 @@ return view.extend({
 				row(_('Certificates and clock'), this.tlsState), row(_('Queue'), this.queueState),
 				row(_('SMS to Telegram'), this.smsState), row(_('Modem management'), this.controlState),
 				el('div', { 'class': 'mmb-line' }, [this.refreshButton, restart, test]),
-				this.conflictNote = el('p', { 'class': 'alert-message warning mm-bot-conflict', hidden: true }, [_('Telegram error 409: another application is reading commands using the same token.')])
+				this.conflictNote = el('p', { 'class': 'alert-message warning mm-bot-conflict', hidden: true }, [_('Telegram error 409: another client is polling updates with this token.')])
 			]),
 			el('div', { 'class': 'cbi-section', id: 'mm-bot-routes' }, [
-				el('h3', {}, [_('Telegram connection checks')]),
-				el('p', { 'class': 'description' }, [_('Current command and notification routes are shown above. Detailed checks are available below when needed.')]),
+				el('h3', {}, [_('Telegram connectivity checks')]),
+				el('p', { 'class': 'description' }, [_('Active routes are shown above; expand detailed route checks below if needed.')]),
 				this.routesDetails = el('details', { 'class': 'mmb-route-details' }, [
 					el('summary', { 'class': 'mmb-route-summary' }, [this.routesSummary = el('span', {}, [_('Loading routes…')]), ' · ', _('Show details')]),
-					el('p', { 'class': 'description' }, [_('A successful check means the Telegram Bot API confirmed the token through this route.')]),
+					el('p', { 'class': 'description' }, [_('A passing check confirms Telegram Bot API accepted the token via this route.')]),
 					el('div', { 'class': 'mmb-route-scroll' }, [
 						el('table', { 'class': 'table mmb-routes' }, [
-							el('thead', {}, [el('tr', {}, [el('th', {}, [_('Path')]), el('th', {}, [_('Kind')]),
+							el('thead', {}, [el('tr', {}, [el('th', {}, [_('Route')]), el('th', {}, [_('Kind')]),
 								el('th', {}, [_('Commands')]), el('th', {}, [_('Sending')])])]),
 							this.routesBody = el('tbody')])
 					]),
-					el('div', { 'class': 'mmb-line' }, [this.probeAll = el('button', { type: 'button', 'class': 'btn cbi-button-action' }, [_('Check all paths')])])
+					el('div', { 'class': 'mmb-line' }, [this.probeAll = el('button', { type: 'button', 'class': 'btn cbi-button-action' }, [_('Test all routes')])])
 				])
 			])
 		]);

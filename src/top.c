@@ -43,7 +43,7 @@ static json_object *g_levels;	/* the recovery steps of the modem on screen, for 
 static const char *const TAB_NAMES[][2] = { { "Overview", "Обзор" }, { "Radio", "Радио" }, { "Service", "Сервис" } };
 /* the recovery ladder in the words of LuCI's «Сервис»: { key, English, Russian } as every word table here */
 static const char *const STEP_W[][3] = {
-	{ "observe", "Refresh modem info", "Обновить сведения о модеме" }, { "session", "Reconnect the internet", "Переподключить интернет" },
+	{ "observe", "Refresh modem info", "Обновить сведения о модеме" }, { "session", "Reconnect session", "Переподключить соединение" },
 	{ "control", "Clear stuck ports", "Сбросить зависание портов" }, { "radio", "Restart network search", "Перезапустить поиск сети" },
 	{ "soft-reset", "Reboot the modem", "Перезагрузить модем" }, { "rebind", "Restart the modem driver", "Перезапустить драйвер модема" },
 	{ "usb-reset", "Reconnect the modem on USB", "Переподключить модем по USB" }, { "power", "Power-cycle USB", "Сбросить питание USB" },
@@ -293,7 +293,7 @@ static void state_of(json_object *d, char *buf, size_t len)
 	if (get(d, "present") && !json_object_get_boolean(get(d, "present")))
 		snprintf(buf, len, "%s", T("unplugged from USB", "отключён от USB"));
 	else if (get(d, "frozen"))
-		snprintf(buf, len, "%s", T("frozen", "заморожен"));
+		snprintf(buf, len, "%s", T("paused", "приостановлен"));
 	else if (ss)
 		snprintf(buf, len, "%s", word(SESSION_W, ss, ""));
 	else if (str(mm, "state") && (!strcmp(str(mm, "state"), "connected")))
@@ -730,7 +730,7 @@ static void render_radio(json_object *d, json_object *mm)
 				snprintf(line + strlen(line), sizeof(line) - strlen(line), "  %sRSRP %s%s", zone_color(rsrp_zone(v)), n1(v, b1, sizeof(b1)), C_OFF);
 			if (num(c, "rsrq", &w))
 				snprintf(line + strlen(line), sizeof(line) - strlen(line), "  RSRQ %s", n1(w, b2, sizeof(b2)));
-			kv(i ? "" : T("Neighbours", "Соседние"), "%s", line);
+			kv(i ? "" : T("Neighbors", "Соседние"), "%s", line);
 		}
 		if (n > 8)
 			kv("", T("%sand %zu more%s", "%sи ещё %zu%s"), C_DIM, n - 8, C_OFF);
@@ -795,7 +795,7 @@ static void render_radio(json_object *d, json_object *mm)
 		}
 	}
 	if (str(mm, "cells_source") && !strcmp(str(mm, "cells_source"), "at"))
-		kv("", "%s%s%s", C_DIM, T("cells read over MedveModem's AT port (at most every 30 s, while this tab is open)",
+		kv("", "%s%s%s", C_DIM, T("cells polled via AT port (every 30 s while open)",
 					  "соты прочитаны через AT-порт MedveModem (не чаще раза в 30 с, пока открыта эта вкладка)"), C_OFF);
 }
 
@@ -1119,16 +1119,16 @@ static void render_excl(json_object *up, int sel)
 	for (int i = 0; i < g_ex_base_n; i++)	/* a saved channel that is not up now stays untickable */
 		ex_put(g_ex_dev, &g_ex_n, g_ex_base[i]);
 	out("%s%s%s", C_BOLD, T("Failover exclusions", "Исключения автопереключения"), C_OFF);
-	out("%s", T("Failover never makes a ticked channel the main one: only you, by hand.",
-		    "Отмеченные каналы автопереключение не делает основными: только вы, вручную."));
+	out("%s", T("Failover never promotes checked channels to primary — set manually.",
+		    "Автопереключение не делает отмеченные каналы основными — только вручную."));
 	out(T("Saved: %d · ticked: %d%s", "Сохранено: %d · выбрано: %d%s"), g_ex_base_n, g_ex_pick_n,
 	    ex_changed() ? T(" · not applied", " · не применено") : "");
 	if (fo && get(fo, "enabled") && !json_object_get_boolean(get(fo, "enabled")))
-		out("%s%s%s", C_DIM, T("Failover is off in the settings: the list takes effect once it is on.",
-				       "Автопереключение выключено в настройках: список подействует, когда его включат."), C_OFF);
+		out("%s%s%s", C_DIM, T("Failover is disabled in settings; this list applies once enabled.",
+				       "Автопереключение выключено: список начнёт действовать после его включения."), C_OFF);
 	out("");
 	if (!up) {
-		out("%s", T("The MedveModem service did not answer.", "Служба MedveModem не ответила."));
+		out("%s", T("MedveModem service did not respond.", "Служба MedveModem не ответила."));
 		return;
 	}
 	if (!g_ex_n) {
@@ -1287,7 +1287,7 @@ static void act(const char *method, json_object *args, const char *what, char *m
 		snprintf(msg, len, "%s: %s%s%s", what, res && !strcmp(res, "done") ? T("done", "выполнено") : T("failed", "не выполнено"),
 			 why && strcmp(res ? res : "", "done") ? " — " : "", why && strcmp(res ? res : "", "done") ? why : "");
 	else if (!strcmp(method, "check"))
-		snprintf(msg, len, "%s", res && !strcmp(res, "started") ? T("Connection check started; the result in a few seconds.",
+		snprintf(msg, len, "%s", res && !strcmp(res, "started") ? T("Connection check started; results in a few seconds.",
 									   "Проверка связи запущена; результат через несколько секунд.") :
 			 res && !strcmp(res, "running") ? T("A connection check is already running.", "Проверка связи уже выполняется.") :
 			 res && !strcmp(res, "not-connected") ? T("Not connected: nothing to check.", "Соединение не установлено: проверка невозможна.") :
@@ -1296,8 +1296,8 @@ static void act(const char *method, json_object *args, const char *what, char *m
 		snprintf(msg, len, T("Exclusions applied: %zu.", "Исключения применены: %zu."), json_object_array_length(get(args, "devices")));
 	else if (!strcmp(method, "failover_manual"))
 		snprintf(msg, len, "%s%s%s", res && !strcmp(res, "changed") ?
-			 T("The list was changed elsewhere (LuCI, the bot); the draft starts again from it.",
-			   "Список изменили в другом месте (LuCI, бот); черновик начат заново с него.") :
+			 T("List changed externally (LuCI/bot); draft reloaded.",
+			   "Список изменили в LuCI или боте; черновик обновлён.") :
 			 T("Exclusions not applied", "Исключения не применены"), why ? " — " : "", why ? why : "");
 	else if (!strcmp(method, "mm_restart"))
 		snprintf(msg, len, "%s%s%s%s", res && !strcmp(res, "started") ? T("ModemManager is restarting; the modems will be back in about a minute.",
@@ -1546,11 +1546,11 @@ int mm_top_main(int argc, char **argv, mm_top_call fn)
 		if (pend)
 			/* the keys first: on an 80-column console the rest may be cut */
 			snprintf(hint, sizeof(hint), T("%sy — confirm, any other key — cancel: \"%s%s\", %s", "%sy — выполнить, другая клавиша — отмена: «%s%s», %s"),
-				 C_OFF, pend == 4 ? T("Freeze ", "Заморозить ") : pend == 3 ? T("Deactivate ", "Деактивировать ") :
+				 C_OFF, pend == 4 ? T("Pause ", "Приостановить ") : pend == 3 ? T("Deactivate ", "Деактивировать ") :
 				 pend == 2 ? T("Restart ModemManager", "Перезапустить ModemManager") :
 				 word(STEP_W, pend_step, pend_step), pend >= 3 ? pend_name : "",
-				 pend == 4 ? T("nobody touches it and its link is down until Unfreeze (z)",
-					       "его никто не трогает, связи через него нет до разморозки (z)") :
+				 pend == 4 ? T("management paused and link down until resumed (z)",
+					       "управление приостановлено, связь отключена до возобновления (z)") :
 				 pend == 3 ? T("the link through it stays down until Activate or a router reboot",
 					       "связь через него пропадёт до «Активировать» или перезагрузки роутера") :
 				 pend == 2 ? T("every modem it holds offline ~1 min", "все модемы под ним без связи ~1 мин") :
@@ -1565,12 +1565,12 @@ int mm_top_main(int argc, char **argv, mm_top_call fn)
 				*open_id ? (g_tab == 2 ?
 				T("Tab tab · 1–8 step · M restart MM · c check · Esc back · q quit · L русский",
 				  "Tab вкладка · 1–8 шаг восстановления · M перезапуск ModemManager · c проверить связь · Esc назад · q выход · L English") :
-				T("Tab tab · c check · d on/off · ↑↓ scroll · Esc back · z freeze · q quit · L русский",
-				  "Tab вкладка · c проверить связь · d (де)активировать · ↑↓ прокрутка · Esc назад · z заморозка · q выход · L English")) :
+				T("Tab tab · c check · d on/off · ↑↓ scroll · Esc back · z pause · q quit · L русский",
+				  "Tab вкладка · c проверить связь · d (де)активировать · ↑↓ прокрутка · Esc назад · z пауза · q выход · L English")) :
 				g_order_dirty ? T("[ ] move · P apply order · Esc cancel · ↑↓ select · q quit · L русский",
 						  "[ ] переставить · P применить порядок · Esc отменить · ↑↓ выбор · q выход · L English") :
-				T("↑↓ Enter · d on/off · [ ] order · x exclusions · z freeze · q quit · L русский",
-				  "↑↓ Enter открыть · d (де)активировать · [ ] приоритет · x исключения · z заморозка · q выход · L English"));
+				T("↑↓ Enter · d on/off · [ ] order · x exclusions · z pause · q quit · L русский",
+				  "↑↓ Enter открыть · d (де)активировать · [ ] приоритет · x исключения · z пауза · q выход · L English"));
 		draw(hint, *open_id ? scroll : 0);
 		/* wait for a key or the next refresh; a key redraws at once */
 		k = read_key(TOP_REFRESH_MS, &digit);
@@ -1585,7 +1585,7 @@ int mm_top_main(int argc, char **argv, mm_top_call fn)
 					json_object_object_add(a, "id", json_object_new_string(pend_id));
 					json_object_object_add(a, "on", json_object_new_boolean(1));
 					json_object_object_add(a, "who", json_object_new_string("TUI"));
-					snprintf(what, sizeof(what), T("Freeze \"%s\"", "Заморозка «%s»"), pend_name);
+					snprintf(what, sizeof(what), T("Pause management of \"%s\"", "Приостановка управления «%s»"), pend_name);
 					act("freeze", a, what, msg, sizeof(msg));
 				} else if (pend == 3) {
 					char what[160];
@@ -1676,14 +1676,14 @@ int mm_top_main(int argc, char **argv, mm_top_call fn)
 
 				name_of(d, name, sizeof(name));
 				if (!d) {
-					snprintf(msg, sizeof(msg), "%s", T("The MedveModem service did not answer.", "Служба MedveModem не ответила."));
+					snprintf(msg, sizeof(msg), "%s", T("MedveModem service did not respond.", "Служба MedveModem не ответила."));
 				} else if (get(d, "frozen")) {
 					json_object *a = json_object_new_object();
 					char what[160];
 					json_object_object_add(a, "id", json_object_new_string(target));
 					json_object_object_add(a, "on", json_object_new_boolean(0));
 					json_object_object_add(a, "who", json_object_new_string("TUI"));
-					snprintf(what, sizeof(what), T("Unfreeze \"%s\"", "Разморозка «%s»"), name);
+					snprintf(what, sizeof(what), T("Resume management of \"%s\"", "Возобновление управления «%s»"), name);
 					act("freeze", a, what, msg, sizeof(msg));
 				} else {
 					snprintf(pend_id, sizeof(pend_id), "%s", target);
@@ -1699,7 +1699,7 @@ int mm_top_main(int argc, char **argv, mm_top_call fn)
 
 				name_of(d, name, sizeof(name));
 				if (!d)
-					snprintf(msg, sizeof(msg), "%s", T("The MedveModem service did not answer.", "Служба MedveModem не ответила."));
+					snprintf(msg, sizeof(msg), "%s", T("MedveModem service did not respond.", "Служба MedveModem не ответила."));
 				else if (!is_present(d))
 					snprintf(msg, sizeof(msg), T("\"%s\" is unplugged from USB.", "«%s» отключён от USB."), name);
 				else if (!has_iface(d))

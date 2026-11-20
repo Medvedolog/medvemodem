@@ -1,0 +1,52 @@
+# The fast checks on every push and pull request (CI/CD audit PKG-03, 2026-11-19): a contributor's PR is checked at
+# once, without the two-hour SDK matrix of build.yml (which stays manual). Nothing here writes or publishes.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Source contracts, installer and documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: LuCI, EP06, QModem handover and installer contracts
+        run: |
+          python3 tests/test-luci-frontend.py
+          python3 tests/test-ep06-temperature.py
+          python3 tests/test-ep06-cell-lock.py
+          python3 tests/test-qmodem-handover.py
+          python3 tests/test-installer-release-runtime.py
+          sh tools/check-web-version.sh
+          sh tests/test-installer-release-selection.sh
+          sh tests/test-installer-locks.sh
+          sh tests/test-package-locks.sh
+          sh tests/test-bot-update-versions.sh
+      - name: Whitelist texts in both languages
+        run: python3 tools/check-whitelist-i18n.py
+      - name: Markdown links and anchors
+        run: python3 tools/check-docs-sync.py
+
+  browser:
+    name: LuCI Chromium smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pinned Playwright client
+        run: npm install --no-save --no-package-lock playwright@1.58.2
+      - name: Exercise LuCI modem view in Chromium
+        run: node tests/test-luci-browser.cjs

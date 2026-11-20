@@ -43,7 +43,7 @@ function onButton(cq, m) {
     audit(pressName(pressed));
     let answer = (text) => enqueue(text || '', 'info', {method:'answerCallbackQuery', cb:cq.id, urgent:true});
     let edit = (page) => enqueue(page.text, 'info', {method:'editMessageText', edit:m.message_id, markup:page.markup, html:true, urgent:true});
-    if (!pressed || type(m.message_id) != 'int' || m.message_id < 1) { answer(lang.T('The button is out of date', 'Кнопка устарела')); return; }
+    if (!pressed || type(m.message_id) != 'int' || m.message_id < 1) { answer(lang.T('Button expired', 'Кнопка устарела')); return; }
     if (pressed.kind == 'noop') { answer(''); return; }
     freshen();
     if (pressed.kind == 'view') {
@@ -67,19 +67,19 @@ function onButton(cq, m) {
     if (index(pressed.kind, 'update_') == 0) { update.onPress(pressed, answer, edit); return; }
     let id = pressed.key ? idByKey(pressed.key) : null;
     if (pressed.kind == 'list' || !id) {
-        answer(pressed.kind != 'list' ? lang.T('Modem not found, the list is refreshed', 'Модем не найден, список обновлён') : '');
+        answer(pressed.kind != 'list' ? lang.T('Modem not found — list refreshed', 'Модем не найден, список обновлён') : '');
         edit(ui.modemList(view(), pressed.page || 0));
         return;
     }
     if (pressed.kind == 'modem') { answer(''); edit(cardOf(id)); return; }
     if (index(pressed.kind, 'quota_') == 0) { quotaedit.onPress(pressed, id, answer, edit); return; }
     // an action: allowed, fresh, asked first when it disrupts, done through the engine
-    if (!CONTROL) { answer(lang.T('Management is off in LuCI', 'Управление выключено в LuCI')); edit(cardOf(id)); return; }
-    if (!ui.stampFresh(pressed.stamp, time())) { answer(lang.T('The button is out of date, the card is refreshed', 'Кнопка устарела, карточка обновлена')); edit(cardOf(id)); return; }
+    if (!CONTROL) { answer(lang.T('Control disabled in LuCI', 'Управление отключено в LuCI')); edit(cardOf(id)); return; }
+    if (!ui.stampFresh(pressed.stamp, time())) { answer(lang.T('Button expired — card refreshed', 'Кнопка устарела, карточка обновлена')); edit(cardOf(id)); return; }
     if (pressed.kind == 'action' && ui.asks(pressed.op)) { answer(''); edit(ui.confirm(state.deviceSafe[id], pressed.op, time())); return; }
     // answered before the call: an action can take the bot's own route down with it (the reference bot's lesson), so
     // the engine is asked a moment later, once the answer has had its turn in the queue
-    answer(lang.T('Doing it…', 'Выполнение…'));
+    answer(lang.T('Working…', 'Выполнение…'));
     // the engine is asked once the answer left (audit R10: a fixed 1.5 s did not wait for it, and the action could take
     // the bot's route down before), or after 6 s at the latest: the action never waits on Telegram for ever
     let op = pressed.op, mid = m.message_id, aid = state.lastQueued, asked = time();
@@ -154,7 +154,7 @@ function onUpdate(up) {
     } else if (match(cmd, /^\/modem[0-9]{1,2}$/)) {
         freshen();
         let n = int(substr(cmd, 6)) - 1;
-        if (n < 0 || n >= length(state.deviceIds)) { respond(lang.T('No such modem. The list: /modems', 'Такого модема нет. Список: /modems')); return; }
+        if (n < 0 || n >= length(state.deviceIds)) { respond(lang.T('Modem not found. See /modems', 'Такого модема нет. Список: /modems')); return; }
         let page = cardOf(state.deviceIds[n]);
         respond(page.text, page.markup);
     } else if (cmd == '/uplinks' || cmd == '/channels') { freshen(); respond(ui.uplinks(view())); }
@@ -172,7 +172,7 @@ function onUpdate(up) {
         respond(ui.journal(state.cache.events, time()), ui.journalKeys());
     } else if (cmd == '/log') sendLog(false);
     else if (cmd == '/logall') sendLog(true);
-    else respond(lang.T('Not understood. The commands are in the menu beside the input field, or /help.', 'Команда не распознана. Список команд — в меню у поля ввода или /help.'), ui.menuKeyboard());
+    else respond(lang.T('Unknown command. Open the Menu button next to the input bar, or send /help.', 'Неизвестная команда. Откройте «Меню» у поля ввода или отправьте /help.'), ui.menuKeyboard());
 }
 
 export { onUpdate };

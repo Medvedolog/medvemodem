@@ -1,3 +1,12 @@
+## Source-only r11 — QModem handover recovery (2026-11-19)
+
+- Fix T99W175 hand-back from QModem to `auto` and ModemManager, including a failed adoption where QModem never created a `modem-device` section. The engine no longer waits to remove a nonexistent section: it clears its own QModem lease and proceeds to the selected owner.
+- QModem ownership now requires an actual `modem-device` section; a persisted `backend=qmodem` selection alone is not proof of adoption. Until QModem really accepts the modem, the card reports a pending/failed handover rather than false ownership and stale telemetry.
+- Add regression contracts for `auto` hand-back, failed-lease cleanup, owner state without a QModem section, and the dashboard warning.
+- The 2026-11-19 manual USB rescue reset the entire EHCI controller `5310000.usb`, not only the modem. This remains a separate operator-initiated hardware recovery step, not an ordinary reconnect.
+- Synchronize package and LuCI module versions to `0.16.0-alpha1-r11`.
+- **Source only:** no SDK build, release publication or router acceptance has been performed. r10 and previously published artifacts remain unchanged.
+
 # MedveModem — Release History (English)
 
 ## Source-only r10 — modem owner badge placement (2026-11-19)
@@ -72,7 +81,7 @@
 - Gate package builds on LuCI API/version contract checks and a Chromium smoke test that covers RPC failures, render errors and cached-module fallback.
 - Add root-level `medvemodem-install.sh`: default to the newest published MedveModem stable **or prerelease**, excluding drafts and separate QModem releases; `--tag` pins an explicit release.
 - Provide a README one-line SSH installer with rollback/access warnings, SHA256 verification and dependency dry-runs.
-- Fix orphaned `/etc/config/5gmodem` producing false-positive competing-controller alerts without ignoring active 5gmodem hotplug handlers.
+- Fix orphaned `/etc/config/…` producing false-positive competing-controller alerts without ignoring active another modem manager hotplug handlers.
 - Synchronize core/LuCI/bot package revisions; only explicitly tagged commits can publish releases.
 - **Status:** pending CI and release publication in PR #12.
 
@@ -105,7 +114,7 @@
 - **Verified r5 field defect on OPiZ3:** individual modem page reported `page r1 / shared module r5` because `modem.js` really still declared `VIEW_VERSION = '0.16.0-alpha1-r1'`. This is not just a stale browser cache. Fix the constant and extend `tools/check-web-version.sh` to validate **all three** LuCI views, including previously omitted `modem.js`.
 - Add informational manager badges **MM** (ModemManager), **QM** (QModem), **MV** (native MedveModem) and WEB (HiLink) on dashboard modem cards, fleet table and **individual modem header**. Based only on the actual resolved owner.
 - Settings → Modems offers a browser-local management-badge switch, **off by default**; no UCI or modem-control side effects.
-- Draft PR #8 only. **Not in published r5.** Bump the entire package release coherently and validate on OPiZ3 before the next release. See [handoff](HANDOFF-LUCI-OWNER-BADGES.md).
+- Draft PR #8 only. **Not in published r5.** Bump the entire package release coherently and validate on OPiZ3 before the next release. See handoff.
 
 ## 0.16.0-alpha1-r4 — 2026-11-18
 

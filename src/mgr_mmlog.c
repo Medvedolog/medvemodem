@@ -194,7 +194,8 @@ void mmlog_stop(void)
 		uloop_process_delete(&proc);
 		kill(-proc.pid, SIGTERM);
 		kill(proc.pid, SIGTERM);
-		waitpid(proc.pid, NULL, 0);
+		while (waitpid(proc.pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+			;
 		proc.pid = 0;
 	}
 	if (out.fd >= 0) {

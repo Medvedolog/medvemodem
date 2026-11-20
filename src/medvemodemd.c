@@ -2320,10 +2320,10 @@ json_object *served(json_object *rec)
 
 				own = json_object_get(own);
 				json_object_object_get_ex(own, "control", &ctl);
-				if ((qsec && !ours) || (backend && !strcmp(backend, "qmodem"))) {
-					/* QModem drives this modem: its ports and session are QModem's */
+				if (qsec && !ours) {
+					/* A real QModem modem-device section is the evidence of ownership. */
 					bool mm_too = !strcmp(json_object_get_string(ctl), "modemmanager");
-					json_object *q = json_object_new_object(), *qs = qsec ? json_object_object_get(qmodem_img, qsec) : NULL;
+					json_object *q = json_object_new_object(), *qs = json_object_get(qmodem_img ? json_object_object_get(qmodem_img, qsec) : NULL);
 
 					json_object_put(own);
 					own = json_object_new_object();
@@ -2333,16 +2333,32 @@ json_object *served(json_object *rec)
 					if (mm_too)
 						json_object_object_add(own, "conflict", json_object_new_string(
 							"ModemManager still holds a modem handed to QModem"));
-					json_object_object_add(q, "section", qsec ? json_object_new_string(qsec) : NULL);
+					json_object_object_add(q, "section", json_object_new_string(qsec));
 					json_object_object_add(q, "state", json_object_get(json_object_object_get(qs, "state")));
 					json_object_object_add(q, "at_port", json_object_get(json_object_object_get(qs, "at_port")));
 					json_object_object_add(q, "network", json_object_get(json_object_object_get(qs, "network")));
 					json_object_object_add(q, "managed_by_engine", json_object_new_boolean(backend && !strcmp(backend, "qmodem")));
-					if (qsec && qmodem_foreign_port(rec, qsec)) {
+					if (qmodem_foreign_port(rec, qsec)) {
 						json_object_object_add(q, "foreign_at_port", json_object_new_boolean(1));
 						json_object_object_add(own, "conflict", json_object_new_string(
 							"QModem's section names an AT port that is not this modem's (another modem's port)"));
 					}
+					json_object_object_add(o, "qmodem", q);
+				} else if (backend && !strcmp(backend, "qmodem")) {
+					/* A selected backend is not an owner until QModem's scanner creates its section. */
+					bool pending = job.active && job.qmodem && !strcmp(job.device_id, json_object_get_string(idv));
+					json_object *q = json_object_new_object();
+
+					json_object_put(own);
+					own = json_object_new_object();
+					json_object_object_add(own, "control", json_object_new_string("unresolved"));
+					json_object_object_add(own, "session", json_object_new_string("unresolved"));
+					json_object_object_add(own, "at", json_object_new_string("qmodem"));
+					json_object_object_add(q, "section", NULL);
+					json_object_object_add(q, "state", json_object_new_string(pending ? "adopting" : "not-adopted"));
+					json_object_object_add(q, "managed_by_engine", json_object_new_boolean(true));
+					json_object_object_add(q, "adoption_pending", json_object_new_boolean(pending));
+					json_object_object_add(q, "adoption_failed", json_object_new_boolean(!pending));
 					json_object_object_add(o, "qmodem", q);
 				} else if (native && !strcmp(json_object_get_string(ctl), "unresolved")) {
 					/* spec 13: the native owner is the configuration we wrote */
@@ -2461,9 +2477,15 @@ json_object *served(json_object *rec)
 			json_object_object_add(o, "name", json_object_new_string(modem_name(json_object_get_string(idv))));
 		json_object_object_add(o, "name_follows", json_object_new_string(name_follows(json_object_get_string(idv), rec)));
 		{
-			json_object *lab = sim_label(sim_iccid_of(json_object_get_string(idv), json_object_object_get(o, "modemmanager")));
+			const char *ic = sim_iccid_of(json_object_get_string(idv), json_object_object_get(o, "modemmanager"));
+			json_object *lab = sim_label(ic);
+			char lk[MM_IMEI_KEY_SIZE];
+
 			if (lab)
 				json_object_object_add(o, "sim_label", lab);
+			/* the key a page or the bot saves the label under: the ICCID itself is never written (r12) */
+			if (sim_label_key_of(ic, lk))
+				json_object_object_add(o, "sim_label_key", json_object_new_string(lk));
 			/* the SIM as the engine read it, for a modem ModemManager does not hold (LuCI: «SIM-карта») */
 			{
 				json_object *e = sim_entry(json_object_get_string(idv)), *s;
@@ -3227,11 +3249,13 @@ static void mm_withdraw_ttys(const char *id, json_object *mm)
 				_exit(127);
 			}
 			if (c > 0)
-				waitpid(c, NULL, 0);
+				while (waitpid(c, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+					;
 		}
 		_exit(0);
 	}
-	waitpid(pid, NULL, 0);
+	while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+		;
 }
 
 static void mm_report_ports_ex(const char *id, bool forget);
@@ -3344,11 +3368,13 @@ static void mm_report_ports_ex(const char *id, bool forget)
 					_exit(127);
 				}
 				if (c > 0)
-					waitpid(c, NULL, 0);
+					while (waitpid(c, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+						;
 			}
 		_exit(0);
 	}
-	waitpid(pid, NULL, 0);
+	while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+		;
 }
 
 static void inhibit_exited(struct uloop_process *p, int ret)
@@ -4896,11 +4922,23 @@ static const struct blobmsg_policy bringup_policy[] = {
 static bool qmodem_leaving(json_object *rec, char *sec, size_t size)
 {
 	const char *id = jstr(rec, "device_id"), *b = ledger_backend(id), *choice = jstr(decision_of(id), "backend");
-	const char *q = qmodem_section_of(rec);
+	const char *preferred = jstr(json_object_object_get(rec, "profile"), "prefer_owner");
+	const char *att = jstr(rec, "attachment_id"), *q = qmodem_section_of(rec);
+	/* Auto must release an existing QModem handoff when this profile prefers
+	 * ModemManager/native. Keep it only when auto would select QModem itself. */
+	bool auto_keeps_qmodem = choice && !strcmp(choice, "auto") && preferred &&
+		!strcmp(preferred, "qmodem") && qmodem_installed() && att && !strncmp(att, "usb:", 4);
 
-	if (!q || !b || strcmp(b, "qmodem") || !choice || (strcmp(choice, "native") && strcmp(choice, "modemmanager")))
+	if (!b || strcmp(b, "qmodem") || !choice ||
+	    (strcmp(choice, "native") && strcmp(choice, "modemmanager") &&
+	     (strcmp(choice, "auto") || auto_keeps_qmodem)))
 		return false;
-	snprintf(sec, size, "%s", q);
+	/* A failed QModem adoption can leave the ledger behind without ever
+	 * creating a modem-device section. That still needs an explicit release. */
+	if (q)
+		snprintf(sec, size, "%s", q);
+	else
+		sec[0] = '\0';
 	return true;
 }
 
@@ -4910,13 +4948,14 @@ static void mm_return_wait(const char *id, long long generation);
 static void bringup_after_qmodem(int status)
 {
 	json_object *rec, *o, *r;
-	const char *choice;
+	const char *choice, *preferred;
+	bool auto_mm;
 	char d[32];
 
 	if (!job.active || job.phase != JOB_QRELEASE)
 		return;
 	snprintf(d, sizeof(d), "exit %d", WIFEXITED(status) ? WEXITSTATUS(status) : -1);
-	job_log("qmodem-remove-done", d);
+	job_log(job.qsection[0] ? "qmodem-remove-done" : "qmodem-release-no-section", d);
 	qmodem_global_sync();
 	rec = mm_registry_find(&registry, job.device_id);
 	if (!rec || !job_device_ok()) {
@@ -4927,18 +4966,22 @@ static void bringup_after_qmodem(int status)
 		job_finish("failed", "QModem kept its section for this modem");
 		return;
 	}
-	mm_history_add(&history, job.device_id, (long long)time(NULL), now_mono_ms(), "qmodem-release", job.qsection);
+	mm_history_add(&history, job.device_id, (long long)time(NULL), now_mono_ms(), "qmodem-release",
+		       job.qsection[0] ? job.qsection : "no modem-device section existed; clearing failed handoff");
 	history_dirty = true;
 	choice = jstr(decision_of(job.device_id), "backend");
-	if (choice && !strcmp(choice, "modemmanager")) {
-		/* our QModem ledger goes, the inhibition with it; the bring-up follows once ModemManager has the modem */
+	preferred = jstr(json_object_object_get(rec, "profile"), "prefer_owner");
+	auto_mm = choice && !strcmp(choice, "auto") && preferred && !strcmp(preferred, "modemmanager");
+	if ((choice && !strcmp(choice, "modemmanager")) || auto_mm) {
+		/* explicit MM and MM-first auto both clear our ledger/inhibition,
+		 * then wait for ModemManager to rediscover and take the modem. */
 		r = mm_cfgtxn_run(&cfg, job.device_id, NULL, NULL, false, now_mono_ms());
 		job_log("released", status_of(r));
 		json_object_put(r);
 		mm_return_wait(job.device_id, job.generation);
 		inhibits_sync();
 		mm_schedule(0);
-		job_finish("released", "QModem let go of the modem; the bring-up follows once ModemManager has it");
+		job_finish("released", "QModem handoff cleared; waiting for ModemManager to take the modem");
 		return;
 	}
 	o = json_object_new_object();
@@ -4960,12 +5003,15 @@ static bool bringup_go(json_object *rec, json_object *o)
 		char script[300];
 		const char *argv[] = { script, "remove", sec, NULL };
 		json_object *g = NULL;
+		bool have_section = sec[0] != '\0';
 
-		snprintf(script, sizeof(script), "%s/modem_scan.sh", qmodem_dir);
-		if (!hook_run(argv, bringup_after_qmodem)) {
-			json_object_object_add(o, "result", json_object_new_string("busy"));
-			json_object_object_add(o, "reason", json_object_new_string("QModem's helper is busy; try again"));
-			return false;
+		if (have_section) {
+			snprintf(script, sizeof(script), "%s/modem_scan.sh", qmodem_dir);
+			if (!hook_run(argv, bringup_after_qmodem)) {
+				json_object_object_add(o, "result", json_object_new_string("busy"));
+				json_object_object_add(o, "reason", json_object_new_string("QModem's helper is busy; try again"));
+				return false;
+			}
 		}
 		memset(&job, 0, sizeof(job));
 		job.active = true;
@@ -4976,10 +5022,17 @@ static bool bringup_go(json_object *rec, json_object *o)
 		snprintf(job.qsection, sizeof(job.qsection), "%s", sec);
 		json_object_object_get_ex(rec, "generation", &g);
 		job.generation = json_object_get_int64(g);
-		job_log("qmodem-remove", sec);
-		ULOG_INFO("%s: the operator chose %s; QModem lets go of it first (section %s)\n", job.device_id,
-			  jstr(decision_of(job.device_id), "backend"), sec);
+		job_log(have_section ? "qmodem-remove" : "qmodem-remove-skipped",
+			have_section ? sec : "QModem never created a modem-device section");
+		ULOG_INFO("%s: the operator chose %s; %s\n", job.device_id,
+			  jstr(decision_of(job.device_id), "backend"),
+			  have_section ? "QModem lets go of its section first" :
+			  "clearing a failed QModem handoff with no section to release");
 		session_set(job.device_id, "configuring", NULL, NULL, NULL, NULL);
+		/* No QModem section was ever created: clear our stale selection/lease
+		 * immediately instead of waiting for a helper that has nothing to remove. */
+		if (!have_section)
+			bringup_after_qmodem(0);
 		return true;
 	}
 	return bringup_txn(rec, o);
@@ -5818,6 +5871,9 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
 			snprintf(key, sizeof(key), "%s", method);
 		if (pipe(fds))
 			break;
+		/* not into the other children forked meanwhile (audit STAB-07): the child's dup2 clears the flag on fd 1 */
+		fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+		fcntl(fds[1], F_SETFD, FD_CLOEXEC);
 		pid = fork();
 		if (pid < 0) {
 			close(fds[0]);
@@ -5841,7 +5897,8 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
 			len += (size_t)got;
 		buf[len] = '\0';
 		close(fds[0]);
-		waitpid(pid, NULL, 0);
+		while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+			;
 		/* its shell libraries may say something before the JSON */
 		brace = strchr(buf, '{');
 		parsed = brace ? json_tokener_parse(brace) : NULL;
@@ -5869,13 +5926,65 @@ static json_object *qmodem_ctrl_run(const char *section, const char *const *meth
  * through the proxy ModemManager itself uses (-p; --device-open-mbim on an MBIM function), then read back. The arguments
  * are the engine's own: a cdc-wdm name checked by mm_modes_narrowed and a preference built from a fixed list.
  */
+/* qmicli with its arguments, no shell between (audit SEC-07): its exit status, its standard output into out */
+static int qmicli_exec(const char *const *argv, char *out, size_t size)
+{
+	int fds[2], status = -1, fd;
+	size_t len = 0;
+	ssize_t got;
+	pid_t pid;
+
+	if (out && size)
+		out[0] = '\0';
+	if (pipe(fds))
+		return -1;
+	fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+	fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+	if ((pid = fork()) < 0) {
+		close(fds[0]);
+		close(fds[1]);
+		return -1;
+	}
+	if (pid == 0) {
+		fd = open("/dev/null", O_RDWR);
+		dup2(fds[1], 1);
+		if (fd >= 0) {
+			dup2(fd, 0);
+			dup2(fd, 2);
+		}
+		for (fd = 3; fd < 1024; fd++)
+			close(fd);
+		execv(argv[0], (char *const *)argv);
+		_exit(127);
+	}
+	close(fds[1]);
+	for (;;) {
+		char drain[256];
+		bool room = out && len + 1 < size;
+
+		/* what does not fit is read and dropped: a full pipe must not block qmicli */
+		if ((got = read(fds[0], room ? out + len : drain, room ? size - 1 - len : sizeof(drain))) < 0 && errno == EINTR)
+			continue;
+		if (got <= 0)
+			break;
+		if (room)
+			len += (size_t)got;
+	}
+	if (out && size)
+		out[len] = '\0';
+	close(fds[0]);
+	while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+		;
+	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
 static bool qmi_pref_run(const char *wdm, bool mbim, const char *arg, char *err, size_t size)
 {
-	char dev[48], cmd[512], line[256], want[96];
+	char dev[48], out[2048], want[96], *line, *save = NULL;
 	const char *eq = strchr(arg, '=');
+	const char *set[7], *get[7];
 	bool seen = false, ok = true;
-	FILE *f;
-	int status;
+	int status, n = 0, m = 0;
 
 	if (!wdm || strncmp(wdm, "cdc-wdm", 7) || strspn(wdm + 7, "0123456789") != strlen(wdm + 7) || !eq ||
 	    strncmp(arg, "--nas-set-system-selection-preference=", 38) || strspn(eq + 1, "gsmutela5nr|") != strlen(eq + 1)) {
@@ -5883,27 +5992,36 @@ static bool qmi_pref_run(const char *wdm, bool mbim, const char *arg, char *err,
 		return false;
 	}
 	snprintf(dev, sizeof(dev), "/dev/%s", wdm);
-	snprintf(cmd, sizeof(cmd), "'%s' -p %s -d '%s' '%s' >/dev/null 2>&1", qmicli_path, mbim ? "--device-open-mbim" : "", dev, arg);
-	status = system(cmd);
+	set[n++] = qmicli_path;
+	set[n++] = "-p";
+	if (mbim)
+		set[n++] = "--device-open-mbim";
+	set[n++] = "-d";
+	set[n++] = dev;
+	set[n++] = arg;
+	set[n] = NULL;
+	status = qmicli_exec(set, NULL, 0);
 	if (status != 0) {
-		snprintf(err, size, "qmicli %s: exit %d", arg, WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+		snprintf(err, size, "qmicli %s: exit %d", arg, status);
 		return false;
 	}
 	/* read back: «Mode preference: 'umts, lte'» has every technology written */
-	snprintf(cmd, sizeof(cmd), "'%s' -p %s -d '%s' --nas-get-system-selection-preference 2>/dev/null", qmicli_path,
-		 mbim ? "--device-open-mbim" : "", dev);
-	if (!(f = popen(cmd, "r"))) {
-		snprintf(err, size, "qmicli: the read back did not start");
-		return false;
-	}
+	get[m++] = qmicli_path;
+	get[m++] = "-p";
+	if (mbim)
+		get[m++] = "--device-open-mbim";
+	get[m++] = "-d";
+	get[m++] = dev;
+	get[m++] = "--nas-get-system-selection-preference";
+	get[m] = NULL;
+	status = qmicli_exec(get, out, sizeof(out));
 	snprintf(want, sizeof(want), "%s", eq + 1);
-	while (fgets(line, sizeof(line), f))
+	for (line = strtok_r(out, "\n", &save); line; line = strtok_r(NULL, "\n", &save))
 		if (strstr(line, "Mode preference:")) {
 			seen = true;
 			ok = mm_qmi_pref_matches(line, want);	/* exactly the set written (audit of r135) */
 		}
 	/* a read back that failed is no confirmation, whatever it printed */
-	status = pclose(f);
 	if (status != 0)
 		ok = false;
 	if (!seen || !ok) {
@@ -5950,11 +6068,15 @@ static json_object *mm_steps_run(const char *index, const char *wdm, bool mbim, 
 				dup2(fd, 1);
 				dup2(fd, 2);
 			}
+			/* the AT worker's descriptors (its port, the result pipe) are not mmcli's (audit STAB-07) */
+			for (fd = 3; fd < 1024; fd++)
+				close(fd);
 			execvp(argv[0], (char *const *)argv);
 			_exit(127);
 		}
 		if (pid > 0)
-			waitpid(pid, &status, 0);
+			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+				;
 		if (pid > 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 			json_object_object_add(resp, key, json_object_new_string("ok"));
 			complete++;
@@ -10998,6 +11120,35 @@ static json_object *watch_state(const char *id)
 	return st;
 }
 
+/*
+ * The interface a modem's session runs on, unusable as configured: no proto, or no device for a proto that needs one
+ * (field 2026-11-19, T99 after the r10 native choice: network.mm0 kept its metric only; netifd said NO_DEVICE, and the
+ * recovery restarted the session and reset the USB for hours, all of it useless and in the way of the bring-up that
+ * writes the interface again). NULL when it is usable or not ours to judge.
+ */
+static const char *iface_unusable(const char *iface)
+{
+	static const char *const npk[] = { "network", NULL };
+	json_object *all, *sec;
+	const char *proto, *why = NULL;
+	char err[200];
+
+	if (!iface || !uci_plain_name(iface) || !(all = mm_uci_read(conf_dir, npk, err, sizeof(err))))
+		return NULL;
+	sec = json_object_object_get(json_object_object_get(all, "network"), iface);
+	proto = sec ? jstr(sec, "proto") : NULL;
+	if (sec && (!proto || !*proto))
+		why = "no proto";
+	else if (proto && (!strcmp(proto, "modemmanager") || !strcmp(proto, "qmi") || !strcmp(proto, "mbim")) &&
+		 (!jstr(sec, "device") || !*jstr(sec, "device")))
+		why = "no device";
+	json_object_put(all);
+	return why;
+}
+
+static json_object *iface_rebuilt;	/* device id -> monotonic ms of the last rebuild of its interface */
+#define IFACE_REBUILD_EVERY_MS 600000
+
 static void watch_run(struct uloop_timeout *t)
 {
 	struct mm_watch_cfg cfg = watch_cfg();
@@ -11034,6 +11185,42 @@ static void watch_run(struct uloop_timeout *t)
 				next = when;
 			json_object_put(step);
 			continue;
+		}
+		/* a session that cannot come up because its interface is unusable as configured: written again (the
+		 * bring-up's own transaction), not «recovered» (the owner, 2026-11-19: «надо уметь такое чинить автоматом») */
+		if (auto_recovery && !rj.active && !job.active && cand && json_object_array_length(cand) && reason &&
+		    !strcmp(reason, "session_stuck") && !rec_busy(id)) {
+			json_object *s2 = served(rec);
+			const char *iface = jstr(json_object_object_get(s2, "session"), "interface");
+			const char *bad = iface_unusable(iface);
+			json_object *last = iface_rebuilt ? json_object_object_get(iface_rebuilt, id) : NULL;
+
+			if (bad && (!last || now - json_object_get_int64(last) > IFACE_REBUILD_EVERY_MS)) {
+				json_object *o = json_object_new_object();
+				bool ok;
+				char what[96];
+
+				if (!iface_rebuilt)
+					iface_rebuilt = json_object_new_object();
+				json_object_object_add(iface_rebuilt, id, json_object_new_int64(now));
+				ULOG_WARN("%s: interface %s is unusable as configured (%s): written again, no recovery\n", id, iface, bad);
+				/* what had written it, for the cause (the T99W175 of 2026-11-19 kept a metric only after the native
+				 * choice, its cause not found from the field log): the ledger's owner and its backend choice */
+				ULOG_WARN("%s: its ledger's backend %s, the operator's choice %s\n", id,
+					  ledger_backend(id) ? ledger_backend(id) : "-",
+					  jstr(decision_of(id), "backend") ? jstr(decision_of(id), "backend") : "auto");
+				snprintf(what, sizeof(what), "%s: %s", iface, bad);
+				mm_history_add(&history, id, (long long)time(NULL), now, "iface-rebuild", what);
+				history_dirty = true;
+				ok = bringup_go(rec, o);
+				if (!ok)
+					ULOG_INFO("%s: the rebuild of %s: %s\n", id, iface, jstr(o, "reason") ? jstr(o, "reason") : "refused");
+				json_object_put(o);
+				json_object_put(s2);
+				json_object_put(step);
+				continue;
+			}
+			json_object_put(s2);
 		}
 		for (i = 0; auto_recovery && !rj.active && cand && i < json_object_array_length(cand); i++) {
 			int level = json_object_get_int(json_object_array_get_idx(cand, i));
@@ -11436,6 +11623,44 @@ static json_object *sim_keys_now(json_object **ids)
 	return sims;
 }
 
+/* the label key of a SIM by its ICCID (salted, as the IMEI key): false with no salt or no ICCID */
+bool sim_label_key_of(const char *iccid, char out[MM_IMEI_KEY_SIZE])
+{
+	out[0] = '\0';
+	return iccid && *iccid && id_salt_ready() && mm_sim_label_key(id_salt, iccid, out);
+}
+
+/*
+ * The SIM labels kept by their ICCID (before r12) are keyed by its salted hash and the ICCID goes (the owner,
+ * 2026-11-20): every one at once, no SIM needs to be present. Applied as the identity's own ops, before anything reads
+ * the labels.
+ */
+static bool sim_labels_rekey(json_object *img)
+{
+	json_object *ops = mm_identity_sim_rekey(img, id_salt), *cur, *checked, *apply;
+	char err[160];
+	bool done = false;
+
+	if (json_object_array_length(ops)) {
+		cur = json_object_new_object();
+		json_object_object_add(cur, "medvemodem", json_object_get(img));
+		checked = mm_cfg_check(cur, ops);
+		apply = json_object_object_get(checked, "apply");
+		if (apply && json_object_array_length(apply)) {
+			if (mm_uci_apply(conf_dir, cfg.savedir, apply, err, sizeof(err)))
+				ULOG_ERR("the SIM labels could not be keyed by their salted ICCID: %s\n", err);
+			else {
+				ULOG_INFO("SIM labels keyed by a salted hash, their ICCID removed from the config\n");
+				done = true;
+			}
+		}
+		json_object_put(checked);
+		json_object_put(cur);
+	}
+	json_object_put(ops);
+	return done;
+}
+
 static void identity_sync(void)
 {
 	json_object *present, *ops, *cur, *checked, *apply, *img = medvemodem_uci(), *rekey;
@@ -11443,6 +11668,9 @@ static void identity_sync(void)
 	size_t i;
 
 	if (!img || !id_salt_ready())
+		return;
+	/* the config changed under img: the rest waits for the next pass, on the image read again */
+	if (sim_labels_rekey(img))
 		return;
 	present = json_object_new_object();
 	rekey = json_object_new_array();
@@ -11599,16 +11827,24 @@ static const char *name_follows(const char *id, json_object *rec)
 	return "port";
 }
 
-/* the operator's label of a SIM: config sim / option iccid / option number, option description */
+/* the operator's label of a SIM: config sim / option key (the salted ICCID) / option number, option description */
 static json_object *sim_label(const char *iccid)
 {
 	json_object *img = medvemodem_uci(), *o;
 
-	if (!img || !iccid || !*iccid)
+	char key[MM_IMEI_KEY_SIZE];
+
+	if (!img || !sim_label_key_of(iccid, key))
 		return NULL;
 	json_object_object_foreach(img, sec, s) {
 		(void)sec;
-		if (strcmp(jstr(s, ".type") ? jstr(s, ".type") : "", "sim") || !jstr(s, "iccid") || strcmp(jstr(s, "iccid"), iccid))
+		char old[MM_IMEI_KEY_SIZE];
+
+		if (strcmp(jstr(s, ".type") ? jstr(s, ".type") : "", "sim"))
+			continue;
+		/* a label still under its ICCID (written by hand, or before identity_sync keyed it): matched by its key too */
+		if (!(jstr(s, "key") && !strcmp(jstr(s, "key"), key)) &&
+		    !(jstr(s, "iccid") && sim_label_key_of(jstr(s, "iccid"), old) && !strcmp(old, key)))
 			continue;
 		if (!(jstr(s, "number") && *jstr(s, "number")) && !(jstr(s, "description") && *jstr(s, "description")) &&
 		    !(jstr(s, "sms_center") && *jstr(s, "sms_center")))
@@ -13715,6 +13951,13 @@ static void mm_return_sync(void)
 			control = jstr(json_object_object_get(srv, "owner"), "control");
 			if (!json_object_get_boolean(json_object_object_get(rec, "present")) ||
 			    json_object_get_int64(json_object_object_get(ret, "generation")) != gen) {
+				/* the modem went away or came back as another attachment while ModemManager was awaited: its native
+				 * interface goes up again, or it stays down for good (field 2026-11-19: the FM350 left mm7 down for an
+				 * hour after a USB reset, autostart off, AT alive again) */
+				if (jstr(ret, "iface")) {
+					ULOG_INFO("%s: the wait for ModemManager ended with the attachment; the native interface again\n", id);
+					json_object_put(netifd_call(jstr(ret, "iface"), "up"));
+				}
 				json_object_array_add(gone, json_object_new_string(id));
 			} else if (control && !strcmp(control, "modemmanager") && !job.active && !reload_running && !pending_release.active) {
 				json_object *o = json_object_new_object();
@@ -13740,6 +13983,19 @@ static void mm_return_sync(void)
 		 * said native kept uqmi, the inhibition kept ModemManager away, the choice could never take) */
 		bool want_mm = choice && !strcmp(choice, "modemmanager");
 
+		/* only a modem the engine has recognised and that holds still: one coming back through a USB reset has no profile
+		 * yet (the FM350 through its MediaTek preloader, 0e8d:2000, field 2026-11-19), so its profile's «native first»
+		 * cannot be read, and a hand-back then takes a modem ModemManager cannot dial off its own interface */
+		if (!jstr(json_object_object_get(rec, "profile"), "id"))
+			continue;
+		{
+			json_object *stab = mm_history_stability(&history, id, now, &stability_cfg);
+			bool steady = !jstr(stab, "state") || !strcmp(jstr(stab, "state"), "stable");
+
+			json_object_put(stab);
+			if (!steady)
+				continue;
+		}
 		if (!b || strcmp(b, "native") || (choice && *choice && strcmp(choice, "auto") && !want_mm) || !iface || frozen(id) ||
 		    !json_object_get_boolean(json_object_object_get(rec, "present")) || !mm_installed() ||
 		    strcmp(mm_backend, "available") || json_object_object_get(mm_return_tried, key))
@@ -15467,6 +15723,9 @@ static void caches_retain(void)
 	map_retain(webfwd_open, false);
 	map_retain(mm_return_tried, true);
 	map_retain(auto_connect_tried, true);
+	/* audit STAB-04: these kept every device ever seen until the service stopped */
+	map_retain(web_id_keys, false);
+	map_retain(route_lost, false);
 }
 
 int main(int argc, char **argv)
@@ -15622,6 +15881,19 @@ int main(int argc, char **argv)
 		kill(-mm_proc.pid, SIGKILL);
 	if (reload_running && reload_proc.pid > 0)
 		kill(-reload_proc.pid, SIGKILL);
+	/* the checks still running go with the service, not beside the next start (audit STAB-05) */
+	{
+		struct uloop_process *left[] = { &stuck_proc, &fo_proc, &dnschk.proc, &tun.proc };
+		size_t k;
+
+		for (k = 0; k < sizeof(left) / sizeof(left[0]); k++)
+			if (left[k]->pending && left[k]->pid > 0) {
+				kill(-left[k]->pid, SIGKILL);
+				kill(left[k]->pid, SIGKILL);
+				uloop_process_delete(left[k]);
+			}
+	}
+	usbrescue_stop();
 	/* the engine stops: the modems go back to ModemManager, while the state they are judged by is still there */
 	{
 		int k;
@@ -15747,7 +16019,8 @@ int main(int argc, char **argv)
 
 		snprintf(path, sizeof(path), "%.*sweb-forward", slash ? (int)(slash - route_helper + 1) : 0, route_helper);
 		if ((pid = failover_exec(argv)) > 0)
-			waitpid(pid, NULL, 0);
+			while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+				;
 	}
 	free(mm_rules_text);
 	json_object_put(stab_state);

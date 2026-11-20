@@ -441,7 +441,7 @@ void mm_netcfg_hide_pin(json_object *o)
 	}
 }
 
-json_object *mm_netcfg_desired(json_object *rec, json_object *current, json_object *ledgers, json_object *env)
+static json_object *desired_for(json_object *rec, json_object *current, json_object *ledgers, json_object *env)
 {
 	const char *id = str(rec, "device_id"), *control = str(get(rec, "owner"), "control"), *iface, *zone, *proto;
 	json_object *network = get(current, "network"), *decision = mm_netcfg_decision(current, id);
@@ -469,11 +469,13 @@ json_object *mm_netcfg_desired(json_object *rec, json_object *current, json_obje
 		choice = "qmodem";
 		preferred = true;
 	}
+	/* QModem chosen and then removed (R10-04, 2026-11-19): the modem was left with no owner at all; it is managed as
+	 * under auto until QModem is back, the choice itself stays the operator's */
+	if (!strcmp(choice, "qmodem") && !json_object_get_boolean(get(env, "qmodem")))
+		choice = "auto";
 	if (!strcmp(choice, "qmodem")) {
 		char name[64];
 
-		if (!json_object_get_boolean(get(env, "qmodem")))
-			return result("none", "backend qmodem: QModem is not installed");
 		mm_netcfg_qmodem_name(rec, name, sizeof(name));
 		if (!*name)
 			return result("none", "backend qmodem: only USB modems are handed to QModem here");
@@ -1087,4 +1089,18 @@ json_object *mm_netcfg_wired(json_object *network, json_object *skip)
 		json_object_array_add(out, w);
 	}
 	return out;
+}
+
+json_object *mm_netcfg_desired(json_object *rec, json_object *current, json_object *ledgers, json_object *env)
+{
+	json_object *out = desired_for(rec, current, ledgers, env), *decision = mm_netcfg_decision(current, str(rec, "device_id"));
+	char why[300];
+
+	/* QModem chosen and removed since (R10-04): said in the reason, managed as under auto */
+	if (eq(str(decision, "backend"), "qmodem") && !json_object_get_boolean(get(env, "qmodem")) && out) {
+		snprintf(why, sizeof(why), "QModem is not installed (the operator chose it): managed as under auto; %s",
+			 str(out, "reason") ? str(out, "reason") : "");
+		json_object_object_add(out, "reason", json_object_new_string(why));
+	}
+	return out;	/* decision is borrowed from current */
 }

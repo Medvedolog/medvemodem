@@ -64,13 +64,13 @@ Use only the commands matching the router's package manager. Runtime dependencie
 ## First-time setup
 
 1. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and copy its token.
-2. In LuCI open **Modem → MedveModem → Telegram bot**. The current wizard is: token → check the Telegram route → enter the administrator's numeric Telegram user ID → **Enable and start bot**. Note: one-time pairing RPC methods exist in the backend but are not called by the current wizard page; use the numeric ID field.
+2. In LuCI open **Modem → MedveModem → Telegram bot**. Follow the wizard: token → enter your numeric Telegram user ID (from @userinfobot) → choose Telegram path (direct, proxy or modem) → **Enable and start bot**.
 3. Use **Send test message**, then send `/menu` in Telegram.
 
 Commands:
 
 ```text
-/menu     /status    /modems    /channels
+/menu     /status    /modems    /uplinks
 /sms      /send      /ussd      /network
 /quota    /events    /log       /logall
 /settings /help

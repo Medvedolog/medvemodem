@@ -125,7 +125,7 @@ function onSettings(pressed, answer, mid) {
             answer(lang.T('Checking…', 'Проверка…'));
         } else if (op == 'ask_delete') { answer(''); edit(settings.askDelete(p, time())); return; }
         else if ((op == 'delete' || p.enabled) && lastRoute(p.sec)) { answer(settings.errorWords('last_route')); note = '⚠️ ' + settings.errorWords('last_route'); }
-        else if (op == 'delete' && !ui.stampFresh(pressed.stamp, time())) answer(lang.T('The button is out of date', 'Кнопка устарела'));
+        else if (op == 'delete' && !ui.stampFresh(pressed.stamp, time())) answer(lang.T('Button expired', 'Кнопка устарела'));
         else {
             let r = op == 'delete' ? settingsCall('bot_proxy_del', {section:p.sec}) : settingsCall('bot_proxy_set', {section:p.sec, enabled:p.enabled ? '0' : '1'});
             answer(r.ok ? (op == 'delete' ? lang.T('Removed', 'Удалён') : '') : settings.errorWords(r.code));
@@ -146,7 +146,7 @@ function onSettingsText(m) {
     if (!SETTINGS) { respond(settings.errorWords('settings_off')); return; }
     if (ask.what == 'quiet') {
         let q = settings.parseQuiet(m.text);
-        if (!q) { state.ask = ask; respond('⚠️ ' + lang.T('Not understood: send it as 23:00-07:00.', 'Неверный формат. Укажите время так: 23:00-07:00.')); return; }
+        if (!q) { state.ask = ask; respond('⚠️ ' + lang.T('Invalid format. Send as 23:00-07:00.', 'Неверный формат. Пришлите в виде 23:00-07:00.')); return; }
         let r = settingsCall('bot_set', {key:'events.quiet_from', value:q.from});
         if (r.ok) r = settingsCall('bot_set', {key:'events.quiet_to', value:q.to});
         if (r.ok && live.notices.quiet != '1') r = settingsCall('bot_set', {key:'events.quiet', value:'1'});

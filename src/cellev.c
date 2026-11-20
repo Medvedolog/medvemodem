@@ -79,8 +79,9 @@ json_object *mm_cellev_digest_reading(json_object *m)
 				}
 			}
 			if (b && band_name(b, "B", one, sizeof(one))) {
-				strcat(buf, "+");
-				strcat(buf, one);
+				size_t l = strlen(buf);	/* bounded append, not strcat (audit STAB-08) */
+
+				snprintf(buf + l, sizeof(buf) - l, "+%s", one);
 			}
 		}
 		put(d, "ca", strchr(buf, '+') ? buf : "-");
@@ -139,9 +140,9 @@ json_object *mm_cellev_digest_mm(json_object *mm)
 					snprintf(list, sizeof(list), "%s", one);
 				}
 			} else if (strlen(list) < sizeof(list) - 12) {
-				if (*list)
-					strcat(list, "+");
-				strcat(list, one);
+				size_t l = strlen(list);
+
+				snprintf(list + l, sizeof(list) - l, "%s%s", *list ? "+" : "", one);
 			}
 			n++;
 		}

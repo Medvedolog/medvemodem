@@ -471,3 +471,83 @@ json_object *mm_identity_follow_sim(json_object *img, json_object *sims, json_ob
 	}
 	return ops;
 }
+
+bool mm_iccid_norm(const char *iccid, char *out, size_t size)
+{
+	size_t n = 0, i;
+	int sum = 0;
+
+	if (!out || size < 23)
+		return false;
+	out[0] = '\0';
+	for (; iccid && *iccid; iccid++) {
+		if (*iccid >= '0' && *iccid <= '9') {
+			if (n >= 22)
+				return false;
+			out[n++] = *iccid;
+		} else if (*iccid != 'F' && *iccid != 'f' && *iccid != ' ' && *iccid != '-')
+			return false;
+	}
+	out[n] = '\0';
+	/* the Luhn digit, when the last digit is one, goes: a modem that leaves it out gives the same key */
+	for (i = 0; i < n; i++) {
+		int d = out[n - 1 - i] - '0';
+
+		if (i % 2) {
+			d *= 2;
+			if (d > 9)
+				d -= 9;
+		}
+		sum += d;
+	}
+	if (n >= 19 && sum % 10 == 0)
+		out[--n] = '\0';
+	if (n < 17 || n > 21) {
+		explicit_bzero(out, size);
+		return false;
+	}
+	return true;
+}
+
+bool mm_sim_label_key(const char *salt, const char *iccid, char out[MM_IMEI_KEY_SIZE])
+{
+	char norm[32], buf[256], h[65], tag[65];
+
+	out[0] = '\0';
+	if (!salt || !*salt || !mm_iccid_norm(iccid, norm, sizeof(norm)))
+		return false;
+	snprintf(buf, sizeof(buf), "medvemodem-salt-tag:%s", salt);
+	mm_sha256_hex(buf, strlen(buf), false, tag);
+	snprintf(buf, sizeof(buf), "%s:iccid:%s", salt, norm);
+	mm_sha256_hex(buf, strlen(buf), false, h);
+	explicit_bzero(buf, sizeof(buf));
+	explicit_bzero(norm, sizeof(norm));
+	snprintf(out, MM_IMEI_KEY_SIZE, "%.4s:%.16s", tag, h);
+	return true;
+}
+
+json_object *mm_identity_sim_rekey(json_object *img, const char *salt)
+{
+	json_object *ops = json_object_new_array();
+
+	if (!img || !salt || !*salt)
+		return ops;
+	json_object_object_foreach(img, sec, s) {
+		const char *iccid = ostr(s, "iccid"), *have = ostr(s, "key");
+		char key[MM_IMEI_KEY_SIZE];
+		json_object *del;
+
+		if (!ostr(s, ".type") || strcmp(ostr(s, ".type"), "sim") || !iccid)
+			continue;
+		if (mm_sim_label_key(salt, iccid, key) && (!have || strcmp(have, key)))
+			set_op(ops, sec, "key", key, have);
+		del = json_object_new_object();
+		json_object_object_add(del, "op", json_object_new_string("delete"));
+		json_object_object_add(del, "package", json_object_new_string("medvemodem"));
+		json_object_object_add(del, "section", json_object_new_string(sec));
+		json_object_object_add(del, "option", json_object_new_string("iccid"));
+		json_object_object_add(del, "expect", json_object_new_string(iccid));
+		json_object_array_add(ops, del);
+	}
+	return ops;
+}

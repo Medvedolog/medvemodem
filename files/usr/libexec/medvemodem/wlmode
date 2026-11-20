@@ -350,7 +350,7 @@ hints)
 	# the community list: once a day at most, on this ask only
 	if [ ! -s "$CIDR" ] || [ -n "$(find "$CIDR" -mmin +1440 2>/dev/null)" ]; then
 		mkdir -p "$(dirname "$CIDR")"
-		curl -fsS -m 30 -o "$CIDR.tmp" "$CIDR_URL" 2>/dev/null && mv "$CIDR.tmp" "$CIDR" || rm -f "$CIDR.tmp"
+		curl -fsS -m 30 -o "$CIDR.tmp.$$" "$CIDR_URL" 2>/dev/null && mv "$CIDR.tmp.$$" "$CIDR" || rm -f "$CIDR.tmp.$$"	# two tabs asking at once (audit SEC-06)
 	fi
 	[ -s "$CIDR" ] || fail "the community list could not be fetched"
 	# tag and IPv4 server of each outbound, one a line (a domain server is not judged)

@@ -12,25 +12,25 @@ import { freshen } from './engine.uc';
 const T = lang.T;
 const PRESETS = [1, 5, 10, 20, 30, 50, 100, 200];
 
-// the ICCID of the card in the modem now: ModemManager's, else the one the engine read itself (as mgr_quota counts it)
-function iccidOf(id) {
+// the label key of the card in the modem now: the service's salted hash of its ICCID (r12), as mgr_quota counts it;
+// the ICCID itself is never written
+function keyOf(id) {
     let all = null;
     try { all = state.bus ? state.bus.call('medvemodem', 'devices', {}) : null; } catch (e) { all = null; }
     for (let d in (type(all?.devices) == 'array' ? all.devices : [])) {
         if (d?.device_id != id) continue;
-        let c = d.modemmanager?.sim_card?.iccid;
-        if (type(c) != 'string' || c == '' || c == '--') c = d.sim?.iccid;
-        return type(c) == 'string' && match(c, /^[0-9]{18,20}[Ff]?$/) ? c : null;
+        let k = d.sim_label_key;
+        return type(k) == 'string' && match(k, /^[0-9a-f]{4}:[0-9a-f]{16}$/) ? k : null;
     }
     return null;
 }
 
 // gb: a number of gigabytes, or null to remove the limit; true when written
 function write(id, gb) {
-    let iccid = iccidOf(id);
-    if (!iccid) return 'no_sim';
+    let key = keyOf(id);
+    if (!key) return 'no_sim';
     let cur = newCursor(), name = null;
-    cur.foreach('medvemodem', 'sim', (s) => { if (s.iccid == iccid && !name) name = s['.name']; });
+    cur.foreach('medvemodem', 'sim', (s) => { if (s.key == key && !name) name = s['.name']; });
     if (gb == null) {
         if (!name) return 'done';
         cur.delete('medvemodem', name, 'quota_gb');
@@ -38,7 +38,7 @@ function write(id, gb) {
         if (!name) {
             name = cur.add('medvemodem', 'sim');
             if (!name) return 'failed';
-            cur.set('medvemodem', name, 'iccid', iccid);
+            cur.set('medvemodem', name, 'key', key);
         }
         cur.set('medvemodem', name, 'quota_gb', '' + gb);
         let s = cur.get_all('medvemodem', name) || {};
@@ -68,9 +68,9 @@ function page(id, note) {
 
 // qm:<key> the editor, qs:<key>:<gb>:<stamp> a limit, qd asks to remove it, qy:<key>:<stamp> removes
 function onPress(p, id, answer, edit) {
-    if (!CONTROL) { answer(T('Management is off in LuCI', 'Управление выключено в LuCI')); return; }
+    if (!CONTROL) { answer(T('Control disabled in LuCI', 'Управление отключено в LuCI')); return; }
     if (p.kind == 'quota_edit') { answer(''); edit(page(id)); return; }
-    if (!ui.stampFresh(p.stamp, time())) { answer(T('The button is out of date', 'Кнопка устарела')); edit(page(id)); return; }
+    if (!ui.stampFresh(p.stamp, time())) { answer(T('Button expired', 'Кнопка устарела')); edit(page(id)); return; }
     let d = state.deviceSafe[id], key = ui.shortKey(d);
     if (p.kind == 'quota_drop_ask') {
         answer('');

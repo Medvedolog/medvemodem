@@ -203,6 +203,33 @@
         "ussd_source": {
           "type": "string",
           "description": "where the ussd hint comes from"
+        },
+        "cell_lock": {
+          "type": "object"
+        },
+        "field_validation": {
+          "type": "object"
+        },
+        "native_qmi": {
+          "type": "object"
+        },
+        "sim_slots": {
+          "type": "object"
+        },
+        "sms": {
+          "type": "object"
+        },
+        "telemetry": {
+          "type": "object"
+        },
+        "firmware_research": {
+          "type": "object"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false
@@ -535,7 +562,8 @@
             "huawei",
             "sierra",
             "telit",
-            "simcom"
+            "simcom",
+            "quectel-ep06"
           ]
         },
         "status": {

@@ -903,6 +903,8 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-light i { width: 10px; height: 10px; border-radius: 50%; background: var(--text-color-medium, #59636e); flex: none; }
 .mm-light.is-ok i { background: var(--success-color-medium, #1a7f37); }
 .mm-light.is-backup i { background: #1f9fb4; }
+/* a channel's access on the whitelist page («Ограниченный доступ (белый список)») wraps on a phone */
+.mm-whitelist .mm-wl-channel .mm-light { white-space: normal; min-width: 0; }
 .mm-light.is-warn i, .mm-light.is-paused i { background: var(--warn-color-medium, #d4a72c); }
 .mm-light.is-err i { background: var(--error-color-medium, #cf222e); }
 .mm-light.is-run i { background: var(--primary-color-medium, #0969da); }
@@ -1032,6 +1034,8 @@ details:not([open]) > .mm-pop { display: none; }
 /* long Russian labels («Подсказать по спискам сообщества», «Сохранить режим белых списков») wrap on a phone instead of
  * pushing the page wider (r149: overflow at 320 px on the runner's fonts) */
 .mm-wl-form .mm-btn, .mm-sp-run { white-space: normal; max-width: 100%; text-align: left; line-height: 1.25; }
+/* the update's long button («Обновить все устаревшие пакеты до …», r9) wraps on a phone instead of widening the page */
+.mm-up-install { white-space: normal; max-width: 100%; text-align: left; line-height: 1.25; }
 .mm-wl-form select.mm-input, .mm-wl-form input.mm-input { max-width: 100%; box-sizing: border-box; }
 .mm-wl-server { overflow-wrap: anywhere; }
 /* one row each, spaced (the owner's r153 screenshot: two ticks on one line, the buttons touching the fields above and
@@ -1088,7 +1092,10 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-whitelist .mm-wl-history-row:last-child { border-bottom: 0; }
 .mm-whitelist .mm-wl-advanced { border: 1px solid var(--border-color-low, #d8dee4); border-radius: 10px; padding: 10px 12px; }
 .mm-whitelist .mm-wl-advanced > summary { font-weight: 600; cursor: pointer; padding: 6px 0; }
-.mm-whitelist .mm-wl-advanced-body { display: grid; gap: 12px; margin-top: 12px; }
+/* a grid track grows to its widest child unless told otherwise: the proxy table's own scroll box stays inside the screen */
+.mm-whitelist .mm-wl-advanced { min-width: 0; max-width: 100%; }
+.mm-whitelist .mm-wl-advanced-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+.mm-whitelist .mm-wl-advanced-body > * { min-width: 0; }
 @container (max-width: 560px) {
   .mm-whitelist .mm-wl-channel { grid-template-columns: minmax(0, 1fr); }
   .mm-whitelist .mm-wl-channel-foot { grid-column: 1; }
@@ -1129,3 +1136,6 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-owner-tag.is-native { border-color: #52a27b; color: #17683e; }
  .mm-mcard > .mm-owner-tag { align-self: flex-end; margin: -4px 0 0; }
 .mm-hero > .mm-owner-tag { justify-self: end; margin: -4px 0 0; }
+
+/* a reading the modem no longer gives (stale data, an old temperature): dimmed (the owner, 2026-11-19) */
+.mm-root .mm-is-old { opacity: .55; }

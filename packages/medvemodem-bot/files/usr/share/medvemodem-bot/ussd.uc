@@ -41,8 +41,8 @@ function head(name) {
 }
 function off() {
     return {text:head(null) + '\n' +
-                 T('Sending SMS and USSD from Telegram is off. It is switched on in LuCI, on the bot\'s page: “Send SMS and USSD from Telegram”.',
-                   'Отправка SMS и USSD из Telegram выключена. Включается в LuCI, на странице бота: «Разрешить отправку SMS и USSD из Telegram».'),
+                 T('Sending SMS and USSD from Telegram is disabled. Enable "Allow sending SMS and USSD from Telegram" on the bot page in LuCI.',
+                   'Отправка SMS и USSD из Telegram отключена. Включите опцию «Разрешить отправку SMS и USSD из Telegram» на странице бота в LuCI.'),
             markup:null};
 }
 // the operator's codes the engine knows for this SIM (ubus presets: ussd.codes [{title, code}]), eight at most
@@ -171,7 +171,7 @@ function onPress(p, answer, mid) {
     }
     if (p.kind == 'ussd_preset') {
         let job = state.ussdDraft, c = job?.codes?.[p.index];
-        if (!job || !c || time() > job.until) { answer(T('The button is out of date', 'Кнопка устарела')); return; }
+        if (!job || !c || time() > job.until) { answer(T('Button expired', 'Кнопка устарела')); return; }
         if (state.ussdJob) { answer(T('A request is already running', 'Запрос уже выполняется')); return; }
         answer(T('Sending…', 'Отправка…'));
         state.ask = null; state.ussdDraft = null;

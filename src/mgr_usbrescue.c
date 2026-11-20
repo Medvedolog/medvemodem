@@ -473,3 +473,17 @@ reply:
 	json_object_put(o);
 	return rc;
 }
+
+/* the service stops: a rescue under way is stopped with it, not left to run beside the next start (audit STAB-05) */
+void usbrescue_stop(void)
+{
+	if (!job.active)
+		return;
+	uloop_timeout_cancel(&job.kill);
+	if (job.proc.pid > 0) {
+		kill(-job.proc.pid, SIGKILL);
+		kill(job.proc.pid, SIGKILL);
+	}
+	uloop_process_delete(&job.proc);
+	job.active = false;
+}

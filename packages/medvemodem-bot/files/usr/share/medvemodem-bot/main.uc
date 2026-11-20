@@ -65,8 +65,8 @@ function tick() {
                     status: {call:(req, msg) => req.reply({schema_version:1,running:true,engine:state.engine,engine_error:state.engineError,modems:length(state.deviceIds),token_configured:true,username:state.botUsername,preflight:state.lastPreflight || 'ready',paired:!!hasAdmin}),args:RPC},
                     chat_test: {call:(req, msg) => {
                         if (!hasAdmin) return req.reply({ok:false,code:'admin_not_configured'});
-                        let ok = enqueue(lang.T('MedveModem: a test message · the link with the bot is being checked',
-                                                'MedveModem: тестовое сообщение · связь с ботом проверяется'), 'info');
+                        let ok = enqueue(lang.T('MedveModem: test message · verifying bot connection',
+                                                'MedveModem: тестовое сообщение · проверка связи с ботом'), 'info');
                         req.reply({ok,code:ok ? 'queued' : 'queue_unavailable'});
                     },args:RPC},
                     transport_status: {call:(req, msg) => req.reply({schema_version:1,poll:{state:state.errors.poll || (state.success.poll ? 'ok' : 'checking'),tier:length(live.routes) ? live.routes[state.tiers.poll % length(live.routes)].name : 'none',tunnel:state.tunnelBy.poll === true,last_ok:state.success.poll,conflicts:state.pollConflicts},send:{state:state.errors.send || (state.success.send ? 'ok' : 'checking'),tier:length(live.sendRoutes) ? live.sendRoutes[state.tiers.send % length(live.sendRoutes)].name : 'none',tunnel:state.tunnelBy.send === true,last_ok:state.success.send},follower:{last_probe:state.follower.last_probe}}),args:RPC},

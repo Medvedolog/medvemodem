@@ -59,8 +59,8 @@ function cancelRow() {
 }
 function off() {
     return {text:'✉️ ' + ui.B(T('Sending SMS', 'Отправка SMS')) + '\n' +
-                 T('Sending SMS and USSD from Telegram is off. It is switched on in LuCI, on the bot\'s page: “Send SMS and USSD from Telegram”.',
-                   'Отправка SMS и USSD из Telegram выключена. Включается в LuCI, на странице бота: «Разрешить отправку SMS и USSD из Telegram».'),
+                 T('Sending SMS and USSD from Telegram is disabled. Enable "Allow sending SMS and USSD from Telegram" on the bot page in LuCI.',
+                   'Отправка SMS и USSD из Telegram отключена. Включите опцию «Разрешить отправку SMS и USSD из Telegram» на странице бота в LuCI.'),
             markup:ui.back('v:i')};
 }
 function pickPage(list) {
@@ -97,7 +97,7 @@ function confirmPage(dr) {
 }
 // the engine's words (UBUS-API: sms_send) in the admin's
 function failWords(r) {
-    if (type(r) != 'object') return T('the MedveModem service did not answer', 'служба MedveModem не ответила');
+    if (type(r) != 'object') return T('MedveModem service did not respond', 'служба MedveModem не ответила');
     if (r.refused) return T('this modem does not send SMS through MedveModem', 'этот модем не отправляет SMS через MedveModem');
     let w = {'not created':T('the modem did not take the message', 'модем не принял сообщение'),
              'created but not sent':T('created, but not sent', 'создано, но не отправлено'),
@@ -183,7 +183,7 @@ function onPress(p, answer, mid) {
     }
     if (p.kind == 'sms_contact') {
         let c = dr.book?.[p.index];
-        if (!c || dr.pick) { answer(T('The button is out of date', 'Кнопка устарела')); return; }
+        if (!c || dr.pick) { answer(T('Button expired', 'Кнопка устарела')); return; }
         answer('');
         dr.number = c.number; dr.contact = c.name;
         askText(dr, mid);
@@ -191,7 +191,7 @@ function onPress(p, answer, mid) {
     }
     if (p.kind != 'sms_go') { answer(''); return; }
     // once: the draft of this very page, not yet sent
-    if (p.nonce != dr.nonce || !dr.text || !dr.number) { answer(T('The button is out of date', 'Кнопка устарела')); return; }
+    if (p.nonce != dr.nonce || !dr.text || !dr.number) { answer(T('Button expired', 'Кнопка устарела')); return; }
     if (dr.sent) { answer(T('Already sent', 'Уже отправлено')); return; }
     dr.sent = true;
     state.ask = null;

@@ -71,8 +71,8 @@ function report(kind, id, previous, current) {
     if (live.mode == 'critical' && kind == 'failover') return;
     let msg = null;
     if (kind == 'quota' && !noticeOn('quota')) return;
-    if (kind == 'quota') msg = current == 'warn' ? lang.T('Traffic limit: warning', 'Лимит трафика: предупреждение') :
-                               current == 'exceeded' ? lang.T('The traffic limit is used up', 'Лимит трафика исчерпан') : null;
+    if (kind == 'quota') msg = current == 'warn' ? lang.T('Data cap warning', 'Лимит трафика: предупреждение') :
+                               current == 'exceeded' ? lang.T('Data cap reached', 'Лимит трафика исчерпан') : null;
     if (kind == 'failover') msg = ui.failoverText(previous, current);
     if (!msg) return;
     if (live.mode == 'critical' && kind == 'quota' && current != 'exceeded') return;
@@ -109,8 +109,8 @@ function watchModemManager() {
     log.syslog(log.LOG_INFO, 'modemmanager_%s', what);
     if (!state.baseline || live.notices.enabled != '1' || live.mode == 'off' || !noticeOn('services')) return;
     if (what == 'stopped')
-        enqueue('⚠️ ' + lang.T('ModemManager stopped: the modems cannot be managed through it; checking the connections',
-                               'ModemManager остановлен: управление модемами через него недоступно. Проверка связи…'), 'warning');
+        enqueue('⚠️ ' + lang.T('ModemManager stopped: managed modems unavailable; verifying connections',
+                               'ModemManager остановлен: управление через него недоступно, проверяем связь'), 'warning');
     else if (live.mode != 'critical')
         enqueue('🔄 ' + (what == 'started' ? lang.T('ModemManager is running again', 'ModemManager снова работает')
                                           : lang.T('ModemManager restarted', 'ModemManager перезапущен')), 'info', {silent:true});

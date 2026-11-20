@@ -34,12 +34,16 @@ UP_URLS=${MEDVEMODEM_SPEED_UP:-https://speedtest.mysputnik.ru/backend/empty.php 
 # its probe list, asked through the same device, names the nearest CDN's 50 MB file and its upload address; on the
 # owner's bench both answered 200 through a modem. Without an answer (or jsonfilter) the servers above are the only ones
 YANDEX=${MEDVEMODEM_SPEED_YANDEX-https://yandex.ru/internet/api/v0/get-probes}
-BLOB=/tmp/medvemodem-speed.$$
+BLOB=
 trap 'rm -f "$BLOB"' EXIT
 SLEEP=${MEDVEMODEM_SPEED_TICK:-1}
 
 printf '%s' "$DEV" | grep -Eqx '[A-Za-z0-9_.@-]{1,15}' || { echo '{"error":"bad device"}'; exit 2; }
 case "$DOWN_S$UP_S" in *[!0-9]*) echo '{"error":"bad duration"}'; exit 2 ;; esac
+# a long transfer would burn the SIM's quota: each direction 1..60 s (audit SEC-04, 2026-11-19)
+[ "$DOWN_S" -ge 1 ] && [ "$DOWN_S" -le 60 ] && [ "$UP_S" -ge 1 ] && [ "$UP_S" -le 60 ] || { echo '{"error":"bad duration"}'; exit 2; }
+# the upload's blob in a file of its own, not a name another process can guess
+BLOB=$(mktemp /tmp/medvemodem-speed.XXXXXX) || { echo "{\"device\":\"$DEV\",\"error\":\"no temporary file\"}"; exit 1; }
 [ -r "$SYS/$DEV/statistics/rx_bytes" ] || { echo "{\"device\":\"$DEV\",\"error\":\"no such network device\"}"; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "{\"device\":\"$DEV\",\"error\":\"curl is not installed\"}"; exit 1; }
 

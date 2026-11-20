@@ -36,7 +36,7 @@ function forwardSms() {
             if (type(x) != 'object' || index(ev.ids, x.id) < 0 || x.type == 'submit' || x.state != 'received') continue;
             let it = {d:d || {name:lang.T('modem', 'модем')}, number:type(x.number) == 'string' ? x.number : null,
                       contact:type(x.number) == 'string' ? names[digits10(x.number)] : null,
-                      text:type(x.text) == 'string' ? x.text : x.binary ? lang.T('(a binary message)', '(двоичное сообщение)') : null,
+                      text:type(x.text) == 'string' ? x.text : x.binary ? lang.T('(binary message)', '(двоичное сообщение)') : null,
                       epoch:type(x.epoch) == 'int' ? x.epoch : time()};
             let code = ui.smsCode(it.text), keys = [];
             if (code) push(keys, {text:lang.T('📋 Code ', '📋 Код ') + code, copy_text:{text:code}});
@@ -59,7 +59,7 @@ function smsInbox(mid) {
             let r = null;
             try { r = state.bus.call('medvemodem', 'sms_list', {id, peek:true}); } catch (e) { r = null; }
             if (type(r?.messages) != 'array') {
-                if (r?.reason || r?.why) note = lang.T('The messages are still being read, press “Refresh” in a minute.',
+                if (r?.reason || r?.why) note = lang.T('Still loading messages — tap "Refresh" in a minute.',
                                                        'Сообщения ещё читаются, нажмите «Обновить» через минуту.');
                 continue;
             }
@@ -67,7 +67,7 @@ function smsInbox(mid) {
                 if (type(x) == 'object' && x.type != 'submit' && x.state != 'sent' && x.state != 'sending' && x.state != 'failed')
                     push(items, {d, number:type(x.number) == 'string' ? x.number : null,
                                  contact:type(x.number) == 'string' ? names[digits10(x.number)] : null, text:type(x.text) == 'string' ? x.text :
-                                 x.binary ? lang.T('(a binary message)', '(двоичное сообщение)') : null, epoch:type(x.epoch) == 'int' ? x.epoch : 0});
+                                 x.binary ? lang.T('(binary message)', '(двоичное сообщение)') : null, epoch:type(x.epoch) == 'int' ? x.epoch : 0});
         }
     items = sort(items, (a, b) => b.epoch - a.epoch);
     items = slice(items, 0, 5);
@@ -107,12 +107,12 @@ function sendLog(all) {
     }
     let most = all ? 20000 : 1000;
     if (length(lines) > most) lines = slice(lines, length(lines) - most);
-    if (!length(lines)) { respond(lang.T('The log is empty or unavailable to the bot.', 'Журнал пуст или недоступен боту.')); return; }
+    if (!length(lines)) { respond(lang.T('Log is empty or inaccessible.', 'Журнал пуст или недоступен боту.')); return; }
     let rnd = fs.readfile('/dev/urandom', 6), file = DIR + '/log-' + (rnd ? hexenc(rnd) : time()) + '.txt';
-    if (!fs.writefile(file, join('\n', lines) + '\n')) { respond(lang.T('The log file could not be prepared.', 'Не удалось подготовить файл журнала.')); return; }
+    if (!fs.writefile(file, join('\n', lines) + '\n')) { respond(lang.T('Failed to prepare log file.', 'Не удалось подготовить файл журнала.')); return; }
     let t = localtime(time());
-    let caption = all ? sprintf(lang.T('📜 The router\'s log · %d lines', '📜 Журнал роутера · строк: %d'), length(lines))
-                      : sprintf(lang.T('📜 The modems\' log · %d lines', '📜 Журнал модемов · строк: %d'), length(lines));
+    let caption = all ? sprintf(lang.T('📜 Router log · %d lines', '📜 Журнал роутера · строк: %d'), length(lines))
+                      : sprintf(lang.T('📜 Modem log · %d lines', '📜 Журнал модемов · строк: %d'), length(lines));
     if (!enqueue(caption, 'info', {method:'sendDocument', file,
                  filename:sprintf('%s-%04d%02d%02d-%02d%02d.txt', all ? 'router' : 'medvemodem', t.year, t.mon, t.mday, t.hour, t.min)}))
         fs.unlink(file);

@@ -354,7 +354,7 @@ run() {
 	else
 		printf "config main 'main'\n\toption block_auto_probe '1'\n" > "$CONF" && seeded=1
 	fi
-	say "$(T "QModem's modem auto-probe is switched off beforehand: MedveModem hands it the modems." "Автопоиск модемов в QModem выключен заранее: модемы ему передаёт MedveModem.")"
+	say "$(T "QModem auto-probe is disabled in advance; MedveModem assigns modems to it." "Автопоиск модемов в QModem отключён заранее: модемы ему передаёт MedveModem.")"
 	say "$(T "Installing" "Установка")"
 	case "$PM" in
 		opkg) out=$(opkg install $files 2>&1); rc=$? ;;
@@ -363,7 +363,7 @@ run() {
 	printf '%s\n' "$out" | sed 's/^/    /'
 	if [ "$rc" -ne 0 ] || ! installed; then
 		[ -z "$seeded" ] || rm -f "$CONF"
-		say "$(T "ERROR: the installation failed (code $rc)" "ОШИБКА: установка не удалась (код $rc)")"
+		say "$(T "ERROR: installation failed (code $rc)" "ОШИБКА: установка не удалась (код $rc)")"
 		finish failed "install failed"
 	fi
 	# the package manager kept our file and put QModem's defaults beside it:
@@ -375,7 +375,7 @@ run() {
 			mv -f "$WORK/uci/qmodem" "$CONF" && rm -f "$new"
 	done
 	if uci -q set qmodem.main.block_auto_probe=1 && uci -q commit qmodem; then
-		say "$(T "QModem's default settings are in place, its auto-probe is off." "Применены настройки QModem по умолчанию, автоматический поиск модемов выключен.")"
+		say "$(T "Default QModem config applied (auto-probe disabled)." "Применены настройки QModem по умолчанию, автоматический поиск модемов выключен.")"
 	else
 		say "$(T "WARNING: QModem's auto-probe could not be switched off (uci qmodem.main.block_auto_probe)." "ВНИМАНИЕ: не удалось выключить автопоиск QModem (uci qmodem.main.block_auto_probe).")"
 	fi

@@ -242,13 +242,20 @@ json_object *mm_pdu_decode(const char *hex)
 		tz = b[p + 6];
 		q = (tz & 0x07) * 10 + (tz >> 4);	/* quarters of an hour; the sign in bit 3 */
 		off = (tz & 0x08 ? -1 : 1) * q * 15;
-		epoch = (long long)timegm(&tm) - off * 60LL;
-		snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1,
-			 tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, off < 0 ? '-' : '+', abs(off) / 60, abs(off) % 60);
+		/* a broken stamp (an 0xFF octet reads as 165) is no date: none rather than «2065-166-165» (audit STAB-08) */
+		if (tm.tm_mon < 0 || tm.tm_mon > 11 || tm.tm_mday < 1 || tm.tm_mday > 31 || tm.tm_hour > 23 || tm.tm_min > 59 ||
+		    tm.tm_sec > 59 || tm.tm_year > 199 || q > 14 * 4) {
+			ts[0] = '\0';
+			epoch = -1;
+		} else {
+			epoch = (long long)timegm(&tm) - off * 60LL;
+			snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02d%c%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1,
+				 tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, off < 0 ? '-' : '+', abs(off) / 60, abs(off) % 60);
+		}
 		p += 7;
 		if (mti == 2) {
-			json_object_object_add(o, "timestamp", json_object_new_string(ts));
-			json_object_object_add(o, "epoch", json_object_new_int64(epoch));
+			json_object_object_add(o, "timestamp", ts[0] ? json_object_new_string(ts) : NULL);
+			json_object_object_add(o, "epoch", epoch >= 0 ? json_object_new_int64(epoch) : NULL);
 			json_object_object_add(o, "text", NULL);
 			json_object_object_add(o, "binary", json_object_new_boolean(false));
 			free(num.s);

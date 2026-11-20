@@ -48,8 +48,7 @@ santa-hotplug|/etc/init.d/santa-hotplug /etc/init.d/santa_hotplug /usr/lib/santa
 xmm-modem|/etc/config/xmm-modem /usr/bin/xmm-modem /usr/share/xmm-modem|||xmm-modem
 mmconfig|/etc/config/mmconfig /usr/share/mmconfig|||mmconfig
 qminfo|/usr/bin/qminfo|||qminfo
-atinout|/usr/bin/atinout|||atinout
-sms-tool-js|/etc/config/sms_tool_js /etc/init.d/sms_tool_calllogd /etc/init.d/my_new_sms|sms_tool_calllogd my_new_sms|sms_tool_calllog sms_led.sh|'
+atinout|/usr/bin/atinout|||atinout'
 
 # Audit interface: stable tab-separated records for the SSH installer.
 # Output: BLOCK|WARN|INFO<TAB>kind<TAB>identifier<TAB>evidence.

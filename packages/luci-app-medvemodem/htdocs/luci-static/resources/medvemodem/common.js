@@ -9,7 +9,7 @@
 
 /* the stylesheet carries the package version: LuCI versions its own scripts, not an app's
  * <link>, and a browser keeps an old dashboard.css after an upgrade (seen on the bench, 0.7.2) */
-var VERSION = '0.16.0-alpha1-r10';	/* = the engine's version */
+var VERSION = '0.16.0-alpha1-r12';	/* = the engine's version */
 
 /* a value as a list: the module has its own (a view's list is not in its scope; r26 broke the icon on this) */
 function list(v) { return Array.isArray(v) ? v : v == null || v === '' ? [] : [v]; }
@@ -35,18 +35,18 @@ function num(v, digits) {
 function dnsDetail(d) {
 	return String(d || '')
 		.replace(/^(\S+) does not answer as Cloudflare: (.*)$/, function(m0, a, w) {
-			return _('%s does not answer as Cloudflare: %s').format(a, w === 'refused' ? _('refusal') : w === 'empty answer' ? _('empty answer') : w); })
+			return _('%s response does not match Cloudflare: %s').format(a, w === 'refused' ? _('refusal') : w === 'empty answer' ? _('empty answer') : w); })
 		.replace(/^(\S+) answers in (\d+) ms, TCP to it takes (\d+) ms: the answer comes from closer than the server$/, function(m0, a, ms, tcp) {
-			return _('%s answers in %s ms, TCP to it takes %s ms: an intermediate DNS answer is possible, a further check is needed').format(a, ms, tcp); })
+			return _('%s DNS responded in %s ms vs TCP %s ms: possible DNS hijacking, further check needed').format(a, ms, tcp); })
 		.replace(/^(\S+) via (\S+) → (\S+), DoH says (.*)$/, function(m0, n, v, a, t) {
 			return _('%s via %s → %s, and DoH says %s').format(n, v, a, t === 'no address' ? _('no address') : t); });
 }
 /* the engine's reach error (English, for its log) in the page's language; an unknown one as it is */
 function reachError(e) {
 	e = String(e || '');
-	return /^answered in under 4 ms/.test(e) ? _('the modem answered by itself, there is no network behind it (no SIM or no service)') :
-		/^an answer that is not TLS/.test(e) ? _('the operator answers instead of the internet: its own page (no money on the SIM or a block)') :
-		/^the connection was cut right after it opened/.test(e) ? _('the connection is cut right after it opens: the operator\'s page or a block (no money on the SIM?)') : e;
+	return /^answered in under 4 ms/.test(e) ? _('modem responded locally, no cellular network (no SIM or no service)') :
+		/^an answer that is not TLS/.test(e) ? _('redirected to carrier portal instead of internet (zero balance or block)') :
+		/^the connection was cut right after it opened/.test(e) ? _('connection reset immediately — carrier portal or block (zero balance?)') : e;
 }
 function plural(n, one, few, many) {
 	var a = Math.abs(n) % 100, b = a % 10;
@@ -75,7 +75,7 @@ function setPrivacy(on) {
 	Array.prototype.forEach.call(document.querySelectorAll('.mm-secret'), function(n) { text(n, n._mmSecret && on ? _('hidden') : n._mmSecret); });
 }
 /* ---- the service check and the DNS check, shown alike for a modem and for any channel (spec 25.9.18, 25.9.20) ---- */
-var NC_WORD = { ok: _('works'), blocked: _('access denied'), timeout: _('no answer'), dns: _('name not found'), refused: _('connection refused'),
+var NC_WORD = { ok: _('online'), blocked: _('access denied'), timeout: _('no answer'), dns: _('name not found'), refused: _('connection refused'),
 	reset: _('connection reset'), tls: _('TLS error'), cert: _('certificate failed verification'),
 	tunnel: _('sent to the router\'s tunnel'), other: _('answer') };
 var NC_TONE = { ok: 'ok', blocked: 'err', timeout: 'err', reset: 'err', cert: 'err' };
@@ -105,17 +105,17 @@ function ncSummary(res, where) {
 	res = res.filter(function(x) { return x.verdict !== 'tunnel'; });
 	var open = res.filter(function(x) { return x.group === 'open'; }), lst = res.filter(function(x) { return x.group === 'list'; });
 	var okOpen = open.filter(function(x) { return x.verdict === 'ok'; }).length, okList = lst.filter(function(x) { return x.verdict === 'ok'; }).length;
-	var say = !res.length ? '' : okOpen === open.length && okList === lst.length ? _('All services open through %s.').format(where) :
-		!okOpen && okList ? _('Only the services for comparison open: this looks like whitelist mode.') :
-		!okOpen && !okList ? _('No service opened: there is no internet through %s now.').format(where) :
-		_('Some services do not open through %s: %s.').format(where, open.filter(function(x) { return x.verdict !== 'ok'; })
+	var say = !res.length ? '' : okOpen === open.length && okList === lst.length ? _('All services are reachable via %s.').format(where) :
+		!okOpen && okList ? _('Only baseline services respond — likely carrier whitelist mode.') :
+		!okOpen && !okList ? _('No services reachable: no internet access via %s.').format(where) :
+		_('Some services are unreachable via %s: %s.').format(where, open.filter(function(x) { return x.verdict !== 'ok'; })
 			.map(function(x) { return x.name; }).join(', '));
 	var known = res.filter(function(x) { return x.group === 'known'; });
 	if (known.length && open.length && okOpen)
 		say += ' ' + _('Of the services usually closed in Russia %d of %d answered: this is no sign of whitelists.')
 			.format(known.filter(function(x) { return x.verdict === 'ok'; }).length, known.length);
 	if (res.some(function(x) { return x.verdict === 'cert'; }))
-		say += ' ' + _('A certificate failed verification: someone on the way replaces the secure connection.');
+		say += ' ' + _('TLS certificate verification failed: secure connection may be intercepted.');
 	return say;
 }
 function dnsRows(c) {
@@ -129,11 +129,11 @@ function dnsRows(c) {
 function dnsSummary(c) {
 	var stub = (c.blocked || {}).state === 'stub', nx = (c.nxdomain || {}).state === 'rewritten';
 	return _('Checked %s.').format(new Date((c.at || 0) * 1000).toLocaleString(LANG)) + ' ' +
-		((c.intercept || {}).state === 'local' ? _('The router itself takes the queries to public DNS and the connections to them (in 1–3 ms; so works a proxy or a DNS redirect on the router): the operator cannot be checked this way, and this is not the operator intercepting.') + ' ' :
-		(c.intercept || {}).state === 'intercepted' ? _('The answers of public DNS are replaced on the way: %s.').format(dnsDetail(c.intercept.detail)) + ' ' : _('Public DNS answer themselves.') + ' ') +
-		(stub ? _('Blocked sites: a stub (%s).').format(dnsDetail(c.blocked.detail)) + ' ' : (c.blocked || {}).state === 'ok' ? _('Blocked sites: the addresses match DoH.') + ' ' : '') +
+		((c.intercept || {}).state === 'local' ? _('Router intercepts public DNS traffic locally (1–3 ms, typical for a local proxy or DNS redirect); carrier DNS cannot be tested this way, and this is not carrier hijacking.') + ' ' :
+		(c.intercept || {}).state === 'intercepted' ? _('Public DNS responses are being intercepted: %s.').format(dnsDetail(c.intercept.detail)) + ' ' : _('Public DNS servers respond directly.') + ' ') +
+		(stub ? _('Blocked sites: redirected to stub page (%s).').format(dnsDetail(c.blocked.detail)) + ' ' : (c.blocked || {}).state === 'ok' ? _('Blocked sites: IP addresses match DoH.') + ' ' : '') +
 		(nx ? _('The provider\'s DNS replaces names that do not exist.') : '') +
-		' ' + _('“DNS” is the time to answer a query, “TCP” the time to connect to the same address: an answer much faster than the connection did not come from the server.');
+		' ' + _('"DNS" is query latency; "TCP" is connection latency to the same host. A DNS reply much faster than TCP indicates local or carrier interception.');
 }
 function dnsTable(body) {
 	return E('div', { 'class': 'mm-tablewrap' }, E('table', { 'class': 'mm-table mm-dns-table' }, [
@@ -150,7 +150,7 @@ var NC_ERROR = { busy: _('a check is already running (another tab?)'), 'no curl'
 /* an rpcd refusal: the user lacks the ACL group (engineer's tools: luci-app-medvemodem-engineer) */
 function failText(e) {
 	var m = String(e && e.message || e);
-	return /Access denied|Permission denied/i.test(m) ? _('no rights: this LuCI user has no luci-app-medvemodem-engineer access group') : m;
+	return /Access denied|Permission denied/i.test(m) ? _('permission denied: LuCI user lacks the luci-app-medvemodem-engineer role') : m;
 }
 /* ---- shared with dashboard.js (the mockup's pieces) ---- */
 function duration(seconds) {
@@ -258,8 +258,8 @@ function opBadge(code, name, simCode) {
 }
 /* two levels (the owner, 2026-10-23: the middle one was one step too many); a stored «pro» opens as «Detailed» */
 var LEVELS = { normal: _('Basic'), expert: _('Detailed') };
-var LEVEL_HINT = { normal: _('Only the main things: the network state and hints.'),
-	expert: _('Everything: signal parameters, the recovery progress, connection details, the AT console, services and identifiers.') };
+var LEVEL_HINT = { normal: _('Essentials only: connection status and hints.'),
+	expert: _('Full view: signal metrics, recovery progress, connection details, AT console, services, and identifiers.') };
 function level() {
 	try { var v = localStorage.getItem('mm:level'); return v === 'pro' ? 'expert' : LEVELS[v] ? v : 'normal'; } catch (e) { return 'normal'; }
 }
@@ -293,7 +293,7 @@ function pageHead(title, sub, onLevel, here) {
 	menu.appendChild(summary); menu.appendChild(pop);
 	/* «Modems» and «Settings» are LuCI's own menu tabs: no second switch here (bench 2026-10-15) */
 	var on = privacy(), priv = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-privacy', 'aria-pressed': String(on),
-		title: _('IMEI, ICCID, IMSI, numbers, addresses and cells read “hidden”, for a screenshot for example'),
+		title: _('Replaces IMEI, ICCID, IMSI, phone numbers, IPs, and cell IDs with "hidden" (useful for screenshots)'),
 		click: function() { on = !on; priv.setAttribute('aria-pressed', String(on)); text(priv, on ? _('Identifiers hidden') : _('Hide identifiers'));
 			setPrivacy(on); if (onLevel) onLevel(level()); } }, on ? _('Identifiers hidden') : _('Hide identifiers'));
 	document.documentElement.classList.toggle('mm-private', on);
@@ -386,23 +386,23 @@ function section(key, title, body, gist, dflt) {
 
 /* the diagnosis chain (served "diagnosis", mm_chain): its links and reasons as people say them; the modem page and the dashboard */
 var CHAIN_LINKS = { device: _('Device'), network: _('SIM and network'), session: _('Session'), internet: _('Internet'), dns: 'DNS' };
-var CHAIN_WHY = { 'dns-intercepted': _('the operator answers the queries to other DNS servers in their place (DNS interception)'),
-	'dns-rewritten': _('the operator\'s DNS answers names that do not exist with an address (rewritten answers)'),
-	'dns-stub': _('DNS answers blocked sites with the address of a stub, not the real one'), absent: _('the modem is not seen on USB'),
+var CHAIN_WHY = { 'dns-intercepted': _('carrier intercepts queries to third-party DNS servers'),
+	'dns-rewritten': _('carrier DNS spoofs NXDOMAIN responses with an IP address'),
+	'dns-stub': _('DNS returns a stub IP for blocked sites'), absent: _('the modem is not seen on USB'),
 	composition: _('the modem was not fully recognised (no driver or some of its ports)'),
 	'service-mode': _('the modem is in service mode'), 'modeswitch-rule': _('a usb-modeswitch rule resets the modem\'s configuration'),
-	'sim-missing': _('no SIM card'), 'sim-locked': _('the SIM card waits for its PIN'), 'registration-denied': _('the operator refused the registration'),
+	'sim-missing': _('no SIM card'), 'sim-locked': _('SIM requires PIN'), 'registration-denied': _('the operator refused the registration'),
 	searching: _('the modem searches for a network'), 'not-registered': _('the modem is not registered in a network'), 'no-session': _('no session with the operator'),
 	'session-failed': _('the session with the operator does not come up'), whitelist: _('only the sites on the operator\'s whitelist work'),
-	'no-answer': _('the check addresses do not answer through this modem'),
+	'no-answer': _('probe hosts unreachable via this modem'),
 	restricted: _('the operator restricted access and sends to its own page: check the balance or the operator\'s restrictions'), 'dns-failed': _('the router\'s DNS does not answer') };
 /* one line for the dashboard's card: «all links fine» or the first broken link and why */
 function chainLine(dg) {
 	if (!dg || !dg.links) return '';
 	var w = dg.warning;
 	return dg.ok ? (w ? _('works, a remark on the link “%s”: %s').format(CHAIN_LINKS[w.link] || w.link, CHAIN_WHY[w.reason] || w.reason) :
-		dg.standby ? _('all links fine, the modem is on standby') : _('all links fine')) :
-		_('a problem at the link “%s”: %s').format(CHAIN_LINKS[dg.link] || dg.link, CHAIN_WHY[dg.reason] || dg.reason);
+		dg.standby ? _('all checks passed (standby)') : _('all checks passed')) :
+		_('issue at "%s": %s').format(CHAIN_LINKS[dg.link] || dg.link, CHAIN_WHY[dg.reason] || dg.reason);
 }
 /*
  * Every action button says it is working (the owner, 2026-10-16: «кнопка обновить … вообще не
@@ -437,14 +437,14 @@ var REASONS = { session_stuck: _('the connection does not come up'), mm_bearer_s
 /* each step said by what it does and how long the internet is away (user review 2026-10-06: «мягкий»
  * meant nothing); [title, what happens, the pause, asks first]; the L-number stays in logs and the CLI */
 var STAGES = {
-	observe: [_('Refresh the modem\'s data'), _('The modem\'s state is read again.'), _('without breaking the link'), false],
-	session: [_('Reconnect the internet'), _('The connection with the operator is set up again.'), _('a break of a few seconds'), false],
-	control: [_('Free stuck ports'), _('Stuck port locks are lifted and the modem is handed to the managing service.'), _('a break of up to a few seconds'), false],
-	radio: [_('Restart the network search'), _('The modem leaves the operator\'s base station and searches for the network again (like airplane mode).'), _('a break of 10–30 s'), true],
-	'soft-reset': [_('Restart the modem'), _('The modem is restarted by a command.'), _('a break of 1–2 min'), true],
-	rebind: [_('Restart the modem\'s driver'), _('The router unbinds the modem\'s driver and binds it again.'), _('a break of up to 1 min'), true],
-	'usb-reset': [_('Reconnect the modem over USB'), _('The modem is disconnected from the USB bus by software and connected again (like pulling it out of the port).'), _('a break of 1–3 min'), true],
-	power: [_('Reset the USB power'), _('The modem\'s USB port is switched off and on again (on a hub with power control: fully unpowered).'), _('a break of 1–3 min'), true]
+	observe: [_('Refresh modem info'), _('The modem\'s state is read again.'), _('without breaking the link'), false],
+	session: [_('Reconnect internet'), _('Re-establishes the cellular data session.'), _('a break of a few seconds'), false],
+	control: [_('Free stuck ports'), _('Clears stale port locks and hands the modem back to its management service.'), _('a break of up to a few seconds'), false],
+	radio: [_('Restart the network search'), _('Detaches from the cellular network and re-scans (like airplane mode).'), _('10–30 s outage'), true],
+	'soft-reset': [_('Restart modem'), _('The modem is restarted by a command.'), _('a break of 1–2 min'), true],
+	rebind: [_('Reload modem driver'), _('The router unbinds the modem\'s driver and binds it again.'), _('a break of up to 1 min'), true],
+	'usb-reset': [_('Reconnect the modem over USB'), _('Software-replugs the modem on the USB bus (equivalent to unplugging and re-plugging).'), _('a break of 1–3 min'), true],
+	power: [_('Power-cycle USB port'), _('Power-cycles the modem\'s USB port (full power cut on supported hubs).'), _('a break of 1–3 min'), true]
 };
 /* the device's history (medvemodemd.c, history.c) as a journal line; ⚠ marks what changed the modem or the settings */
 var EVENTS = {
@@ -452,14 +452,14 @@ var EVENTS = {
 	removed: [_('Modem disconnected from USB'), 'warn'], 'usb-add': [_('Modem connected to USB'), ''], 'usb-remove': [_('Modem disconnected from USB'), 'warn'],
 	'driver-bind': [_('The modem\'s driver bound'), ''], 'driver-unbind': [_('The modem\'s driver unbound'), ''], 'mm-add': [_('ModemManager took over the modem'), ''], 'mm-remove': [_('ModemManager released the modem'), 'warn'],
 	'mm-state': [_('The modem\'s state changed'), ''], 'mm-kick': [_('The ports handed to ModemManager again'), ''], 'registration-denied': ['⚠ ' + _('The network refused the registration'), ''],
-	'port-held': [_('A modem port is busy with another program'), 'warn'], 'port-released': [_('Another program released a modem port'), ''],
+	'port-held': [_('Modem port busy (used by another process)'), 'warn'], 'port-released': [_('Another program released a modem port'), ''],
 	'mm-ports-withdrawn': [_('Serial ports withdrawn from ModemManager'), ''],
 	'mm-restart': ['⚠ ' + _('ModemManager restart'), 'act'], 'mm-restart-end': [_('ModemManager restart finished'), ''],
 	'sim-unlock': ['⚠ ' + _('SIM card unlock'), 'act'],
 	'sms-received': [_('SMS received'), 'ok'], 'sms-sent': [_('SMS sending'), ''], 'sms-cnmi-fixed': [_('Incoming SMS were not stored (CNMI 0,0): fixed'), 'warn'],
 	'subnet-clash': [_('The modem\'s network clashes with the router\'s or another modem\'s'), 'warn'], 'subnet-moved': [_('The modem moved to a free subnet'), 'ok'],
-		'esim-switch': [_('eSIM profile switched: the modem registers in the network again'), 'ok'],
-	'subnet-move-failed': [_('The modem\'s web did not take the new subnet'), 'warn'], 'sms-stuck-dropped': [_('A stuck part of a long SMS deleted'), 'warn'], 'at-port-stuck': [_('The AT port hung in the system'), 'warn'], 'at-port-rebind': [_('The hung AT port re-attached to its driver'), 'act'], 'usb-rescue': [_('Last resort by hand: the USB controller or the power line'), 'warn'],
+		'esim-switch': [_('eSIM profile switched; re-registering on the network'), 'ok'],
+	'subnet-move-failed': [_('The modem\'s web did not take the new subnet'), 'warn'], 'sms-stuck-dropped': [_('Deleted stuck multipart SMS fragment'), 'warn'], 'at-port-stuck': [_('The AT port hung in the system'), 'warn'], 'at-port-rebind': [_('The hung AT port re-attached to its driver'), 'act'], 'usb-rescue': [_('Last resort by hand: the USB controller or the power line'), 'warn'],
 	'session-up': [_('Connection up'), 'ok'], 'session-down': [_('Connection down'), 'warn'], 'session-failed': [_('Connection setup error'), 'warn'],
 	'recovery-start': ['⚠ ' + _('Recovery step started'), 'act'], 'recovery-end': [_('Recovery step finished'), ''],
 	'hostfix-start': ['⚠ ' + _('Service ports being bound'), 'act'], 'hostfix-end': [_('Service ports bound'), ''],
@@ -472,17 +472,17 @@ var EVENTS = {
 	'quota-warn': [_('Traffic limit almost used up'), 'warn'], 'quota-exceeded': [_('Traffic limit used up'), 'warn'],
 	ifup: [_('Interface brought up again'), ''], 'settings-follow': [_('The name and settings followed the modem'), ''], 'usb-config': ['⚠ ' + _('USB configuration switched'), 'act'],
 	'fcc-unlock-on': ['⚠ ' + _('FCC unlock switched on'), 'act'], 'fcc-unlock-off': [_('FCC unlock switched off'), 'act'],
-	frozen: ['⚠ ' + _('Modem management paused by the operator'), 'act'], unfrozen: [_('Modem management resumed'), 'act'],
-	'qmodem-release': [_('The modem taken from QModem by the operator\'s choice'), 'act'], 'iface-repair': ['⚠ ' + _('Interface settings repaired'), 'act'],
+	frozen: ['⚠ ' + _('Modem management paused by user'), 'act'], unfrozen: [_('Modem management resumed'), 'act'],
+	'qmodem-release': [_('Modem taken over from QModem per user setting'), 'act'], 'iface-repair': ['⚠ ' + _('Interface settings repaired'), 'act'],
 	config: ['⚠ ' + _('Network settings changed'), 'act'],
-	internet: [_('Internet through the modem'), ''], failover: [_('Traffic switching'), 'warn']
+	internet: [_('Internet via modem'), ''], failover: [_('Traffic switching'), 'warn']
 };
 /* why a modem was found or came back (the owner, 2026-10-28: «писать причину пере-детекта модема») */
-var FOUND_WHY = { start: _('at the engine\'s start'), uevent: _('a USB event'), 'rescan request': _('a rescan'), returned: _('it was gone and came back') };
-var INTERNET = { ok: [_('the whole internet answers'), 'ok'], limited: [_('only the operator\'s whitelist answers'), 'warn'], down: [_('no answer'), 'warn'] };
-var FAILOVER_WHY = { down: _('has no internet, the traffic moved to another channel'), limited: _('has the whitelist only, another channel carries the traffic'),
-	quota: _('spent its traffic limit, kept behind the others'), manual: _('is a manual channel, kept behind'), demoted: _('answers again, kept last'),
-	back: _('answers again, its priority restored') };
+var FOUND_WHY = { start: _('at the engine\'s start'), uevent: _('USB event'), 'rescan request': _('rescan'), returned: _('disconnected and reconnected') };
+var INTERNET = { ok: [_('full internet access'), 'ok'], limited: [_('only the operator\'s whitelist answers'), 'warn'], down: [_('no answer'), 'warn'] };
+var FAILOVER_WHY = { down: _('no internet, traffic failed over'), limited: _('whitelist only, traffic on another uplink'),
+	quota: _('data cap reached, deprioritized'), manual: _('manual uplink (kept deprioritized)'), demoted: _('back online; kept as fallback'),
+	back: _('back online, priority restored') };
 var FOLLOW_WHAT = { modem: _('name'), device: _('connection settings'), esim: _('eSIM settings') };
 var WHO = { luci: _('from the web interface'), cli: _('from the command line'), automatic: _('automatically'), operator: _('by the administrator') };
 function eventWords(e) {
@@ -496,7 +496,7 @@ function eventWords(e) {
 		.replace(/^(\S+ \S+) (\S+)$/, function(m0, a, b) { return _('%s (interface %s)').format(a, b); }).replace(/^bringup/, _('bring-up')).replace(/^apply/, _('applying'))
 		.replace(/^release/, _('giving up control')).replace(/^rollback/, _('rollback')).replace(/^repair/, _('repair')).replace(/committed/, _('applied'))
 		.replace(/rolled-back/, _('cancelled'));
-	else if (e.kind === 'interface-down' || e.kind === 'interface-up') d = d.replace(/^(\S+) by the operator \((.*)\)$/, function(m0, a, b) { return _('%s, by hand (%s)').format(a, b); });
+	else if (e.kind === 'interface-down' || e.kind === 'interface-up') d = d.replace(/^(\S+) by the operator \((.*)\)$/, function(m0, a, b) { return _('%s, manual (%s)').format(a, b); });
 	else if (e.kind === 'settings-follow') d = d.replace(/^(\S+): /, function(m0, t) { return (FOLLOW_WHAT[t] || t) + ': '; })
 		.replace(/: from parked$/, ': ' + _('the modem came back')).replace(/: from (\S+)$/, function(m0, p) { return ': ' + _('from port %s').format(p); })
 		.replace(/: parked, another modem is in this port$/, ': ' + _('put aside, another modem is in this port'));
@@ -505,22 +505,22 @@ function eventWords(e) {
 	else if (e.kind === 'sms-received') d = d.replace(/^(\d+) new$/, function(m0, n) { return _('new: %s').format(n); });
 	else if (e.kind === 'quota-warn' || e.kind === 'quota-exceeded') d = d.replace(/^([\d.]+) of ([\d.]+) GB$/, function(m0, a, b) { return _('%s of %s GB').format(a, b); });
 	else if (e.kind === 'backend-return') d = d.replace(/^native interface down, ModemManager may take the modem$/, _('the direct QMI connection stopped, the modem handed to ModemManager'))
-		.replace(/^ModemManager took the modem$/, _('ModemManager took the modem, the connection goes through it'))
-		.replace(/^ModemManager did not take the modem$/, _('ModemManager did not take the modem: the direct connection again')).replace(/^bring-up refused$/, _('the connection was not started'));
+		.replace(/^ModemManager took the modem$/, _('ModemManager claimed the modem; connecting via ModemManager'))
+		.replace(/^ModemManager did not take the modem$/, _('ModemManager did not claim the modem; reverting to direct mode')).replace(/^bring-up refused$/, _('the connection was not started'));
 	else if (e.kind === 'sms-sent') { k = [/^failed/.test(d) ? _('SMS not sent') : _('SMS sent'), /^failed/.test(d) ? 'warn' : 'ok'];
 		d = / at$/.test(d) ? _('through the modem\'s AT port') : ''; }
 	else if (e.kind === 'service-restart' || e.kind === 'service-stop') {
 		var sv = /^qmodem/.test(d) ? 'QModem' : 'ModemManager', ours = / medvemodem$/.test(d);
 		k = e.kind === 'service-stop' ? [_('%s stopped').format(sv), ours ? '' : 'warn'] :
-			[ours ? _('%s restarted by MedveModem').format(sv) : _('%s restarted by itself (a crash, or by hand)').format(sv), ours ? '' : 'warn'];
+			[ours ? _('%s restarted by MedveModem').format(sv) : _('%s restarted independently (crash or manual)').format(sv), ours ? '' : 'warn'];
 		d = ''; }
 	else if (e.kind === 'web-login') { k = [d === 'ok' ? _('Logged in to the modem\'s web') : d === 'locked' ? _('The modem\'s web blocked logins for a while') :
-			d === 'wrong' ? _('The saved password did not fit the modem\'s web') : _('The modem\'s web asks for a password'), d === 'ok' ? 'ok' : 'warn']; d = ''; }
+			d === 'wrong' ? _('Saved password was rejected by the modem web UI') : _('The modem\'s web asks for a password'), d === 'ok' ? 'ok' : 'warn']; d = ''; }
 	else if (e.kind === 'sim-unlock') { k = [d === 'done' ? _('SIM card unlocked') : _('SIM card not unlocked'), d === 'done' ? 'ok' : 'warn']; d = ''; }
 	else if (e.kind === 'sms-stuck-dropped') d = d ? _('message No. %s (an incomplete part blocked receiving)').format(d) : '';
 	else if (e.kind === 'mm-restart') d = d.replace(/^operator(: )?/, function(m0, sep) { return _('by the administrator') + (sep || ''); });
 	else if (e.kind === 'mm-restart-end') d = d.replace(/^started again$/, _('the service started')).replace(/^init script status (\d+)$/, function(m0, c) { return _('start error (code %s)').format(c); });
-	else if ((e.kind === 'added' || e.kind === 'reattached') && d) d = FOUND_WHY[d] || (/attachment/.test(d) ? _('its USB place changed') : /ports/.test(d) ? _('its ports changed') : '');
+	else if ((e.kind === 'added' || e.kind === 'reattached') && d) d = FOUND_WHY[d] || (/attachment/.test(d) ? _('USB port changed') : /ports/.test(d) ? _('modem ports changed') : '');
 	else if (e.kind === 'internet') { k = [k[0], (INTERNET[d] || ['', ''])[1]]; d = (INTERNET[d] || [d])[0]; }
 	else if (e.kind === 'radio-change' && /cell lock/.test(d)) {
 		/* a cell lock is no «network mode and bands» change (the owner, 2026-11-03: the lock was not seen in the journal) */
@@ -528,16 +528,16 @@ function eventWords(e) {
 		d = d.replace(/cell lock (\w+) (\d+) pci (\S+)/, function(m0, rat, ch, pci) { return _('%s, channel %s, PCI %s').format(rat === 'nr' ? '5G' : 'LTE', ch, pci === 'any' ? '—' : pci); })
 			.replace(/cell lock off/, _('removed')).replace(/^modes /, _('modes') + ' ').replace(/bands /, _('bands') + ' ');
 	}
-	else if (e.kind === 'reregister') d = d === 'done' ? _('done') : d === 'failed' ? _('not done') : d === 'at' ? _('over AT') : d;
+	else if (e.kind === 'reregister') d = d === 'done' ? _('done') : d === 'failed' ? _('failed') : d === 'at' ? _('over AT') : d;
 	else if (/^(band|cell|ca)-change$/.test(e.kind)) d = d.replace(/one carrier/g, _('one carrier'));
 	else if (e.kind === 'radio-guard' || e.kind === 'band-guard')
-		d = (m = /^no network for (\d+) min$/.exec(d)) ? _('no network for %s min, the settings before the lock go back').format(m[1]) :
-			d === 'done' ? _('the settings before the lock are back') : _('the old settings could not be written, it gave up');
+		d = (m = /^no network for (\d+) min$/.exec(d)) ? _('no signal for %s min, reverting pre-lock settings').format(m[1]) :
+			d === 'done' ? _('the settings before the lock are back') : _('failed to restore previous settings; stopped retrying');
 	else if (e.kind === 'failover' && (m = /^(\S+) (\S+)$/.exec(d))) d = _('%s: %s').format(m[2], FAILOVER_WHY[m[1]] || _('its priority restored'));
 	else if (/^(added|removed|reattached|changed|usb-add|usb-remove|driver-bind|driver-unbind|mm-add|mm-remove|hostfix-)/.test(e.kind)) d = '';
 	return [k[0] + (d ? ': ' + d : ''), k[1]];
 }
-var RESULTS = { succeeded: _('done'), failed: _('not done'), refused: _('refused'), busy: _('busy'), retry: _('try again later'), started: _('started') };
+var RESULTS = { succeeded: _('done'), failed: _('failed'), refused: _('denied'), busy: _('busy'), retry: _('try again later'), started: _('started') };
 
 /* an open menu («⋯», «Ещё», the level) closes on a click or a tap outside it and on Escape (bench 2026-10-19: they stayed
  * open over the cards); one listener for the page, bound once */
@@ -618,7 +618,8 @@ function tempRecord(id, c) {
 	var now = now0, h = list(tempPrefs(id).h).filter(function(p) {
 		return Array.isArray(p) && typeof p[0] === 'number' && now - p[0] <= TEMP_SPAN_S; });
 	if (!h.length || now - h[h.length - 1][0] >= 60) h.push([now, c]);
-	return tempPrefs(id, { c: c, t: now, h: h.slice(-720) });
+	/* ok: the last reading that answered; t moves on a failed try too (the owner, 2026-11-19: a hung T99 kept «measuring») */
+	return tempPrefs(id, { c: c, t: now, ok: now, h: h.slice(-720) });
 }
 /*
  * The series as a chart (the owner, 2026-10-21: «огрызок», then «графики битые»: a reading every 1–2 min jumps a
@@ -745,17 +746,17 @@ function checkState(reach, role) {
 	var limit = role === 'carrying' ? 180 : 660;
 	if (typeof reach.age_s === 'number' && reach.age_s > limit)
 		return { text: _('Data out of date · %s').format(reach.age_s < 3600 ? _('%d min').format(Math.round(reach.age_s / 60)) : _('%d h').format(Math.round(reach.age_s / 3600))), tone: 'idle' };
-	if (reach.limited) return { text: _('Access limited'), tone: 'warn' };
-	if (!reach.ok) return { text: _('No answer to the check'), tone: 'err' };
+	if (reach.limited) return { text: _('Limited access (whitelist)'), tone: 'warn' };
+	if (!reach.ok) return { text: _('Probe timed out'), tone: 'err' };
 	return { text: typeof reach.latency_ms === 'number' ? _('Internet · %d ms').format(reach.latency_ms) : _('Internet available'), tone: 'ok' };
 }
 function knownLess(d) {
 	var p = (d || {}).profile, fit = p && p.fit;
 	if (!d || d.present === false || d.detection_status !== 'candidate') return '';
-	if (!p) return _('MedveModem does not know this model: it has no profile, only the common things work.');
-	if (fit === 'generic') return _('The model is recognised by its connection type only (the generic profile): some functions and recovery steps are not available.');
-	if (fit === 'family') return _('The modem family is known, but not this model: some functions may work differently.');
-	if (fit === 'ambiguous') return _('Several profiles fit the modem, MedveModem cannot pick one.');
+	if (!p) return _('Unknown modem model (no profile); only generic features are available.');
+	if (fit === 'generic') return _('Recognized by connection type only (generic profile); some features and recovery steps are unavailable.');
+	if (fit === 'family') return _('Modem family recognized, but exact model is unknown; some features may behave unexpectedly.');
+	if (fit === 'ambiguous') return _('Multiple profiles match this modem; automatic selection failed.');
 	return '';
 }
 
@@ -847,7 +848,7 @@ function toast(key, words, tone, ttl) {
  * (the old page used to render silently) */
 function staleWarn(viewVersion) {
 	setTimeout(function() {
-		toast('stale-files', _('The page\'s files on the router and in the browser are of different versions (page %s, shared module %s). Reload the page clearing the cache: Ctrl+F5 or Cmd+Shift+R.')
+		toast('stale-files', _('Browser cache version mismatch (page %s, shared module %s). Perform a hard reload: Ctrl+F5 or Cmd+Shift+R.')
 			.format(viewVersion, VERSION), 'err');
 	}, 0);
 }

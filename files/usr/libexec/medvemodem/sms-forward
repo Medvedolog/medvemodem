@@ -99,7 +99,7 @@ why() {
 
 if [ "$1" = test ]; then
 	[ "$ENABLED" = 1 ] || { echo '{"ok":false,"error":"forwarding is off"}'; exit 0; }
-	forward "{\"modem\":\"MedveModem\",\"number\":\"MedveModem\",\"text\":\"$(T 'An SMS forwarding test' 'Проверка пересылки SMS')\",\"time\":\"\"}"
+	forward "{\"modem\":\"MedveModem\",\"number\":\"MedveModem\",\"text\":\"$(T 'SMS forwarding test' 'Проверка пересылки SMS')\",\"time\":\"\"}"
 	rc=$?
 	if [ $rc = 0 ]; then echo '{"ok":true}'; else printf '{"ok":false,"error":"%s"}\n' "$(why $rc)"; fi
 	exit 0

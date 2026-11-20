@@ -270,18 +270,18 @@ void mm_alert_text(json_object *notice, json_object *names, const char *host, bo
 	if (n < 0 || (size_t)n >= sizeof(head))
 		snprintf(head, sizeof(head), "%s: ", ru ? "МедвеМодем" : "MedveModem");
 	if (is(kind, "whitelist"))
-		snprintf(out, size, ru ? "%sбелые списки на %s уже %s" : "%s%s has the whitelist only for %s", head, link, d);
+		snprintf(out, size, ru ? "%sбелые списки на %s уже %s" : "%s%s whitelist-only for %s", head, link, d);
 	else if (is(kind, "whitelist-end"))
-		snprintf(out, size, ru ? "%sбелые списки на %s сняты, длились %s" : "%s%s answers in full again after %s of whitelist",
+		snprintf(out, size, ru ? "%sбелые списки на %s сняты, длились %s" : "%s%s full access restored (whitelisted %s)",
 			 head, link, d);
 	else if (is(kind, "down"))
 		snprintf(out, size, ru ? "%sнет интернета уже %s" : "%sno internet for %s", head, d);
 	else if (is(kind, "down-end"))
-		snprintf(out, size, ru ? "%sинтернет восстановлен, не было %s" : "%sthe internet is back after %s", head, d);
+		snprintf(out, size, ru ? "%sинтернет восстановлен, не было %s" : "%sinternet restored after %s", head, d);
 	else if (is(kind, "switch"))
-		snprintf(out, size, ru ? "%sтрафик перешёл с %s на %s" : "%sthe traffic moved from %s to %s", head, from, to);
+		snprintf(out, size, ru ? "%sтрафик перешёл с %s на %s" : "%straffic switched from %s to %s", head, from, to);
 	else if (is(kind, "switch-back"))
-		snprintf(out, size, ru ? "%sтрафик вернулся на %s спустя %s" : "%sthe traffic is back on %s after %s", head, to, d);
+		snprintf(out, size, ru ? "%sтрафик вернулся на %s спустя %s" : "%straffic returned to %s after %s", head, to, d);
 	else
-		snprintf(out, size, ru ? "%sпроверка SMS-оповещений" : "%sa test of the SMS alerts", head);
+		snprintf(out, size, ru ? "%sпроверка SMS-оповещений" : "%sSMS alert test", head);
 }

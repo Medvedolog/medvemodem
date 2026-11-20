@@ -65,7 +65,7 @@ function onPress(p, answer, edit) {
         return;
     }
     if (p.kind == 'update_go') {
-        if (!ui.stampFresh(p.stamp, time())) { answer(T('The button is out of date', 'Кнопка устарела')); edit(draw(st, CONTROL)); return; }
+        if (!ui.stampFresh(p.stamp, time())) { answer(T('Button expired', 'Кнопка устарела')); edit(draw(st, CONTROL)); return; }
         if (st.state == 'running') { answer(T('An update is already running', 'Обновление уже идёт')); return; }
         system(SELFUP + ' start --lang=' + (lang.get() == 'en' ? 'en' : 'ru') + ' >/dev/null 2>&1');
         answer(T('Started', 'Запущено'));

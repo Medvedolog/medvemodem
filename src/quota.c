@@ -67,7 +67,7 @@ json_object *mm_quota_add(json_object *usage, const char *iccid, const char *sta
 	return e;
 }
 
-json_object *mm_quota_view(json_object *entry, const char *iccid, long long limit_bytes, int warn_percent,
+json_object *mm_quota_view(json_object *entry, const char *key, long long limit_bytes, int warn_percent,
 			   const char *start, const char *next, const char *action)
 {
 	json_object *o = json_object_new_object();
@@ -77,7 +77,7 @@ json_object *mm_quota_view(json_object *entry, const char *iccid, long long limi
 
 	if (warn_percent < 1 || warn_percent > 100)
 		warn_percent = 80;
-	json_object_object_add(o, "iccid", json_object_new_string(iccid));
+	json_object_object_add(o, "key", json_object_new_string(key));
 	json_object_object_add(o, "used_bytes", json_object_new_int64(used));
 	if (limit_bytes > 0) {
 		int percent = (int)(used * 100 / limit_bytes);

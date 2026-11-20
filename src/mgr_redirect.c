@@ -94,7 +94,7 @@ static void redirect_child(const char *dev, const char *ip, int wfd)
 	int s;
 
 	alarm(REDIRECT_WAIT_S + 2);
-	if (inet_pton(AF_INET, ip, &sa.sin_addr) != 1 || (s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	if (inet_pton(AF_INET, ip, &sa.sin_addr) != 1 || (s = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) < 0)
 		_exit(1);
 	setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 	setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
@@ -162,6 +162,7 @@ void redirect_probe(const char *key, const char *dev, const char *target)
 		;
 	if (k == REDIRECT_JOBS || pipe(fds))
 		return;
+	fcntl(fds[0], F_SETFD, FD_CLOEXEC);	/* not into the children forked meanwhile (audit STAB-07) */
 	pid = fork();
 	if (pid < 0) {
 		close(fds[0]);

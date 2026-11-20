@@ -59,4 +59,17 @@ bool mm_identity_shared(json_object *present, json_object *shared);
  */
 json_object *mm_identity_follow_sim(json_object *img, json_object *sims, json_object *present_ids);
 
+/*
+ * A SIM's label (config sim: number, description, SMS centre, data limit) is keyed by a salted hash of its ICCID, never
+ * the ICCID itself (the owner, 2026-11-20: «делаем»; CLAUDE.md: SIM identifiers are never stored). The modems give one
+ * ICCID in several forms: 19 or 20 digits, an F pad, the Luhn digit or not, spaces. mm_iccid_norm keeps its digits and
+ * drops a valid Luhn digit, so each form gives one key; false when what is left is not 17..21 digits.
+ */
+bool mm_iccid_norm(const char *iccid, char *out, size_t size);
+/* "xxxx:<16 hex>" as the IMEI key, of the normalized ICCID; false when the ICCID does not normalize */
+bool mm_sim_label_key(const char *salt, const char *iccid, char out[MM_IMEI_KEY_SIZE]);
+/* every config sim still holding an ICCID gets its key and loses the ICCID (set + delete ops, a new array); one whose
+ * ICCID does not normalize loses the ICCID too: it could never be matched again */
+json_object *mm_identity_sim_rekey(json_object *img, const char *salt);
+
 #endif

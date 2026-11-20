@@ -73,7 +73,10 @@ jobs:
           done
           [ "$(find release-assets -type f -name '*.tar.gz' | wc -l)" -eq 6 ]
           (cd release-assets && sha256sum *.tar.gz > SHA256SUMS)
-          printf 'QMODEM_TAG=qmodem-%s-r2\n' "$version" >> "$GITHUB_ENV"
+          # the release the Makefile downloads from (MEDVEMODEM_DOWNLOAD_BASE): one number, not a second copy here
+          tag=$(sed -n 's|^MEDVEMODEM_DOWNLOAD_BASE?=.*/releases/download/||p' Makefile | sed "s/\$(QMODEM_VERSION)/$version/")
+          case "$tag" in qmodem-"$version"-r[0-9]*) ;; *) echo "No QModem release tag in the Makefile: $tag" >&2; exit 1 ;; esac
+          printf 'QMODEM_TAG=%s\n' "$tag" >> "$GITHUB_ENV"
       - name: Publish permanent GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}

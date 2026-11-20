@@ -4,7 +4,7 @@ PKG_NAME:=luci-app-medvemodem-bot
 # the engine's version, as luci-app-medvemodem (tests/test_bench_notes.py checks it): no path
 # arithmetic, which the SDK's package scan does not resolve like a build
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=10
+PKG_RELEASE:=12
 PKG_LICENSE:=GPL-3.0-only
 PKGARCH:=all
 
@@ -14,9 +14,10 @@ define Package/luci-app-medvemodem-bot
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
-  TITLE:=Staging LuCI panel for MedveModem Telegram bot
+  TITLE:=LuCI support for the MedveModem Telegram bot
   PKGARCH:=all
   DEPENDS:=+luci-base +medvemodem-bot +luci-app-medvemodem
+  EXTRA_DEPENDS:=medvemodem-bot (>=$(PKG_VERSION)-r$(PKG_RELEASE)), luci-app-medvemodem (>=$(PKG_VERSION)-r$(PKG_RELEASE))
 endef
 
 define Build/Compile
@@ -37,7 +38,7 @@ endef
 define Package/luci-app-medvemodem-bot/postinst
 #!/bin/sh
 if [ -z "$$IPKG_INSTROOT" ]; then
-    rm -f /tmp/luci-indexcache
+    rm -f /tmp/luci-indexcache*
     rm -rf /tmp/luci-modulecache
     /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 fi

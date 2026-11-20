@@ -4,22 +4,19 @@
 
 Задача Zoo — отвечать не только **«какие VID:PID/команды известны»**, но и **«откуда это известно, зачем существовал конкретный upstream-script, что он меняет и насколько этому наблюдению можно доверять»**.
 
-## Источники и благодарности
+## Источники
 
-MedveModem создаётся как самостоятельный проект. На его развитие повлияли **Santa Hotplug Utility**, **Routerich AutoModem**, **5GModem Филдунского (Fildunsky)** и **ROOTer**. Их многолетние полевые исследования, находки по USB-портам и композициям, наблюдения за драйверами и нестандартным поведением модемов стали важным фундаментом наших аппаратных знаний. **Код этих проектов не копировался:** архитектура, движок и реализация MedveModem разработаны самостоятельно. Авторам — искренняя благодарность, честь и хвала за их работу и вклад в сообщество OpenWrt.
-
-Зоопарк объединяет сведения из следующих источников:
-
-- **Исторические полевые отчёты и прошивки роутеров** — USB/PCIe inventory, состав интерфейсов, назначение портов, особенности запуска и перезапуска, FCC/composition hazards, AT-команды.
-- **QModem** — база моделей, правила портов, команды производителей, AT broker и сведения по SMS.
-- **Santa Hotplug Utility, Routerich AutoModem и 5GModem Филдунского** — идеи и проверяемые наблюдения о совместимости оборудования; без копирования исходников.
-- **ROOTer** — многолетняя база сведений о модемах, скрипты обнаружения, настройки портов и подключения; изучались как технический справочник и источник аппаратных наблюдений, без копирования исходного кода.
-- **Telegram field exports (2023–2026)** — диагностика, журналы, практические рецепты и противоречивые полевые наблюдения; без зеркалирования переписок.
-- **4PDA offline HTML (2026-10-15)** — сведения о USB-режимах, прошивках, агрегации и восстановлении; не исполняются автоматически.
-- **Документация производителей (Quectel, Fibocom)** — поколения устройств, радиовозможности и аппаратные интерфейсы. Это не подтверждение работы конкретной USB-композиции на OpenWrt.
-- **MedveModem** — нормализация происхождения данных, уровней доверия и проверка на реальном оборудовании.
-
-Сведения из внешних источников помечаются как справочные, пока не подтверждены испытаниями MedveModem. Упоминание проекта означает благодарность за знания, а не использование его кода или одобрение им MedveModem.
+- **a field report / another modem manager** — основной исторический USB/PCIe inventory, topology/port probing, FCC/composition hazards и опасные AT-команды.
+- **other scripts / a router maker's firmware another modem manager + modeminfo** — известные compositions, fixed-port observations, bring-up/APN/reinit, modeminfo и model-specific presets.
+- **QModem** — современная model DB, port rules, vendor command layer, AT broker и SMS architecture.
+- **other scripts** — многолетние field quirks, driver detection, SIM/SMS storage и vendor AT sequences.
+- **Telegram field exports (2023–2026)** — live diagnostics, logs, recipes and contradictory field reports; curated without raw chat mirroring.
+- **4PDA offline HTML (2026-10-15)** — source-anchored firmware/host-specific failures, USB mode, aggregation and recovery observations; no auto-execution.
+- **another package 5G-Modem-Support + another package (2026-10-16)** — chipset-scoped GTUSBMODE read maps, FM350/FM150/RM5xx issues, an unmerged durable-SMS PR and a controller-crash report; checked against pinned files, not bench-validated.
+- **another modem manager–v3.5.5 delta (2026-10-16)** — phone-vs-modem USB classification (CDC-NCM/ECM tethering, known-modem vendor IDs) and a locale-dependent SMS encoding bug; no per-model changes.
+- **another modem manager–v3.5.16 delta (2026-10-21)** — FM350 SMS send port by USB interface, ZTE MF286D bring-up/modes/bands, UFI003 `AT$QCNSP`, SMS storage kept when capacity is not reported.
+- **Vendor documentation (Quectel, Fibocom)** — product-generation boundaries, radio capability and physical interfaces; never proof of an OpenWrt composition.
+- **MedveModem** — нормализация provenance, confidence, fixtures и будущая hardware verification.
 
 Сейчас исходные данные уже содержат **226 hardware IDs**, **45 historical composition observations** и **131 QModem model records**.
 
@@ -30,10 +27,15 @@ MedveModem создаётся как самостоятельный проект
 - [AT command corpus — включая destructive/firmware-specific](AT-COMMANDS.md)
 - [Extended QModem/other scripts AT reference](AT-REFERENCE.md)
 - [Telegram field notes — 34,739 messages → 1,090 technical index entries → curated observations](TELEGRAM-FIELD-NOTES.md)
-- Архивные пакеты — контрольные суммы IPK и технические наблюдения
+- Telegram package artifacts — exact IPK hashes and behavior
 - [4PDA primary-source field notes — 119 observations / 44 offline regression specifications](4PDA-FIELD-NOTES.md)
+- another package / another package field notes — external project issues and parser maps (2026-10-16)
+- another modem manager–v3.5.5 — release delta after v3.5.2
+- another modem manager–v3.5.16 — разбор изменений после v3.5.5
+- another modem manager–v3.8.0 — разбор изменений после v3.5.16
+- another modem manager–v3.9.9 — what is new for us
 - [Сводный каталог](CATALOG.md)
-- [USB-композиции, mode switching, fastboot и EDL](COMPOSITION-AND-BOOT-MODES.md)
+- [USB-композиции, mode switching, fastboot и EDL (v3.5.2)](COMPOSITION-AND-BOOT-MODES.md)
 
 ### Curated modem families
 
@@ -60,8 +62,8 @@ MedveModem создаётся как самостоятельный проект
 ## Как устроено
 
 ~~~text
-profiles/catalog/            исторические полевые сведения об оборудовании
-reference/evidence/          ROOTer + QModem + Telegram + 4PDA + manufacturer evidence
+profiles/catalog/            a field report + other scripts hardware data
+reference/evidence/          QModem + other scripts + Telegram + 4PDA + vendor evidence
 docs/catalog-provenance.json cross-source provenance
 reference/modem-zoo/         только editorial grouping и пояснения
             ↓

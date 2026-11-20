@@ -284,40 +284,40 @@ function incident(key, device, kind, state, summary, severity, origin) {
 }
 
 // the engine's recovery levels (src/recovery.c names[]), in the words the LuCI pages use
-const STEP_WORDS = {observe:['refreshing the modem info', 'обновление данных модема'], session:['reconnecting the internet', 'перезапуск соединения'],
-    control:['releasing stuck ports', 'освобождение зависших портов'], radio:['restarting the network search', 'перезапуск поиска сети'],
-    'soft-reset':['rebooting the modem', 'перезагрузка модема'], rebind:['rebinding the driver', 'переподключение драйвера'],
-    'usb-reset':['resetting the USB device', 'сброс USB-устройства'], power:['power-cycling the USB port', 'отключение и включение питания USB-порта']};
+const STEP_WORDS = {observe:['refreshing modem info', 'обновление данных модема'], session:['reconnecting internet', 'перезапуск соединения'],
+    control:['clearing stuck ports', 'освобождение зависших портов'], radio:['restarting network scan', 'перезапуск поиска сети'],
+    'soft-reset':['rebooting modem', 'перезагрузка модема'], rebind:['reloading driver', 'переподключение драйвера'],
+    'usb-reset':['resetting USB device', 'сброс USB-устройства'], power:['power-cycling USB port', 'отключение и включение питания USB-порта']};
 function stepWordKey(v) { return type(v) == 'string' && STEP_WORDS[v] ? v : null; }
 function stepWord(v) { return STEP_WORDS[v] ? W(STEP_WORDS[v]) : null; }
 
 // the journal's line for an engine event: [en, ru] with its why in words, from the engine's closed lists only (the
 // owner 2026-10-28: «события без подробностей»); null for a kind the journal does not show. A detail outside the lists
 // is never shown: it may carry anything
-const FOUND_WHY = {start:['at the service start', 'при запуске службы'], uevent:['a USB event', 'событие USB'],
-    'rescan request':['a rescan', 'повторный поиск модемов'], returned:['it was gone and came back', 'отключался и снова подключён']};
-const NET_WHY = {ok:['the whole internet', 'интернет доступен'], limited:['only the whitelist', 'только сайты из белого списка'],
+const FOUND_WHY = {start:['on service startup', 'при запуске службы'], uevent:['USB event', 'событие USB'],
+    'rescan request':['rescan', 'повторный поиск модемов'], returned:['disconnected and reconnected', 'отключался и подключился снова']};
+const NET_WHY = {ok:['full internet access', 'полный доступ в интернет'], limited:['whitelist only', 'только белый список'],
     down:['no internet', 'интернета нет']};
-const MOVE_WHY = {down:['no internet, the traffic went elsewhere', 'нет интернета, трафик переключён на другой канал'],
-    limited:['only allowed sites, the traffic went elsewhere', 'только сайты из белого списка, трафик переключён на другой канал'],
-    quota:['its traffic limit is used up, kept behind', 'лимит трафика исчерпан, приоритет канала понижен'],
-    manual:['a manual channel, kept behind', 'канал с ручным управлением, приоритет понижен'],
-    demoted:['answers again, kept last', 'связь восстановлена, канал оставлен последним'],
-    back:['answers again, its priority restored', 'снова отвечает, приоритет восстановлен']};
-const EVENT_TITLES = {'quota-warn':['The traffic limit\'s threshold is reached', 'Достигнут порог лимита трафика'],
-    'quota-exceeded':['The traffic limit is used up', 'Лимит трафика исчерпан'],
-    'session-down':['The connection broke', 'Подключение прервано'], 'session-up':['The connection is up', 'Подключение установлено'],
+const MOVE_WHY = {down:['no internet; traffic failed over', 'нет интернета, трафик переведён на другой канал'],
+    limited:['whitelist only; traffic failed over', 'только белый список, трафик переведён на другой канал'],
+    quota:['data cap reached; deprioritized', 'лимит трафика исчерпан, приоритет понижен'],
+    manual:['manual uplink (deprioritized)', 'ручной канал (приоритет понижен)'],
+    demoted:['back online; kept as fallback', 'снова в сети, оставлен последним'],
+    back:['back online; priority restored', 'снова в сети, приоритет восстановлен']};
+const EVENT_TITLES = {'quota-warn':['Data cap warning reached', 'Достигнут порог лимита трафика'],
+    'quota-exceeded':['Data cap reached', 'Лимит трафика исчерпан'],
+    'session-down':['Connection dropped', 'Подключение прервано'], 'session-up':['Connection established', 'Подключение установлено'],
     'recovery-start':['Recovery', 'Восстановление'], 'recovery-end':['Recovery finished', 'Восстановление завершено'],
-    added:['Modem found', 'Модем найден'], reattached:['Modem back on USB', 'Модем снова подключён к USB'],
-    removed:['Modem gone from USB', 'Модем отключён от USB'], internet:['Internet through the modem', 'Интернет через модем'],
+    added:['Modem found', 'Модем найден'], reattached:['Modem reconnected (USB)', 'Модем снова подключён по USB'],
+    removed:['Modem unplugged (USB)', 'Модем отключён от USB'], internet:['Internet via modem', 'Интернет через модем'],
     failover:['Traffic switching', 'Переключение трафика']};
 function eventPair(kind, detail) {
     let title = EVENT_TITLES[kind];
     if (!title) return null;
     let d = type(detail) == 'string' ? detail : '', why = null, m;
     if (kind == 'added' || kind == 'reattached')
-        why = FOUND_WHY[d] || (index(d, 'attachment') >= 0 ? ['its USB connection changed', 'изменилось USB-подключение'] :
-                               index(d, 'ports') >= 0 ? ['its ports changed', 'сменились порты'] : null);
+        why = FOUND_WHY[d] || (index(d, 'attachment') >= 0 ? ['USB port changed', 'изменилось USB-подключение'] :
+                               index(d, 'ports') >= 0 ? ['modem ports changed', 'сменились порты'] : null);
     else if (kind == 'internet') why = NET_WHY[d];
     else if (kind == 'failover' && (m = match(d, /^([a-z]{1,12}) ([A-Za-z0-9_.-]{1,15})$/)) && MOVE_WHY[m[1]])
         why = [m[2] + ': ' + MOVE_WHY[m[1]][0], m[2] + ': ' + MOVE_WHY[m[1]][1]];
@@ -328,12 +328,12 @@ function eventPair(kind, detail) {
 }
 
 // UI projection only: raw enum values never appear in Telegram messages. Each word in English and Russian (lang.uc)
-const STATE_WORDS = {ok:['works', 'работает'], starting:['starting', 'запуск'], offline:['does not answer', 'не отвечает'],
+const STATE_WORDS = {ok:['online', 'работает'], starting:['starting', 'запуск'], offline:['not responding', 'не отвечает'],
     unknown:['no data', 'нет данных'], connected:['connected', 'установлено'], connecting:['connecting', 'устанавливается'],
     disconnected:['disconnected', 'нет'], failed:['error', 'ошибка'], available:['available', 'доступен'],
-    unavailable:['unavailable', 'недоступен'], limited:['limited access', 'доступ ограничен (белый список)'], up:['works', 'работает'],
-    down:['does not work', 'не работает'], carrying:['main', 'основной'], ready:['ready', 'готов'],
-    checking:['checking', 'проверяется'], healthy:['works', 'работает'], degraded:['unstable', 'нестабильно'],
+    unavailable:['unavailable', 'недоступен'], limited:['whitelist only', 'только белый список'], up:['running', 'работает'],
+    down:['offline', 'не работает'], carrying:['primary', 'основной'], ready:['ready', 'готов'],
+    checking:['checking', 'проверяется'], healthy:['running', 'работает'], degraded:['unstable', 'нестабильно'],
     no_sim:['no SIM card', 'нет SIM-карты'], no_sim_card:['no SIM card', 'нет SIM-карты']};
 function stateWord(value) {
     return W(STATE_WORDS[value]) || T('no data', 'нет данных');	// a new engine word must not reach Telegram raw
@@ -341,19 +341,19 @@ function stateWord(value) {
 // the engine's quota.state (UBUS-API: none | ok | warn | exceeded)
 // after the numbers, of «Лимит трафика» (masculine): «1,0 МБ из 4,0 ГБ · в норме» (the owner 2026-10-28: «в пределах ужасно
 // звучит» for Russian)
-const QUOTA_WORDS = {none:['not set', 'не задан'], ok:['fine', 'в норме'], warn:['nearly used up', 'почти исчерпан'],
-    exceeded:['used up', 'исчерпан']};
+const QUOTA_WORDS = {none:['not set', 'не задан'], ok:['OK', 'в норме'], warn:['near cap', 'почти исчерпан'],
+    exceeded:['cap reached', 'исчерпан']};
 function quotaWord(value) {
     return W(QUOTA_WORDS[value]) || T('no data', 'нет данных');
 }
 // the engine's uplink roles (UBUS-API «uplink»), worded as the LuCI dashboard says them
-const ROLE_WORDS = {carrying:['Main channel', 'Основной канал'], backup_ready:['Backup channel, ready', 'Резервный канал, готов'],
+const ROLE_WORDS = {carrying:['Primary uplink', 'Основной канал'], backup_ready:['Backup uplink (ready)', 'Резервный канал, готов'],
     backup_not_ready:['Backup channel, not ready', 'Резервный канал, не готов'],
     backup_limited:['Backup channel, limited access', 'Резервный канал, только белый список'],
-    no_internet:['No internet access', 'Нет доступа в интернет'], limited:['Limited access', 'Доступ ограничен (белый список)'],
-    checking:['Checking the link', 'Проверка связи'], down:['Not connected', 'Не подключён']};
+    no_internet:['No internet access', 'Нет доступа в интернет'], limited:['Whitelist only', 'Ограниченный доступ (белый список)'],
+    checking:['Checking connectivity', 'Проверка связи'], down:['Not connected', 'Не подключён']};
 function roleWord(value) {
-    return W(ROLE_WORDS[value]) || T('Internet channel', 'Канал доступа в интернет');
+    return W(ROLE_WORDS[value]) || T('Internet uplink', 'Канал доступа в интернет');
 }
 
 // ucode as pinned by OpenWrt 24.10 and 25.12 does not parse `export function` declarations

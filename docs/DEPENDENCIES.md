@@ -2,15 +2,15 @@
 
 Источник истины: `Makefile` и `packages/*/Makefile` в этом репозитории, а для QModem — [FUjr/QModem, закреплённый коммит `3196ab787e06f93ef343d0beceadd9758e78ef8b`](https://github.com/FUjr/QModem/tree/3196ab787e06f93ef343d0beceadd9758e78ef8b/application). Состав ниже — **заявленные зависимости пакетов**, а не гарантия наличия каждого имени в каждом feed. `apk` (OpenWrt 25.12.6) и `opkg` (OpenWrt 24.10.8) сами разрешают `DEPENDS`/`EXTRA_DEPENDS`; ручная установка всего списка не нужна.
 
-## Наш комплект: обязательные зависимости (r2)
+## Наш комплект: обязательные зависимости
 
 | Пакет | Заявленные зависимости из Makefile | Установка |
 | --- | --- | --- |
 | `medvemodem` | `libjson-c`; `jsonfilter (>=0)`, `modemmanager (>=0)`, `qmi-utils (>=0)` как `EXTRA_DEPENDS` | **Движок обязателен**. Даже если отдельному модему не нужен ModemManager, текущий пакетный рецепт формально требует его. `libubox`, `libubus`, `libuci` статически собраны в движок, отдельно для него не нужны. |
-| `luci-app-medvemodem` | `luci-base`, `medvemodem` и **точная версия** `medvemodem (=0.16.0_alpha1-r2)` через `EXTRA_DEPENDS` | Для LuCI обязателен; движок и интерфейс должны быть **одной ревизии**. `luci-base/host` — зависимость **сборки**, не роутера. |
-| `medvemodem-bot` | `medvemodem (>=0.16.0_alpha1-r2)`, `ucode`, `ucode-mod-ubus`, `ucode-mod-uloop`, `ucode-mod-fs`, `ucode-mod-uci`, `ucode-mod-log`, `ucode-mod-digest`, `curl`, `ca-bundle`, `jq` | Опционально, только для Telegram-бота. |
-| `luci-app-medvemodem-bot` | `luci-base`, `medvemodem-bot`, `luci-app-medvemodem` | Опционально, вместе с ботом, если нужна его страница LuCI. |
-| `medvemodem-lpac` | `libcurl` | Опционально для расширенной работы с eSIM. Его `stdio`-драйвер входит в базовый пакет. Независимая версия lpac **не обязана** иметь ревизию движка r2. |
+| `luci-app-medvemodem` | `luci-base`, `medvemodem` и **точная версия** `medvemodem (=<версия>-r<N>)` того же релиза через `EXTRA_DEPENDS` | Для LuCI обязателен; движок и интерфейс должны быть **одной ревизии**. `luci-base/host` — зависимость **сборки**, не роутера. |
+| `medvemodem-bot` | `medvemodem (>=<версия>-r<N>)` того же или более нового релиза, `ucode`, `ucode-mod-ubus`, `ucode-mod-uloop`, `ucode-mod-fs`, `ucode-mod-uci`, `ucode-mod-log`, `ucode-mod-digest`, `curl`, `ca-bundle`, `jq` | Опционально, только для Telegram-бота. |
+| `luci-app-medvemodem-bot` | `luci-base`, `medvemodem-bot`, `luci-app-medvemodem`; `medvemodem-bot` и `luci-app-medvemodem` не старше своего релиза через `EXTRA_DEPENDS` (его русский перевод лежит в каталоге `luci-app-medvemodem`) | Опционально, вместе с ботом, если нужна его страница LuCI. |
+| `medvemodem-lpac` | `libcurl` | Опционально для расширенной работы с eSIM. Его `stdio`-драйвер входит в базовый пакет. Независимая версия lpac **не обязана** совпадать с ревизией движка. |
 | `medvemodem-lpac-uqmi` | `medvemodem-lpac`, `uqmi (>=0)` через `EXTRA_DEPENDS` | Только при нужном QMI/APDU-транспорте. |
 | `medvemodem-lpac-mbim` | `medvemodem-lpac`, `libmbim` | Только при нужном MBIM/APDU-транспорте; этот пакет не обязательно входит в стандартную сборочную матрицу. |
 | `medvemodem-lpac-qmi` | `medvemodem-lpac`, `libqmi` | Только при нужном libqmi/APDU-транспорте; этот пакет не обязательно входит в стандартную сборочную матрицу. |
@@ -19,7 +19,7 @@
 
 ## Отдельный QModem Release: зависимости закреплённого upstream
 
-[Постоянный QModem Release](https://github.com/Medvedolog/medvemodem/releases/tag/qmodem-3.3.0_p20261108-r1): шесть архивов под `aarch64_cortex-a53`, `aarch64_generic`, `x86_64` и линии OpenWrt `24.10`/`25.12`. Установщик MedveModem получает его отдельно; QModem LuCI **не входит** в этот выпуск.
+[Постоянный QModem Release](https://github.com/Medvedolog/medvemodem/releases/tag/qmodem-3.3.0_p20261108-r2): шесть архивов под `aarch64_cortex-a53`, `aarch64_generic`, `x86_64` и линии OpenWrt `24.10`/`25.12`. Установщик MedveModem получает его отдельно; QModem LuCI **не входит** в этот выпуск.
 
 | Пакет | Зависимости в закреплённом исходном Makefile |
 | --- | --- |

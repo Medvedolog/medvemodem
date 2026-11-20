@@ -17,25 +17,25 @@ function cardOf(id, result) {
         next:ui.shortKey(state.deviceSafe[ids[(n + 1) % total]]), result});
 }
 // the engine's answer to an action, in words for the toast and the card
-const REFUSAL = {'the modem is frozen by the operator':['the modem\'s management is paused: resume it first',
-                                                        'управление модемом приостановлено — сначала возобновите управление'],
-                 'the modem has no network interface yet':['the modem has no network interface yet', 'у модема ещё нет сетевого интерфейса'],
-                 'a configuration change is being applied':['settings are being applied, try again in a minute',
-                                                            'идёт применение настроек, повторите через минуту'],
-                 'an eSIM operation holds this modem':['an eSIM operation is running', 'идёт операция с eSIM']};
+const REFUSAL = {'the modem is frozen by the operator':['modem management is paused — resume it first',
+                                                        'управление приостановлено — сначала возобновите его'],
+                 'the modem has no network interface yet':['modem has no network interface yet', 'у модема ещё нет сетевого интерфейса'],
+                 'a configuration change is being applied':['applying settings — try again in a minute',
+                                                            'применяются настройки, повторите через минуту'],
+                 'an eSIM operation holds this modem':['eSIM operation in progress', 'идёт операция с eSIM']};
 // the engine's own warnings beside a result (audit R03: a «done» whose live.routes did not move or whose QModem dial kept on
 // was told as a plain success)
-const WARN = {'netifd did not take the interface down':['the interface did not go down', 'не удалось отключить интерфейс'],
-              'netifd did not bring the interface up':['the interface did not come up', 'не удалось включить интерфейс'],
-              'QModem\'s helper is busy; its dial was not stopped':['QModem\'s dial was not stopped', 'подключение в QModem не остановлено'],
-              'QModem\'s helper is busy; its dial was not started again':['QModem\'s dial was not started again', 'подключение в QModem не возобновлено']};
+const WARN = {'netifd did not take the interface down':['failed to bring interface down', 'не удалось отключить интерфейс'],
+              'netifd did not bring the interface up':['failed to bring interface up', 'не удалось включить интерфейс'],
+              'QModem\'s helper is busy; its dial was not stopped':['failed to stop QModem dialing', 'не удалось остановить дозвон QModem'],
+              'QModem\'s helper is busy; its dial was not started again':['failed to restart QModem dialing', 'не удалось возобновить дозвон QModem']};
 function actionWarnings(r) {
     let out = [];
     for (let k in ['interface_warning', 'qmodem_warning'])
         if (type(r?.[k]) == 'string') push(out, lang.W(WARN[r[k]]) || label(r[k]));
     if (r?.routes == 'failed')
-        push(out, lang.T('the live live.routes did not move: the order is saved for the next connection',
-                         'действующие маршруты не изменились; сохранённый порядок применится при следующем подключении'));
+        push(out, lang.T('active routes unchanged; priority saved for next connection',
+                         'активные маршруты не обновились: приоритет сохранён до следующего подключения'));
     return out;
 }
 // four outcomes (audit R03): done, started (wait), done with a warning, not done
@@ -47,11 +47,11 @@ function actionWords(r) {
                 text:res == 'started' ? lang.T('started', 'запущено') : lang.T('done', 'готово')};
     }
     let w = lang.W(REFUSAL[why]) || (type(why) == 'string' ? label(why) : null);
-    return {ok:false, text:(res == 'busy' ? lang.T('busy', 'занято') : res == 'refused' ? lang.T('refused', 'отказано') :
-                            lang.T('not done', 'не выполнено')) + (w ? ': ' + w : '')};
+    return {ok:false, text:(res == 'busy' ? lang.T('busy', 'занято') : res == 'refused' ? lang.T('denied', 'отказано') :
+                            lang.T('failed', 'не выполнено')) + (w ? ': ' + w : '')};
 }
-const DONE = {mn:['➡️ First among the modems', '➡️ Первый среди модемов'], up:['▶️ Connecting started', '▶️ Подключение запущено'],
-              dn:['⏹ Disconnected', '⏹ Отключён'], rc:['🔁 Reconnecting started', '🔁 Переподключение запущено'],
+const DONE = {mn:['➡️ Set as primary modem', '➡️ Основной среди модемов'], up:['▶️ Connecting…', '▶️ Подключение запущено'],
+              dn:['⏹ Disconnected', '⏹ Отключён'], rc:['🔁 Reconnecting…', '🔁 Переподключение запущено'],
               rr:['📡 Registered in the network again', '📡 Модем заново зарегистрирован в сети'],
               rs:['♻️ The modem restart started', '♻️ Перезагрузка модема запущена'],
               fz:['🧊 Management paused', '🧊 Управление приостановлено'], uf:['☀️ Management resumed', '☀️ Управление возобновлено']};
@@ -72,7 +72,7 @@ function runAction(op, id) {
     // reregister answers {ok, refused|error}: in the words of the others
     if (op == 'rr' && type(r) == 'object')
         r = r.ok === true ? {result:'done'} : {result:r.refused ? 'refused' : 'failed', reason:r.refused || r.error};
-    let w = r ? actionWords(r) : {ok:false, text:lang.T('the MedveModem service did not answer', 'служба MedveModem не ответила')};
+    let w = r ? actionWords(r) : {ok:false, text:lang.T('MedveModem service did not respond', 'служба MedveModem не ответила')};
     log.syslog(log.LOG_INFO, 'control_%s_%s', op, w.ok ? w.level : 'refused');
     return w;
 }
@@ -108,25 +108,25 @@ function draftFresh() {
 }
 function onExclude(pressed, answer, edit) {
     let cands = excludeCands();
-    if (pressed.kind == 'exclude_cancel') { state.exDraft = null; answer(lang.T('Changes dropped', 'Изменения отменены')); edit({text:ui.header(view()), markup:ui.menu()}); return; }
+    if (pressed.kind == 'exclude_cancel') { state.exDraft = null; answer(lang.T('Changes discarded', 'Изменения отменены')); edit({text:ui.header(view()), markup:ui.menu()}); return; }
     if (pressed.kind == 'exclude') { if (pressed.page == 0 && !state.exDraft) draftFresh(); answer(''); edit(ui.excludePage(cands, draftFresh(), pressed.page, CONTROL, time())); return; }
-    if (!CONTROL) { answer(lang.T('Management is off in LuCI', 'Управление выключено в LuCI')); edit(ui.excludePage(cands, draftFresh(), 0, false, time())); return; }
+    if (!CONTROL) { answer(lang.T('Control disabled in LuCI', 'Управление отключено в LuCI')); edit(ui.excludePage(cands, draftFresh(), 0, false, time())); return; }
     let draft = draftFresh();
     if (pressed.kind == 'exclude_tick') {
         let c = null;
         for (let x in cands) if (x.device == pressed.device) { c = x; break; }
         // another draft (applied, dropped, older than 30 min) or a channel gone: the menu is drawn again, nothing ticked
         if (!c || pressed.draft != sprintf('%x', (draft.started || 0) % 0xffffff)) {
-            answer(lang.T('The channel list changed', 'Список каналов изменился'));
+            answer(lang.T('Uplink list changed', 'Список каналов изменился'));
             edit(ui.excludePage(cands, draft, 0, true, time()));
             return;
         }
         if (draft.sel[c.device]) delete draft.sel[c.device]; else draft.sel[c.device] = true;
-        answer(lang.T('The choice is updated', 'Выбор обновлён'));
+        answer(lang.T('Selection updated', 'Выбор обновлён'));
         edit(ui.excludePage(cands, draft, pressed.page, true, time()));
         return;
     }
-    if (!ui.stampFresh(pressed.stamp, time())) { answer(lang.T('The button is out of date', 'Кнопка устарела')); edit(ui.excludePage(cands, draft, 0, true, time())); return; }
+    if (!ui.stampFresh(pressed.stamp, time())) { answer(lang.T('Button expired', 'Кнопка устарела')); edit(ui.excludePage(cands, draft, 0, true, time())); return; }
     let devices = filter(keys(draft.sel), (d) => draft.sel[d]), r = null;
     try { r = state.bus ? state.bus.call('medvemodem', 'failover_manual', {devices, expect:draft.base}) : null; } catch (e) { r = null; }
     log.syslog(log.LOG_INFO, 'control_exclusions_%s', r?.result == 'done' ? 'done' : 'refused');
@@ -134,8 +134,8 @@ function onExclude(pressed, answer, edit) {
     state.last.uplink = 0;
     freshen();
     if (r?.result == 'done') answer(lang.T('Exclusions applied: ', 'Исключения применены: ') + length(devices));
-    else answer(r?.result == 'changed' ? lang.T('The list was changed in LuCI: the draft is dropped', 'Список изменили в LuCI — черновик сброшен') :
-                                         lang.T('Not applied: the MedveModem service did not answer', 'Не применено: служба MedveModem не ответила'));
+    else answer(r?.result == 'changed' ? lang.T('List modified in LuCI — draft discarded', 'Список изменили в LuCI — черновик сброшен') :
+                                         lang.T('Failed to apply: MedveModem service not responding', 'Не применено: служба MedveModem не ответила'));
     edit(ui.excludePage(excludeCands(), draftFresh(), 0, true, time()));
 }
 

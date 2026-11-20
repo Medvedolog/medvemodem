@@ -96,7 +96,7 @@ other scripts contributes useful generic Quectel SMS/PDU/storage experience, whi
 | `AT+QTEMP` | hardware.temperature | **READ** | Temperature sensors on supported Quectel firmware. | a field report/QModem |
 | `AT+QCFG="band"` | radio.band | **READ** | Read Quectel legacy band masks. | a field report EP06/EM12 |
 | `AT+QCFG="band",<gw-mask>,<lte-mask>,<td-mask>[,<effect>]` | radio.band | **MUTATING** | Write legacy Quectel band masks. Exact argument count/semantics are firmware-specific. | a field report common Quectel profiles |
-| `AT+QCFG="band",0,<lte-mask>,0,1` | radio.band | **MUTATING** | EM12-G form used by current archived modem utility profile to replace LTE mask. | a field report EM12-G profile |
+| `AT+QCFG="band",0,<lte-mask>,0,1` | radio.band | **MUTATING** | EM12-G form used by current another modem manager profile to replace LTE mask. | a field report EM12-G profile |
 | `AT+QCFG="nwscanmode"` | radio.mode | **READ** | Read legacy network scan mode. | a field report/QModem |
 | `AT+QCFG="nwscanmode",0` | radio.mode | **MUTATING** | Auto mode on EP06-E field profile. | a field report EP06-E |
 | `AT+QCFG="nwscanmode",2` | radio.mode | **MUTATING** | WCDMA-only on EP06-E field profile. | a field report EP06-E |

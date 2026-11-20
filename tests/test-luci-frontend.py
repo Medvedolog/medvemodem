@@ -67,7 +67,7 @@ for token in (
     "mm.toast('backend-' + this.id",
     "c.ownerStatus = E('div'",
     "The managing service was not saved in the modem configuration.",
-    "The handover has started. Waiting for the modem to change its managing service",
+    "Handover started. Waiting for the new management backend to take over",
     "['netifd-qmi', 'netifd-mbim', 'medvemodem-at']",
     "portCtl.node && (/^qmi_wwan",
     "nativeTransport && /^qmi_wwan",
@@ -118,8 +118,8 @@ if "[h.title, h.ownerTag, nm.open" in modem:
     failures.append("modem.js: owner badge remains beside the modem title")
 if "hilink:" in COMMON or "['WEB'" in COMMON:
     failures.append("common.js: redundant WEB owner badge is still defined")
-if "var VIEW_VERSION = '0.16.0-alpha1-r10';" not in settings:
-    failures.append("settings.js: expected r9 source version")
+if "var VIEW_VERSION = '0.16.0-alpha1-r12';" not in settings:
+    failures.append("settings.js: expected r11 source version")
 
 if failures:
     print("LuCI frontend contract check FAILED:", file=sys.stderr)

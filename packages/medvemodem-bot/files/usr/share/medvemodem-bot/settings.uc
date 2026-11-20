@@ -14,22 +14,22 @@ const TOGGLES = {
     b:['events', 'backup', ['Backup modems', 'Резервные модемы'], '1'],
     s:['events', 'services', ['Service restarts', 'Перезапуски служб'], '1'],	/* ModemManager, QModem */
     k:['events', 'kernel', ['Router hardware', 'Сбои роутера'], '1'],	/* the kernel's words: dead USB controller, voltage, hangs */
-    q:['events', 'quota', ['Traffic limits', 'Лимиты трафика'], '1'],
-    r:['events', 'restart', ['Summary at start', 'Сводка при запуске'], '1'],	/* «MedveModem restarted» */
+    q:['events', 'quota', ['Data caps', 'Лимиты трафика'], '1'],
+    r:['events', 'restart', ['Startup summary', 'Сводка при запуске'], '1'],	/* «MedveModem restarted» */
     f:['main', 'sms_forward', ['New SMS', 'Новые SMS'], '0'],
     h:['events', 'quiet', ['Quiet hours', 'Тихие часы'], '0'],
-    u:['events', 'quiet_urgent', ['“No internet” with sound', '«Нет интернета» со звуком'], '1']
+    u:['events', 'quiet_urgent', ['"No internet" with sound', '«Нет интернета» со звуком'], '1']
 };
 const MODES = ['smart', 'critical', 'all', 'off'];
 const MODE_WORD = {smart:['smart', 'сводные'], critical:['important only', 'только важные'], all:['all at once', 'все сразу'],
                    off:['off', 'выключены']};
 const MODE_NOTE = {
-    smart:['one message per situation: a lost link after 90 s, a backup modem after 10 min, and how it ended',
-           'объединённые уведомления: потеря связи — через 90 с, резервного модема — через 10 мин; затем итог восстановления'],
-    critical:['only when the internet is gone and a traffic limit is used up',
-              'только о потере интернета и исчерпании лимита трафика'],
-    all:['every modem at once, backups too, after 90 s', 'о каждом модеме, включая резервные, через 90 с'],
-    off:['the bot answers but sends nothing by itself', 'бот отвечает на команды, но не присылает уведомления']
+    smart:['one alert per incident: primary drop after 90 s, backup drop after 10 min, plus recovery',
+           'одно сообщение на инцидент: обрыв связи через 90 с, сбой резервного модема через 10 мин и итог'],
+    critical:['internet outages and exhausted data caps only',
+              'только потеря интернета и исчерпание лимита трафика'],
+    all:['all modems including backups, after 90 s', 'обо всех модемах, включая резервные, через 90 с'],
+    off:['replies to commands, sends no alerts', 'бот отвечает на команды, но не шлёт уведомления']
 };
 
 // callback_data of these pages (ui.parseCallback hands every «g…» here)
@@ -106,13 +106,13 @@ function mainPage(n) {
         T('Notifications: ', 'Уведомления: ') + B(W(MODE_WORD[mode])) +
             (on(n, 'h') ? T(' · quiet hours ', ' · тихие часы ') + C(quietSpan(n.events)) : ''),
         T('Proxies to Telegram: ', 'Прокси для Telegram: ') +
-            (p.configured ? sprintf(T('%d of mine, %d on', 'добавлено вручную: %d, включено: %d'), p.configured, p.enabled) : T('none of mine', 'добавленных вручную нет')) +
+            (p.configured ? sprintf(T('%d custom (%d enabled)', 'своих: %d (вкл.: %d)'), p.configured, p.enabled) : T('no custom proxies', 'добавленных вручную нет')) +
             (p.local ? sprintf(T(' · found on the router: %d', ' · найдено на роутере: %d'), p.local) : '')];
     // SSClash's or nikki's mixed port to switch on: said here too, first among what the bot asks of the admin
     for (let a in clashAdvice(n.clash)) push(lines, a);
     if (!n.allowed)
-        push(lines, I(T('Changing the settings from Telegram is off in LuCI: the pages only show them.',
-                        'Изменение настроек через Telegram запрещено в LuCI. Доступен только просмотр.')));
+        push(lines, I(T('Editing settings from Telegram is disabled in LuCI (view-only).',
+                        'Изменение настроек из Telegram отключено в LuCI (только просмотр).')));
     return {text:joined(lines, '\n'), markup:{inline_keyboard:[
         [{text:T('🔔 Notifications', '🔔 Уведомления'), callback_data:'gn'}, {text:T('🌐 Proxies', '🌐 Прокси'), callback_data:'gp'}],
         [{text:T('🏠 Menu', '🏠 Меню'), callback_data:'v:m'}]]}};
@@ -123,9 +123,9 @@ function notifyPage(n, note) {
     let lines = ['🔔 ' + B(T('Notifications', 'Уведомления')),
         T('Mode: ', 'Режим: ') + B(W(MODE_WORD[mode])) + ' — ' + W(MODE_NOTE[mode]),
         on(n, 'h') ? T('Quiet hours ', 'Тихие часы ') + C(quietSpan(n.events)) +
-            (on(n, 'u') ? T(': without sound, except “no internet” and a used-up limit', ': без звука, кроме «нет интернета» и исчерпанного лимита')
-                        : T(': all without sound', ': всё без звука')) +
-            T('. Nothing is lost.', '. Доставка не отключается.') : T('Quiet hours are off.', 'Тихие часы выключены.')];
+            (on(n, 'u') ? T(': silent except "No internet" and data cap alerts', ': без звука, кроме «нет интернета» и лимита трафика')
+                        : T(': all silent', ': всё без звука')) +
+            T('. All alerts are still delivered.', '. Все уведомления доставляются.') : T('Quiet hours are off.', 'Тихие часы выключены.')];
     if (note) push(lines, note);
     let rows = [[{text:T('Mode: ', 'Режим: ') + W(MODE_WORD[mode]) + ' ↻', callback_data:'gm'}],
                 [{text:dotted(n, 'b'), callback_data:'gt:b'}, {text:dotted(n, 's'), callback_data:'gt:s'}],
@@ -143,12 +143,12 @@ function where(p) {
     return (m ? m[1] + '://' : '') + (p.user ? p.user + '@' : '') + (m ? m[2] : p.endpoint || '');
 }
 // why a check failed, in words (the owner 2026-11-02: «не ответил» alone, and nothing listened on the address)
-const CURL_WHY = {curl_exit_7:['nothing accepts connections at this address', 'по этому адресу соединения не принимаются'],
-                  curl_exit_28:['no answer within 8 s', 'нет ответа за 8 с'], curl_exit_5:['the proxy\'s name does not resolve', 'не удалось определить IP-адрес прокси'],
-                  curl_exit_97:['the proxy refused (a login needed or a wrong one)', 'прокси отклонил вход: проверьте имя пользователя и пароль'],
-                  curl_exit_56:['the proxy cut the connection', 'прокси оборвал соединение'], curl_exit_35:['the TLS handshake failed', 'не удалось установить TLS'],
-                  curl_exit_60:['a forged certificate on the way', 'не удалось проверить сертификат соединения'], curl_exit_52:['an empty answer', 'пустой ответ']};
-const STATE_WHY = {bad_token:['Telegram refused the token', 'Telegram не принял токен'], forbidden:['Telegram refused the token', 'Telegram не принял токен'],
+const CURL_WHY = {curl_exit_7:['connection refused (nothing listening)', 'соединение отклонено (порт не отвечает)'],
+                  curl_exit_28:['timed out after 8 s', 'нет ответа за 8 с'], curl_exit_5:['failed to resolve proxy hostname', 'не удалось разрешить адрес прокси'],
+                  curl_exit_97:['proxy auth required or invalid credentials', 'прокси требует авторизацию или неверный логин/пароль'],
+                  curl_exit_56:['proxy closed the connection', 'прокси оборвал соединение'], curl_exit_35:['TLS handshake failed', 'ошибка TLS-соединения'],
+                  curl_exit_60:['invalid or intercepted TLS certificate', 'неверный или подменённый сертификат'], curl_exit_52:['empty response', 'пустой ответ']};
+const STATE_WHY = {bad_token:['Telegram rejected token', 'Telegram не принял токен'], forbidden:['Telegram rejected token', 'Telegram не принял токен'],
                    telegram_rejected:['Telegram refused the request', 'Telegram отклонил запрос'], rate_limited:['Telegram asks to wait', 'Telegram просит подождать']};
 function failWords(c) {
     let w = (type(c.error) == 'string' && CURL_WHY[c.error]) || (type(c.state) == 'string' && STATE_WHY[c.state]) || null;
@@ -167,10 +167,10 @@ function checkWords(c, now) {
 
 // list: [{sec, title, endpoint, user, enabled, current, check}], ctx: {local:[names], current, now, allowed, mode, note, clash}
 function proxiesPage(list, ctx) {
-    let lines = ['🌐 ' + B(T('Proxies to Telegram', 'Прокси для Telegram')),
+    let lines = ['🌐 ' + B(T('Telegram proxies', 'Прокси для Telegram')),
         T('The bot tries them in this order, then ', 'Бот пробует их по очереди, затем ') +
-            (ctx.mode == 'proxy' ? T('nothing else (only through a proxy)', 'больше ничего (только через прокси)')
-                                 : T('the direct way and the other modems', 'напрямую и через другие модемы')) + '.'];
+            (ctx.mode == 'proxy' ? T('stops (proxy-only mode)', 'остановка (только прокси)')
+                                 : T('direct connection and backup modems', 'напрямую и через другие модемы')) + '.'];
     for (let a in clashAdvice(ctx.clash)) push(lines, a);
     let rows = [];
     for (let p in list) {
@@ -187,22 +187,22 @@ function proxiesPage(list, ctx) {
             for (let e in (type(ctx.endpoints) == 'array' ? ctx.endpoints : [])) {
                 let m = match(e, /^socks5h?:\/\/([^\/@]+):([0-9]{1,5})$/);
                 if (m && m[2] == lp[2] && m[1] != lp[1]) {
-                    push(lines, '   ↳ ' + sprintf(T('on this port the router listens at %s: change the address or remove this one, the bot takes that one by itself',
-                                                    'на этом порту работает %s: исправьте адрес или удалите запись — бот обнаружит этот прокси автоматически'), C(e)));
+                    push(lines, '   ↳ ' + sprintf(T('router listens on %s for this port — update the address or remove this entry (auto-detected)',
+                                                    'на этом порту роутер слушает %s: исправьте адрес или удалите запись — бот найдёт его сам'), C(e)));
                     break;
                 }
             }
         if (!ctx.allowed) continue;
         // the name across the row (three in a row cut it), its check and removal below
         let name = label(p.title || p.sec);
-        push(rows, [{text:(p.enabled ? T('⏸ Switch off “', '⏸ Выключить «') : T('▶️ Switch on “', '▶️ Включить «')) + name + T('”', '»'),
+        push(rows, [{text:(p.enabled ? T('⏸ Disable "', '⏸ Выключить «') : T('▶️ Enable "', '▶️ Включить «')) + name + T('”', '»'),
                      callback_data:'ge:' + p.sec}]);
         let tools = [];
         if (p.enabled) push(tools, {text:T('🔍 Check', '🔍 Проверить'), callback_data:'gc:' + p.sec});
         push(tools, {text:T('🗑 Remove', '🗑 Удалить'), callback_data:'gd:' + p.sec});
         push(rows, tools);
     }
-    if (!length(list)) push(lines, I(T('No proxies of your own yet.', 'Прокси ещё не добавлены вручную.')));
+    if (!length(list)) push(lines, I(T('No custom proxies yet.', 'Прокси ещё не добавлены вручную.')));
     // the ones found on the router, each as the own ones (the owner, 2026-11-13: «как подкоп бот»): its address (never
     // a password), which one the bot is on, its last check and a check button; nothing to switch off: they are the
     // managers' own
@@ -241,16 +241,16 @@ function askQuiet(events) {
     return {text:'⏰ ' + B(T('Quiet hours', 'Тихие часы')) + '\n' +
         T('Send the start and the end, for example ', 'Пришлите начало и конец, например ') + C('23:00-07:00') +
         T(' (now ', ' (сейчас ') + C(quietSpan(events)) + ').\n' +
-        T('In these hours notifications come without sound.', 'В эти часы уведомления приходят без звука.'),
+        T('Notifications are delivered silently during these hours.', 'В эти часы уведомления приходят без звука.'),
         markup:{inline_keyboard:[[{text:T('✖️ Cancel', '✖️ Отмена'), callback_data:'gn'}]]}};
 }
 function askProxy() {
-    return {text:'➕ ' + B(T('A proxy to Telegram', 'Прокси для Telegram')) + '\n' +
-        T('Send its address in one message:\n', 'Пришлите адрес одним сообщением:\n') +
+    return {text:'➕ ' + B(T('Telegram proxy', 'Прокси для Telegram')) + '\n' +
+        T('Send the proxy URL in one message:\n', 'Пришлите адрес одним сообщением:\n') +
         C('socks5h://host:port') + '\n' + C('socks5h://login:password@host:port#Name') + '\n' +
         T('or a ', 'или ссылку ') + C('https://t.me/socks?server=…') + T(' link. HTTP(S) proxies too; ', '. Подойдут и HTTP(S)-прокси; ') +
-        T('MTProto (t.me/proxy) is for the Telegram app only.\n', 'MTProto (t.me/proxy) — только для приложения Telegram.\n') +
-        T('The bot deletes your message at once and checks the proxy before using it.',
+        T('MTProto (t.me/proxy) works only in the Telegram app.\n', 'MTProto (t.me/proxy) — только для приложения Telegram.\n') +
+        T('Your message is deleted immediately and the proxy is tested before use.',
           'Бот сразу удалит ваше сообщение и проверит прокси, прежде чем им пользоваться.'),
         markup:{inline_keyboard:[[{text:T('✖️ Cancel', '✖️ Отмена'), callback_data:'gp'}]]}};
 }
@@ -330,26 +330,26 @@ function parseProxy(text) {
     return {endpoint:s, username:user, password:pass, title, socks5};
 }
 const PROXY_ERROR = {
-    format:['Not understood. An example: socks5h://host:1080 or socks5h://login:password@host:1080#Name',
-            'Неверный адрес. Пример: socks5h://host:1080 или socks5h://user:pass@host:1080#Имя'],
-    mtproto:['This is an MTProto proxy: only the Telegram app speaks it, the bot needs SOCKS5 or HTTP(S).',
-             'MTProto-прокси предназначен для приложения Telegram. Боту нужен SOCKS5 или HTTP(S).'],
-    scheme:['Only socks5h://, socks5://, http:// and https:// proxies.', 'Подходят только прокси socks5h://, socks5://, http:// и https://.'],
-    port:['The port is from 1 to 65535.', 'Порт — от 1 до 65535.'],
-    login:['The login: Latin letters, digits and . _ - @, up to 80.', 'Имя пользователя: латинские буквы, цифры и символы . _ - @, до 80 знаков.'],
-    password:['A login needs its password (up to 256 characters).', 'Если задано имя пользователя, нужен пароль длиной до 256 знаков.'],
-    bad_endpoint:['The address was not taken.', 'Адрес не принят.'], bad_port:['The port is from 1 to 65535.', 'Порт — от 1 до 65535.'],
+    format:['Invalid URL. Example: socks5h://host:1080 or socks5h://user:pass@host:1080#Name',
+            'Неверный формат адреса. Пример: socks5h://host:1080 или socks5h://логин:пароль@host:1080#Имя'],
+    mtproto:['MTProto proxies only work in the Telegram app; the bot requires SOCKS5 or HTTP(S).',
+             'MTProto-прокси подходит только для приложения Telegram; боту нужен SOCKS5 или HTTP(S).'],
+    scheme:['Supported schemes: socks5h://, socks5://, http://, https://.', 'Подходят только прокси socks5h://, socks5://, http:// и https://.'],
+    port:['Port must be 1–65535.', 'Порт — от 1 до 65535.'],
+    login:['Username: up to 80 chars (Latin letters, digits, . _ - @).', 'Имя пользователя: латинские буквы, цифры и символы . _ - @, до 80 знаков.'],
+    password:['Password required with username (up to 256 chars).', 'Если задано имя пользователя, нужен пароль длиной до 256 знаков.'],
+    bad_endpoint:['The address was not taken.', 'Адрес не принят.'], bad_port:['Port must be 1–65535.', 'Порт — от 1 до 65535.'],
     bad_username:['The login was not taken.', 'Имя пользователя не принято.'], bad_password:['The password was not taken.', 'Пароль не принят.'],
     bad_title:['The name was not taken.', 'Имя не принято.'],
-    duplicate:['This proxy is in the list already.', 'Этот прокси уже есть в списке.'],
-    too_many:['There are 20 proxies already: remove one first.', 'Достигнут предел: 20 прокси. Сначала удалите ненужный.'],
+    duplicate:['Proxy already listed.', 'Этот прокси уже в списке.'],
+    too_many:['Limit reached (20 proxies) — remove one first.', 'Достигнут лимит (20 прокси) — сначала удалите лишний.'],
     settings_off:['Changing the settings from Telegram is off in LuCI.', 'Изменение настроек через Telegram запрещено в LuCI.'],
-    sms_off:['SMS in Telegram are off in LuCI.', 'SMS в Telegram выключены в LuCI.'],
-    no_such_proxy:['There is no such proxy any more.', 'Такого прокси уже нет.'],
-    last_route:['This is the bot\'s only way to Telegram: add another proxy first, or allow the direct way in LuCI.',
-                'Это единственный маршрут бота к Telegram. Сначала добавьте другой прокси или разрешите прямое подключение в LuCI.'],
-    unavailable:['The router did not take the change (the settings service did not answer).',
-                 'Роутер не принял изменение (служба настроек не ответила).']
+    sms_off:['SMS in Telegram is disabled in LuCI.', 'SMS в Telegram отключены в LuCI.'],
+    no_such_proxy:['Proxy no longer exists.', 'Такого прокси уже нет.'],
+    last_route:['This is the bot\'s only route to Telegram. Add another proxy or enable direct fallback in LuCI first.',
+                'Это единственный маршрут бота к Telegram: сначала добавьте другой прокси или разрешите прямой выход в LuCI.'],
+    unavailable:['Failed to save change (config service not responding).',
+                 'Не удалось сохранить изменение (служба настроек не ответила).']
 };
 function errorWords(code) { return W(PROXY_ERROR[code] || PROXY_ERROR.unavailable); }
 
@@ -357,11 +357,11 @@ function errorWords(code) { return W(PROXY_ERROR[code] || PROXY_ERROR.unavailabl
 function addedWords(r, parsed) {
     let name = esc(parsed.title || r.section);
     if (r.check?.ok)
-        return '✅ ' + sprintf(T('“%s” added and answers: %d ms. The bot uses it after the proxies above it.',
-                                 '«%s» добавлен и отвечает за %d мс. Бот будет проверять его после прокси выше в списке.'), name, r.check.ms || 0) +
-               (parsed.socks5 ? '\n' + T('socks5:// was written as socks5h://: Telegram\'s name is resolved by the proxy.',
-                                       'socks5:// заменён на socks5h://: DNS-запросы к Telegram выполняются через прокси.') : '');
-    return '⚠️ ' + sprintf(r.check?.code == 'proxy_auth' ? T('“%s” added switched off: the proxy refused the login or password.',
+        return '✅ ' + sprintf(T('Added "%s" (%d ms). Used after higher-priority proxies.',
+                                 '«%s» добавлен (%d мс). Используется после прокси выше в списке.'), name, r.check.ms || 0) +
+               (parsed.socks5 ? '\n' + T('Saved socks5:// as socks5h:// so DNS resolves via the proxy.',
+                                       'socks5:// сохранён как socks5h://, чтобы DNS-запросы шли через прокси.') : '');
+    return '⚠️ ' + sprintf(r.check?.code == 'proxy_auth' ? T('Added "%s" (disabled): proxy rejected credentials.',
                                                             '«%s» добавлен, но выключен: прокси не принял имя пользователя или пароль.')
                                                           : T('“%s” added switched off: it did not answer through to Telegram. Check the address and switch it on.',
                                                             '«%s» добавлен выключенным: через него Telegram не ответил. Проверьте адрес и включите.'), name);

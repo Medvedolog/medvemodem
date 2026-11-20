@@ -12,13 +12,13 @@ import { T, W } from './lang.uc';
 const BUTTONS = [['Status', 'Статус', '/status'], ['Modems', 'Модемы', '/modems'], ['Channels', 'Каналы', '/uplinks'],
                  ['Traffic', 'Трафик', '/quota'], ['Journal', 'Журнал', '/events'], ['Help', 'Справка', '/help']];
 // one table for the «Меню» button and the help (audit 12: three lists drifted apart); /channels is /uplinks
-const COMMANDS = [['menu', 'Summary and buttons', 'Сводка и кнопки'], ['status', 'Router and modem state', 'Состояние роутера и модемов'],
-                  ['modems', 'Modem list', 'Список модемов'], ['channels', 'Internet channels', 'Каналы доступа в интернет'],
+const COMMANDS = [['menu', 'Summary & controls', 'Сводка и кнопки'], ['status', 'Router & modem status', 'Состояние роутера и модемов'],
+                  ['modems', 'Modem list', 'Список модемов'], ['channels', 'Internet uplinks', 'Каналы доступа в интернет'],
                   ['sms', 'Incoming SMS', 'Входящие SMS'], ['send', 'Send an SMS', 'Отправить SMS'], ['ussd', 'A USSD request', 'USSD-запрос'],
-                  ['network', 'Addresses and checks', 'Адреса и проверки'],
-                  ['quota', 'Traffic limits', 'Лимиты трафика'], ['events', 'Latest events', 'Последние события'],
-                  ['log', 'The modems\' log as a file', 'Скачать журнал модемов'],
-                  ['logall', 'The router\'s whole log as a file', 'Скачать полный журнал роутера'], ['settings', 'Notifications and proxies', 'Уведомления и прокси'],
+                  ['network', 'IPs & diagnostics', 'Адреса и проверки'],
+                  ['quota', 'Data caps', 'Лимиты трафика'], ['events', 'Latest events', 'Последние события'],
+                  ['log', 'Download modem log', 'Скачать журнал модемов'],
+                  ['logall', 'Download full router log', 'Скачать полный журнал роутера'], ['settings', 'Notifications and proxies', 'Уведомления и прокси'],
                   ['help', 'Help', 'Справка']];
 
 // no keyboard of buttons under the input field (the owner, 2026-11-03: «убери вечно плавающие кнопки, оставь только
@@ -172,10 +172,10 @@ function techWords(list) {
 const REGISTRATION = {home:['home network', 'домашняя сеть'], roaming:['roaming', 'роуминг'], searching:['searching', 'поиск сети'],
                       denied:['registration denied', 'регистрация отклонена'], idle:['not searching', 'поиск не выполняется']};
 // after «Стабильность:» and «восстановление:», so in lower case: ucode's lc() lowers ASCII only
-const STABILITY = {stable:['stable', 'стабильно'], degraded:['failures seen', 'зафиксированы сбои'],
+const STABILITY = {stable:['stable', 'стабильно'], degraded:['errors detected', 'зафиксированы сбои'],
                    flapping:['frequent reconnections', 'частые переподключения']};
-const RECOVERY = {running:['a step is running', 'выполняется шаг'], cooldown:['a pause after an error', 'пауза после ошибки'],
-                  manual_required:['a check by hand is needed', 'нужна ручная проверка']};
+const RECOVERY = {running:['recovery step running', 'выполняется шаг'], cooldown:['cooldown after error', 'пауза после ошибки'],
+                  manual_required:['manual check required', 'нужна ручная проверка']};
 
 function joined(parts, sep) {
     let out = [];
@@ -195,11 +195,11 @@ function shortName(name) {
 // tunnel: the direct call reached a fake-IP, the router's own tunnel carried it
 function routeWords(route, tunnel) {
     if (!route) return T('no route', 'нет маршрута');
-    if (route.source == 'direct' && tunnel) return T('through the router\'s tunnel (sing-box)', 'через туннель роутера (sing-box)');
+    if (route.source == 'direct' && tunnel) return T('via router tunnel (sing-box)', 'через туннель роутера (sing-box)');
     if (route.source == 'direct') return T('direct', 'напрямую');
-    if (route.source == 'emergency') return T('through the reserve address', 'через резервный адрес');
-    if (route.source == 'modem') return T('through the modem “', 'через модем «') + (label(route.title) || label(substr(route.name, 6))) + T('”', '»');
-    return T('through a proxy (', 'через прокси (') + (label(route.title) || label(route.name)) + ')';
+    if (route.source == 'emergency') return T('via fallback IP', 'через резервный адрес');
+    if (route.source == 'modem') return T('via modem "', 'через модем «') + (label(route.title) || label(substr(route.name, 6))) + T('”', '»');
+    return T('via proxy (', 'через прокси (') + (label(route.title) || label(route.name)) + ')';
 }
 
 // the main link: the carrying uplink's modem
@@ -243,18 +243,18 @@ const NET_DOT = {available:'🟢', limited:'🟡', unavailable:'🔴'};
 // two lines, not one long one wrapped in the chat (the owner 2026-10-28)
 function internetLine(u) {
     if (u.internet == 'limited' && u.tunnel?.ok)
-        return T('Internet: ', 'Интернет: ') + '🟢 ' + T('through the tunnel', 'через туннель') +
+        return T('Internet: ', 'Интернет: ') + '🟢 ' + T('via tunnel', 'через туннель') +
             (u.tunnel.delay_ms != null ? ' (' + u.tunnel.delay_ms + T(' ms', ' мс') + ')' : '') + '\n' +
-            T('Directly: ', 'Напрямую: ') + '🟡 ' + T('only the whitelist', 'только сайты из белого списка');
+            T('Directly: ', 'Напрямую: ') + '🟡 ' + T('whitelist only', 'только белый список');
     return T('Internet: ', 'Интернет: ') + (NET_DOT[u.internet] || '⚪') + ' ' + stateWord(u.internet);
 }
 
 // a channel in a few words: its place and what answers through it, the whitelist said once (the owner 2026-10-28:
 // «зачем по два раза писать про ограниченный БС»)
-const PLACE = {carrying:['main', 'основной'], limited:['main', 'основной'], no_internet:['main', 'основной'],
+const PLACE = {carrying:['primary', 'основной'], limited:['primary', 'основной'], no_internet:['primary', 'основной'],
                backup_ready:['backup', 'резервный'], backup_limited:['backup', 'резервный'], backup_not_ready:['backup', 'резервный'],
-               checking:['checking the link', 'проверка связи'], down:['not connected', 'не подключён']};
-const REACH = {available:['internet available', 'интернет есть'], limited:['only the whitelist', 'только сайты из белого списка'],
+               checking:['checking connectivity', 'проверка связи'], down:['not connected', 'не подключён']};
+const REACH = {available:['online', 'интернет есть'], limited:['whitelist only', 'только белый список'],
                unavailable:['no internet', 'интернета нет']};
 function channelWords(role, reach) {
     let place = PLACE[role] ? W(PLACE[role]) : null;
@@ -269,7 +269,7 @@ function limitedLine(u) {
     if (u.internet == 'limited') return null;
     let names = [];
     for (let p in (u.paths || [])) if (p.reach == 'limited' && length(names) < 4) push(names, p.name || p.device);
-    return length(names) ? '🟡 ' + T('Only the whitelist: ', 'Только сайты из белого списка: ') + esc(join(', ', names)) : null;
+    return length(names) ? '🟡 ' + T('Whitelist only: ', 'Только белый список: ') + esc(join(', ', names)) : null;
 }
 
 // ▂▄▆█ from the signal quality: four steps, the empty ones as a low bar
@@ -314,9 +314,9 @@ function freshWords(now) {
 }
 // the last data kept while the service does not answer: their time, and that it is not now (audit R07)
 function staleWords(readAt) {
-    if (type(readAt) != 'int' || readAt <= 0) return I(T('⚠️ No data from the MedveModem service yet', '⚠️ Данных от службы MedveModem ещё нет'));
+    if (type(readAt) != 'int' || readAt <= 0) return I(T('⚠️ Waiting for data from MedveModem', '⚠️ Данных от службы MedveModem ещё нет'));
     let t = localtime(readAt);
-    return I(sprintf(T('⚠️ The data of %02d:%02d:%02d · the MedveModem service does not answer now',
+    return I(sprintf(T('⚠️ Snapshot from %02d:%02d:%02d · MedveModem not responding',
                        '⚠️ Данные на %02d:%02d:%02d · служба MedveModem сейчас не отвечает'), t.hour, t.min, t.sec));
 }
 
@@ -361,16 +361,16 @@ function dayLine(d, now) {
         let t = localtime(d.since);
         head = sprintf(T('📅 Since %02d:%02d: ', '📅 С %02d:%02d: '), t.hour, t.min);
     }
-    return head + (length(parts) ? join(' · ', parts) : T('no failures', 'без сбоев'));
+    return head + (length(parts) ? join(' · ', parts) : T('no issues', 'без сбоев'));
 }
 
 function hhmm(t) { let x = localtime(t); return sprintf('%02d:%02d', x.hour, x.min); }
 
 // the backups in the operator's priority, one a line (the owner, 2026-11-05: «не структурированно и захламлено»): what each
 // is ready for, and why not when the engine knows (no SIM by the stick's own web, r154)
-const BACKUP_WORD = {backup_ready:['ready', 'готов'], backup_limited:['only the whitelist', 'только сайты из белого списка'],
+const BACKUP_WORD = {backup_ready:['ready', 'готов'], backup_limited:['whitelist only', 'только белый список'],
                      backup_not_ready:['not ready', 'не готов']};
-const WHY_WORD = {no_sim:['no SIM card', 'нет SIM-карты'], bad_sim:['the SIM card is not usable', 'SIM-карта не читается'],
+const WHY_WORD = {no_sim:['no SIM card', 'нет SIM-карты'], bad_sim:['SIM card unreadable', 'SIM-карта не читается'],
                   no_network:['no mobile network', 'нет сети оператора'],
                   restricted:['the operator restricted access', 'оператор ограничил доступ']};
 // the operators' names by their code (MCC+MNC), as LuCI's badge names them
@@ -405,7 +405,7 @@ function proxyNote(s) {
         if (type(e?.at) == 'int') push(failed, '«' + esc(s.proxyTitles?.[n] || n) + '» ' + C(hhmm(e.at)));
     }
     return '   ' + (length(failed) ? T('a backup path: proxies did not answer: ', 'резервный маршрут: прокси не ответили: ') + join(', ', failed) :
-                                     T('a backup path: the proxies are not used now', 'резервный маршрут: прокси сейчас не используются'));
+                                     T('fallback route (proxies inactive)', 'резервный маршрут: прокси не используются'));
 }
 
 // s: {host, ids, devices, uplinks, route, engine, version}
@@ -421,7 +421,7 @@ function header(s) {
     let warn = [];
     // channel switching off while a backup could carry the traffic (2026-11-03) and the whitelist
     if (s.uplinks.switch_off && s.uplinks.internet == 'unavailable')
-        push(warn, '⚠️ ' + T('Channel switching is off: the traffic stays on the dead channel',
+        push(warn, '⚠️ ' + T('Failover disabled: traffic remains on the failed uplink',
                               'Переключение каналов выключено: трафик остаётся на неработающем канале'));
     push(warn, limitedLine(s.uplinks));
     if (s.engine != 'ok') push(warn, T('⚠️ MedveModem service: ', '⚠️ Служба MedveModem: ') + stateWord(s.engine));
@@ -483,9 +483,9 @@ function serviceNotice(e) {
     let ours = e.by == 'medvemodem';
     if (e.what == 'stopped')
         return '⚠️ ' + sprintf(T('%s stopped', '%s остановлен'), name) +
-               (ours ? T(' (MedveModem restarts it)', ' (его перезапускает MedveModem)') : T(': not by MedveModem', ': не MedveModem'));
+               (ours ? T(' (MedveModem restarts it)', ' (его перезапускает MedveModem)') : T('(external)', ': вне MedveModem'));
     return (ours ? '🔄 ' : '⚠️ ') + sprintf(ours ? T('%s restarted by MedveModem', '%s перезапущен MedveModem') :
-                                           T('%s restarted by itself (a crash, or by hand)', '%s перезапущен вне MedveModem (после сбоя или вручную)'), name) +
+                                           T('%s restarted outside MedveModem (crash or manual)', '%s перезапущен вне MedveModem (после сбоя или вручную)'), name) +
            (e.restarts_24h > 1 ? ' · ' + T('in 24 h: ', 'за сутки: ') + e.restarts_24h : '');
 }
 
@@ -496,7 +496,7 @@ function status(s, r) {
     let svc = joined(['⚙️ ' + T('MedveModem service: ', 'Служба MedveModem: ') + stateWord(s.engine) +
                       (s.version ? T(' · version ', ' · версия ') + C(s.version) : ''),
                       s.bot_version ? T('Bot: version ', 'Бот: версия ') + C(s.bot_version) +
-                          (other ? ' ⚠️ ' + T('not the service\'s: update both packages', 'отличается от версии службы: обновите оба пакета') : '') : null,
+                          (other ? ' ⚠️ ' + T('version mismatch with service — update both packages', 'версия не совпадает со службой: обновите оба пакета') : '') : null,
                       memLine(s.mem, !!s.day)], '\n');
     let text = joined([header(s), s.day ? esc(dayLine(s.day)) : null, svc], '\n\n');
     if (!r) return text;
@@ -517,8 +517,8 @@ function status(s, r) {
 // the main menu under the summary: every page is a button, a press edits this very message
 function menu() {
     return {inline_keyboard:[[{text:T('📶 Modems', '📶 Модемы'), callback_data:'l'}, {text:T('🌐 Channels', '🌐 Каналы'), callback_data:'v:u'}],
-                             [{text:T('📊 Traffic limits', '📊 Лимиты трафика'), callback_data:'v:q'}, {text:T('🧾 Journal', '🧾 Журнал'), callback_data:'v:j'}],
-                             [{text:T('✉️ Incoming SMS', '✉️ Входящие SMS'), callback_data:'v:i'}, {text:T('📜 Download the journal', '📜 Скачать журнал'), callback_data:'v:l'}],
+                             [{text:T('📊 Data caps', '📊 Лимиты трафика'), callback_data:'v:q'}, {text:T('🧾 Journal', '🧾 Журнал'), callback_data:'v:j'}],
+                             [{text:T('✉️ Incoming SMS', '✉️ Входящие SMS'), callback_data:'v:i'}, {text:T('📜 Download log', '📜 Скачать журнал'), callback_data:'v:l'}],
                              [{text:T('🌍 Network', '🌍 Сеть'), callback_data:'w'}, {text:T('🚧 Whitelists', '🚧 Белые списки'), callback_data:'bl'}],
                              [{text:T('⚙️ Settings', '⚙️ Настройки'), callback_data:'g'}],
                              [{text:T('🔄 Refresh', '🔄 Обновить'), callback_data:'v:m'}]]};
@@ -530,8 +530,8 @@ function back(self) {
 // the journal page: the system log as a file beside it (the owner 2026-10-28: «где получить лог по модемам»)
 function journalKeys() {
     let k = back('v:j');
-    push(k.inline_keyboard, [{text:T('📜 The modems\' log as a file', '📜 Скачать журнал модемов'), callback_data:'v:l'}]);
-    push(k.inline_keyboard, [{text:T('📜 The router\'s whole log', '📜 Весь журнал роутера'), callback_data:'v:a'}]);
+    push(k.inline_keyboard, [{text:T('📜 Modem log file', '📜 Скачать журнал модемов'), callback_data:'v:l'}]);
+    push(k.inline_keyboard, [{text:T('📜 Full router log', '📜 Весь журнал роутера'), callback_data:'v:a'}]);
     return k;
 }
 // the channels page: the failover exclusions live here, not on the top menu (the audit: they need the routing policy)
@@ -559,7 +559,7 @@ function pager(page, pages, to) {
 
 function modemList(s, page) {
     let n = length(s.ids);
-    if (!n) return {text:'📶 ' + B(T('Modems', 'Модемы')) + T('\nNo modems, or the MedveModem service does not answer', '\nМодемов нет или служба MedveModem не отвечает'), markup:back('l')};
+    if (!n) return {text:'📶 ' + B(T('Modems', 'Модемы')) + T('\nNo modems found, or MedveModem service is not responding', '\nМодемов нет или служба MedveModem не отвечает'), markup:back('l')};
     let pages = int((n + PER_PAGE - 1) / PER_PAGE), mid = mainId(s);
     page = page > 0 && page < pages ? page : 0;
     let lines = ['📶 ' + B(T('Modems', 'Модемы')) + ' (' + n + ')'], rows = [];
@@ -607,11 +607,11 @@ function noiseWords(sig) {
            s >= 0 ? T('noticeable noise', 'заметные помехи') : T('high noise', 'сильные помехи');
 }
 const ACTION_WORDS = {drivers:['a driver is missing', 'не хватает драйвера'], modemmanager:['ModemManager is not installed', 'не установлен ModemManager'],
-    'modeswitch-rule':['a usb-modeswitch rule resets the modem', 'правило usb-modeswitch сбрасывает модем'],
-    'modeswitch-pending':['the modem is in flash drive mode', 'модем в режиме USB-накопителя'],
-    'sim-pin':['the SIM card waits for its PIN', 'для SIM-карты требуется PIN-код'], 'sim-puk':['the SIM card is locked, a PUK is needed', 'SIM-карта заблокирована, нужен PUK-код'],
-    'fcc-unlock':['the radio is off, an FCC unlock is needed', 'радио выключено, нужна FCC-разблокировка'],
-    'foreign-interface':['an interface set up outside MedveModem drives it', 'модемом управляет интерфейс, настроенный вне MedveModem']};
+    'modeswitch-rule':['usb-modeswitch rule resets modem', 'правило usb-modeswitch сбрасывает модем'],
+    'modeswitch-pending':['modem in mass-storage mode', 'модем в режиме USB-накопителя'],
+    'sim-pin':['SIM requires PIN', 'для SIM-карты требуется PIN-код'], 'sim-puk':['the SIM card is locked, a PUK is needed', 'SIM-карта заблокирована, нужен PUK-код'],
+    'fcc-unlock':['radio off (FCC unlock required)', 'радио выключено, нужна FCC-разблокировка'],
+    'foreign-interface':['managed by external interface', 'модемом управляет интерфейс, настроенный вне MedveModem']};
 
 
 // the day's time without the internet (the engine's downtime, r109): «без интернета 12 мин (2 раза) · только БС 1 ч 05 мин»;
@@ -623,8 +623,8 @@ function downtimeWords(t) {
     if (off >= 60 || t.outages) push(parts, T('without the internet ', 'без интернета ') + duration(off) +
         (t.outages ? ' (' + plural(t.outages, T('time', 'раз'), T('times', 'раза'), T('times', 'раз')) + ')' : ''));
     if (t.current) push(parts, T('down now for ', 'отсутствует уже ') + duration(t.current));
-    if ((t.limited || 0) >= 60) push(parts, T('only allowed sites ', 'только сайты из белого списка ') + duration(t.limited));
-    if (!length(parts)) return (t.ok || 0) >= 60 ? T('no breaks while watched', 'за время наблюдения — без перерывов') : null;
+    if ((t.limited || 0) >= 60) push(parts, T('whitelist only ', 'только белый список ') + duration(t.limited));
+    if (!length(parts)) return (t.ok || 0) >= 60 ? T('no outages recorded', 'за время наблюдения — без сбоев') : null;
     return join(' · ', parts);
 }
 
@@ -633,7 +633,7 @@ function card(d, ctx) {
     ctx = ctx || {};
     let key = shortKey(d), st = stamp(ctx.now), rows = [];
     let lines = ['📶 ' + B(d.name) + (d.model && d.model != d.name ? ' (' + esc(d.model) + ')' : '') + (ctx.main ? ' ➡️' : '')];
-    if (!d.present) push(lines, T('⚫ The modem is unplugged from USB', '⚫ Модем отключён от USB'));
+    if (!d.present) push(lines, T('⚫ Modem unplugged from USB', '⚫ Модем отключён от USB'));
     else {
         // last known values are shown grey, not as a current green (audit R07)
         push(lines, B(T('Connection:', 'Подключение:')) + ' ' + (ctx.stale ? '⚪' : dot(d)) + ' ' + joined([stateWord(d.session.state), esc(d.session.interface)]) +
@@ -655,7 +655,7 @@ function card(d, ctx) {
             push(lines, B(T('Internet:', 'Интернет:')) + ' ⚠️ ' + T('the operator restricted access (sends to ', 'оператор ограничил доступ (перенаправляет на ') +
                  esc(d.uplink.redirect) + T('): check the balance', '): проверьте баланс'));
         else if (d.uplink?.reach == 'unavailable' && d.session?.state == 'connected')
-            push(lines, B(T('Internet:', 'Интернет:')) + ' ' + T('does not answer', 'не отвечает'));
+            push(lines, B(T('Internet:', 'Интернет:')) + ' ' + T('not responding', 'не отвечает'));
         if (d.up_s != null && d.session?.state == 'connected') push(lines, B(T('Connected:', 'Подключён:')) + ' ' + duration(d.up_s));
         let dt = downtimeWords(d.downtime);
         if (dt) push(lines, B(T('Today:', 'Сегодня:')) + ' ' + dt);
@@ -663,15 +663,15 @@ function card(d, ctx) {
         let health = joined([W(STABILITY[d.health.state]), RECOVERY[d.recovery] ? T('recovery: ', 'восстановление: ') + W(RECOVERY[d.recovery]) : null]);
         if (health) push(lines, B(T('Stability:', 'Стабильность:')) + ' ' + health);
     }
-    if (d.frozen) push(lines, '🧊 ' + I(T('Management is paused: the services leave the modem alone', 'Управление приостановлено: службы не обращаются к модему')));
+    if (d.frozen) push(lines, '🧊 ' + I(T('Management paused: services will not touch this modem', 'Управление приостановлено: службы не обращаются к модему')));
     // what only a person can fix, first thing to read (audit 10)
-    if (type(d.action_needed) == 'array' && length(d.action_needed)) push(lines, '🛠 ' + B(T('Needs you:', 'Требуется действие:')) + ' ' + join('; ', map(d.action_needed, (a) => W(ACTION_WORDS[a]))) +
+    if (type(d.action_needed) == 'array' && length(d.action_needed)) push(lines, '🛠 ' + B(T('Action required:', 'Требуется действие:')) + ' ' + join('; ', map(d.action_needed, (a) => W(ACTION_WORDS[a]))) +
                                        T(' (on the modem page in LuCI)', ' (на странице модема в LuCI)'));
     if (ctx.result) push(lines, '', ctx.result);
     push(lines, ctx.stale ? staleWords(ctx.readAt) : freshWords(ctx.now));
     if (ctx.control && d.present && !ctx.stale) {
         let row = [];
-        if (!ctx.main && !d.frozen) push(row, {text:T('➡️ First among modems', '➡️ Первым среди модемов'), callback_data:'a:mn:' + key + ':' + st});
+        if (!ctx.main && !d.frozen) push(row, {text:T('➡️ Set as primary', '➡️ Сделать основным'), callback_data:'a:mn:' + key + ':' + st});
         if (!d.frozen) push(row, d.session.state == 'connected' || d.session.state == 'connecting' ?
             {text:T('⏹ Disconnect', '⏹ Отключить'), callback_data:'a:dn:' + key + ':' + st} :
             {text:T('▶️ Connect', '▶️ Подключить'), callback_data:'a:up:' + key + ':' + st});
@@ -697,16 +697,16 @@ function card(d, ctx) {
 
 // what an action does, for its confirmation and its result
 // «main» is the first place among the modems: a wired WAN keeps its own place (audit R03, 2026-10-30; LuCI says the same)
-const ASK = {mn:['Put “%s” first among the modems? A wired WAN keeps its place.', 'Сделать «%s» первым среди модемов? Приоритет проводного WAN не изменится.'],
-             dn:['Disconnect “%s”? The modem stops carrying traffic until it is connected again.',
-                 'Отключить соединение «%s»? Передача данных через модем прекратится до повторного подключения.'],
-             rc:['Reconnect “%s”? The connection breaks for a few seconds.', 'Переподключить «%s»? Соединение прервётся на несколько секунд.'],
+const ASK = {mn:['Set "%s" as primary modem? Wired WAN keeps its priority.', 'Сделать «%s» основным модемом? Проводной WAN сохранит приоритет.'],
+             dn:['Disconnect "%s"? It will stop carrying traffic until reconnected.',
+                 'Отключить «%s»? Трафик через модем прекратится до повторного подключения.'],
+             rc:['Reconnect "%s"? Connection will drop for a few seconds.', 'Переподключить «%s»? Связь прервётся на несколько секунд.'],
              rr:['Re-register “%s” in the network? The modem leaves the network and registers again: the internet through it stops for a few seconds.',
                  'Перерегистрировать «%s» в сети? Модем отключится от сети и зарегистрируется заново: интернет через него пропадёт на несколько секунд.'],
              rs:['Restart “%s”? The link through it breaks for 1–2 minutes while the modem starts again.',
                  'Перезагрузить модем «%s»? Связь через него пропадёт на 1–2 минуты, пока он запускается заново.'],
-             fz:['Pause the management of “%s”? Its connection goes down; MedveModem, ModemManager and QModem stop touching it.',
-                 'Приостановить управление модемом «%s»? Соединение разорвётся; MedveModem, ModemManager и QModem прекратят работу с ним.']};
+             fz:['Pause management for "%s"? Connection will drop; MedveModem, ModemManager, and QModem will release it.',
+                 'Приостановить управление «%s»? Соединение разорвётся; MedveModem, ModemManager и QModem освободят устройство.']};
 function confirm(d, op, now) {
     let key = shortKey(d);
     return {text:'❓ ' + B(T('Confirm', 'Подтвердите')) + '\n' + sprintf(W(ASK[op]), esc(d.name)),
@@ -762,8 +762,8 @@ function smsFrom(it) {
 // incoming SMS, newest first: from whom, when, which modem and SIM got it, the text. items: [{d, number, text, epoch}]
 function smsPage(items, allowed, note) {
     let lines = ['✉️ ' + B(T('Incoming SMS', 'Входящие SMS'))];
-    if (!allowed) push(lines, T('Showing SMS in Telegram is off. It is switched on in LuCI, on the bot\'s page: “Show SMS”.',
-                               'Показ SMS в Telegram выключен. Включается в LuCI, на странице бота: «Показывать SMS».'));
+    if (!allowed) push(lines, T('SMS viewing in Telegram is disabled. Enable "Show SMS" on the bot page in LuCI.',
+                               'Показ SMS в Telegram отключён. Включите «Показывать SMS» на странице бота в LuCI.'));
     else if (!length(items)) push(lines, note || T('No incoming SMS.', 'Входящих SMS нет.'));
     else {
         for (let it in items) {
@@ -775,7 +775,7 @@ function smsPage(items, allowed, note) {
             push(lines, '');
         }
         if (note) push(lines, I(note));
-        push(lines, I(T('On the router they stay unread', 'На роутере они остаются непрочитанными')));
+        push(lines, I(T('Messages remain unread on the router', 'На роутере они остаются непрочитанными')));
     }
     return join('\n', lines);
 }
@@ -799,13 +799,13 @@ function excludePage(cands, draft, page, control, now) {
     for (let c in cands) if (draft.sel[c.device]) push(chosen, c.name || c.device);
     for (let c in cands) if (!!draft.sel[c.device] != (index(draft.base, c.device) >= 0)) changed = true;
     let lines = ['🚫 ' + B(T('Failover exclusions', 'Исключения автопереключения')),
-                 T('Failover never makes the ticked channels main: only you do, by hand.',
-                   'Выбранные каналы не становятся основными автоматически. Назначить их основными можно вручную.'),
+                 T('Checked uplinks are never promoted by failover (manual switch only).',
+                   'Отмеченные каналы не выбираются автопереключением — только вручную.'),
                  T('Saved: ', 'Сохранено: ') + B(length(draft.base)) + T(' · chosen: ', ' · выбрано: ') + B(length(chosen)) +
                      (changed ? ' · ' + B(T('unsaved changes', 'есть несохранённые изменения')) : ''),
                  length(chosen) ? T('Chosen: ', 'Выбор: ') + join(', ', map(chosen, (x) => esc(x))) :
-                                  T('Nothing chosen: every channel is in failover.', 'Ничего не выбрано: автоматическое переключение действует для всех каналов.')];
-    if (!control) push(lines, I(T('Management is off in LuCI: the list is for viewing only.', 'Управление выключено в LuCI: список только для просмотра.')));
+                                  T('None excluded: all uplinks participate in failover.', 'Исключений нет: все каналы участвуют в автопереключении.')];
+    if (!control) push(lines, I(T('Control disabled in LuCI (view-only).', 'Управление отключено в LuCI (только просмотр).')));
     let rows = [];
     for (let i = page * EX_PER_PAGE; i < n && i < (page + 1) * EX_PER_PAGE; i++) {
         let c = cands[i];
@@ -836,7 +836,7 @@ function quotaKeys(s, control) {
     return {inline_keyboard:rows};
 }
 function quotas(s) {
-    let lines = ['📊 ' + B(T('Traffic limits', 'Лимиты трафика'))], n = 0, any = false;
+    let lines = ['📊 ' + B(T('Data caps', 'Лимиты трафика'))], n = 0, any = false;
     for (let id in s.ids) {
         let d = s.devices[id];
         n++;
@@ -844,7 +844,7 @@ function quotas(s) {
         any = true;
         push(lines, n + '. ' + B(d.name) + ': ' + quotaWords(d.quota));
     }
-    return any ? join('\n', lines) : '📊 ' + B(T('Traffic limits', 'Лимиты трафика')) +
+    return any ? join('\n', lines) : '📊 ' + B(T('Data caps', 'Лимиты трафика')) +
         T('\nNo traffic limits set. They are set with ✏️ below or in LuCI: “Modem” → “SIM”.', '\nЛимиты трафика не заданы. Их задают кнопкой ✏️ ниже или в LuCI: «Модем» → «Настройки» → «SIM-карта».');
 }
 
@@ -859,24 +859,24 @@ function uplinks(s) {
 // an episode of episodes.uc in words: outage (count — seconds it lasts, 0 the moment it starts), recovery
 // (count — how long it lasted), flapping (count — how many short ones); name is null for the router itself
 // the words of LuCI's dictionary (audit r101: подключение, служба MedveModem; no «сессия», no «движок»)
-const DOWN = {session:['The connection cannot be restored', 'Не удаётся восстановить подключение'], present:['The USB modem is unplugged', 'USB-модем отключён'],
-              reach:['The internet is unavailable', 'Интернет недоступен'], engine:['The MedveModem service does not answer', 'Служба MedveModem не отвечает']};
-const DOWN_NOW = {session:['The connection broke', 'Подключение прервано'], present:['The USB modem is unplugged', 'USB-модем отключён'],
-                  reach:['The internet is unavailable', 'Интернет недоступен'], engine:['The MedveModem service does not answer', 'Служба MedveModem не отвечает']};
-const BACK = {session:['The connection is restored', 'Подключение восстановлено'], present:['The USB modem is plugged in again', 'USB-модем снова подключён'],
-              reach:['The internet is available again', 'Интернет снова доступен'], engine:['The MedveModem service answers again', 'Служба MedveModem снова отвечает']};
+const DOWN = {session:['Failed to restore connection', 'Не удаётся восстановить подключение'], present:['USB modem unplugged', 'USB-модем отключён'],
+              reach:['Internet unavailable', 'Интернет недоступен'], engine:['MedveModem service not responding', 'Служба MedveModem не отвечает']};
+const DOWN_NOW = {session:['Connection dropped', 'Подключение прервано'], present:['USB modem unplugged', 'USB-модем отключён'],
+                  reach:['Internet unavailable', 'Интернет недоступен'], engine:['MedveModem service not responding', 'Служба MedveModem не отвечает']};
+const BACK = {session:['Connection restored', 'Подключение восстановлено'], present:['USB modem reconnected', 'USB-модем снова подключён'],
+              reach:['Internet back online', 'Интернет снова доступен'], engine:['MedveModem service responding again', 'Служба MedveModem снова отвечает']};
 const SHORT = {session:['Connection', 'Подключение'], present:['USB modem', 'USB-модем'], reach:['Internet', 'Интернет'], engine:['MedveModem service', 'Служба MedveModem']};
 // only the second group of addresses (ya.ru, vk.com by default) answers: limited access, its cause not proven (audit r101)
-const LIMITED = {outage:['Access to the internet is limited', 'Доступны только сайты из белого списка'],
-                 recovery:['The internet is fully available again', 'Полный доступ в интернет восстановлен']};
+const LIMITED = {outage:['Limited internet access (whitelist)', 'Ограниченный доступ (белый список)'],
+                 recovery:['Full internet access restored', 'Полный доступ к интернету восстановлен']};
 function incidentText(action, kind, name, count, level) {
     let after = (n) => n > 0 ? T('. Down for: ', '. Перерыв: ') + duration(n) : '';
     let text = kind == 'reach' && level == 'limited' && LIMITED[action] ?
                W(LIMITED[action]) + (action == 'outage' ? (count > 0 ? ' ' + duration(count) : '') : after(count)) :
                action == 'outage' ? (count > 0 ? (W(DOWN[kind]) || T('No link', 'Связь недоступна')) + ' ' + duration(count) :
                                                  W(DOWN_NOW[kind]) || T('No link', 'Связь недоступна')) :
-               action == 'recovery' ? (W(BACK[kind]) || T('The link is back', 'Связь восстановлена')) + after(count) :
-               action == 'flapping' ? (W(SHORT[kind]) || T('Link', 'Связь')) + T(': frequent short failures (', ': частые короткие сбои (') + count + ')' : null;
+               action == 'recovery' ? (W(BACK[kind]) || T('Connection restored', 'Связь восстановлена')) + after(count) :
+               action == 'flapping' ? (W(SHORT[kind]) || T('Link', 'Связь')) + T(': frequent brief drops (', ': частые короткие сбои (') + count + ')' : null;
     return text && name ? text + ' · ' + name : text;
 }
 
@@ -897,10 +897,10 @@ function notice(action, kind, name, count, level, ctx) {
         if (ctx.fixing) push(lines, T('MedveModem is restoring the connection.', 'MedveModem восстанавливает подключение.'));
     } else if (action == 'outage' && kind == 'reach' && ctx.switchOff)
         push(lines, T('The backup channel «', 'Резервный канал «') + label(ctx.switchOff) +
-             T('» works, but channel switching is off: turn on «Switch the internet to a working channel» in the MedveModem settings.',
+             T('" is online, but failover is disabled — enable "Failover to working uplink" in MedveModem settings.',
                '» работает, но переключение каналов выключено. Включите «Переключать интернет на работающий канал» в настройках MedveModem.'));
     else if (action == 'recovery' && ctx.fixed)
-        push(lines, T('The link came back after: “', 'Связь восстановлена после: «') + ctx.fixed + T('”.', '».'));	/* not «помогло»: the order only */
+        push(lines, T('Connection recovered after: "', 'Связь восстановлена после: «') + ctx.fixed + T('”.', '».'));	/* not «помогло»: the order only */
     else if (action == 'flapping' && device) {
         if (up && via) push(lines, T('The internet is available through ', 'Интернет доступен через ') + via + '.');
         /* a cause only where the USB itself came and went (audit r101: a session's flaps prove no cable) */
@@ -918,8 +918,8 @@ function restartText(info) {
                           T('MedveModem restarted.', 'MedveModem перезапущен.'))];
     let up = info.internet == 'available' || info.internet == 'up' || info.internet == 'ok';
     let modems = T('Modems connected: ', 'На связи модемов: ') + (info.up || 0) + T(' of ', ' из ') + (info.total || 0);
-    push(lines, modems + (up && info.via ? T(', the internet through «', ', интернет через «') + label(info.via) + '».' :
-                          up ? T(', the internet works.', ', интернет работает.') : T(', no internet yet.', ', интернета пока нет.')));
+    push(lines, modems + (up && info.via ? T(', internet via "', ', интернет через «') + label(info.via) + '».' :
+                          up ? T(', internet online.', ', интернет работает.') : T(', no internet yet.', ', интернета пока нет.')));
     return join('\n', lines);
 }
 
@@ -927,11 +927,11 @@ function restartText(info) {
 // spec §44: the whitelist mode on (its server, what goes through it) or off (the manager's settings back)
 function wlmodeText(w) {
     if (!w?.on)
-        return '🛡 ' + T('Whitelist mode off: the tunnel manager\'s settings are given back', 'Режим белых списков выключен: настройки программы управления туннелем восстановлены');
+        return '🛡 ' + T('Whitelist mode disabled; proxy manager settings restored', 'Режим белых списков выключен: исходные настройки менеджера восстановлены');
     let what = [];
     if (w.lan) push(what, T('the whole LAN', 'вся сеть'));
     if (w.router) push(what, T('the router', 'роутер'));
-    return '🛡 ' + T('Whitelist mode on: server «', 'Режим белых списков включён: сервер «') + label(w.server || '—') + '»' +
+    return '🛡 ' + T('Whitelist mode enabled: server "', 'Режим белых списков включён: сервер «') + label(w.server || '—') + '»' +
            (type(w.delay_ms) == 'int' ? ' (' + w.delay_ms + T(' ms)', ' мс)') : '') +
            (length(what) ? T(', through it: ', ', через него: ') + join(T(' and ', ' и '), what) : '') +
            (w.manual ? T(' · turned on by hand', ' · включён вручную') : '');
@@ -970,26 +970,25 @@ function journal(entries, now) {
 
 function help(control) {
     return '❔ ' + B(T('Help', 'Справка')) + '\n' +
-           T('The «Menu» button beside the input field lists the commands; /menu: the summary with a menu of modems, channels, traffic, journal.\n',
+           T('Tap "Menu" next to the input bar for commands, or send /menu for the dashboard (modems, uplinks, traffic, logs).\n',
              'Кнопка «Меню» у поля ввода — список команд; /menu — сводка с меню: модемы, каналы, трафик, журнал.\n') +
-           T('In the modem list, tap a modem to open its card; the ◀ ▶ arrows go through the modems.\n',
+           T('Tap any modem to open its card; use ◀ ▶ to switch between modems.\n',
              'В списке модемов нажмите на модем — откроется карточка; стрелки ◀ ▶ листают модемы.\n') +
-           (control ? T('On the card: first among the modems, connect or disconnect, reconnect, pause management. ' +
-                        'The bot asks again before an action that breaks the link.\n',
-                        'На карточке: первым среди модемов, подключить или отключить, переподключить, приостановить управление. ' +
-                        'Перед действиями, прерывающими связь, бот запрашивает подтверждение.\n') :
-                      T('Modem management is off: the bot only shows the state. It is switched on in LuCI, on the bot\'s page.\n',
-                        'Управление модемами выключено: бот только показывает состояние. Включается в LuCI, на странице бота.\n')) +
-           T('The system log of the modems as a file: /log, or the button under the journal.\n',
-             'Журнал модемов можно скачать командой /log или кнопкой под журналом.\n') +
-           T('Notifications (mode, kinds, quiet hours) and the proxies to Telegram: /settings.\n',
+           (control ? T('Card actions: set primary, connect/disconnect, reconnect, pause management. Disruptive actions require confirmation.\n',
+                        'На карточке: сделать основным, подключить/отключить, переподключить, приостановить управление. ' +
+                        'Перед действиями с разрывом связи бот запросит подтверждение.\n') :
+                      T('Modem control is disabled (view-only). Enable it on the bot page in LuCI.\n',
+                        'Управление модемами отключено (только просмотр); включается на странице бота в LuCI.\n')) +
+           T('Download modem log: /log or the button below Journal.\n',
+             'Журнал модемов файлом: /log или кнопка под журналом.\n') +
+           T('Alerts (mode, types, quiet hours) and Telegram proxies: /settings.\n',
              'Уведомления (режим, виды, тихие часы) и прокси для Telegram: /settings.\n') +
            T('Commands: ', 'Команды: ') + join(' ', map(COMMANDS, (c) => '/' + c[0]));
 }
 
 // a link's role and the delay of the engine's last check: « · основной · 48 мс», « · резерв 2 · нет связи»
 function linkState(l) {
-    let role = l.role == 'carrying' || l.role == 'limited' || l.role == 'no_internet' ? T('main', 'основной') :
+    let role = l.role == 'carrying' || l.role == 'limited' || l.role == 'no_internet' ? T('primary', 'основной') :
                index(l.role || '', 'backup_') == 0 ? T('backup', 'резерв') + (l.rank ? ' ' + l.rank : '') : null;
     let how = l.ms != null ? l.ms + T(' ms', ' мс') : l.reach == 'unavailable' ? T('no internet', 'нет связи') :
               l.reach == 'limited' ? T('whitelist only', 'только белый список') : null;
@@ -999,8 +998,8 @@ function linkState(l) {
 // «🌍 Сеть» (the owner, 2026-10-28): info {links: [{key, name, device, addr, main, modem}],
 // cache: {ip: {at, public: {dev|'-': addr}}, tunnel: {at, r}, svc: {at, link, results, error}}, now, busy}
 const SVC = {ok:'✅', blocked:'⛔', timeout:'⏱', dns:'❓', refused:'🚫', reset:'✂️', tls:'🔒', cert:'⚠️', tunnel:'🛡', other:'❔'};
-const SVC_WORD = {blocked:['blocked', 'блокировка'], timeout:['no answer', 'нет ответа'], dns:['DNS', 'DNS'], refused:['refused', 'отказ'],
-                  reset:['cut', 'обрыв'], tls:['TLS', 'TLS'], cert:['a forged certificate', 'ошибка проверки сертификата'],
+const SVC_WORD = {blocked:['blocked', 'блокировка'], timeout:['no answer', 'нет ответа'], dns:['DNS', 'DNS'], refused:['denied', 'отказ'],
+                  reset:['reset', 'обрыв'], tls:['TLS', 'TLS'], cert:['invalid cert', 'неверный сертификат'],
                   tunnel:['sent to the router\'s tunnel', 'уходит в туннель роутера'], other:['other', 'другое']};
 // the same, as the head of a group of services
 const SVC_HEAD = {blocked:['Blocked', 'Блокировка'], timeout:['No answer', 'Нет ответа'], dns:['Name not found', 'Имя не найдено'],
@@ -1012,7 +1011,7 @@ function hm(epoch) { let t = localtime(epoch); return sprintf('%02d:%02d', t.hou
 const BLOCK_WEIGHT = {google:3, github:2, wikipedia:2};
 function blockVerdict(results, error) {
     if (type(results) != 'array' || !length(results))
-        return {kind:'none', words:error == 'busy' ? T('another check runs on the router', 'на роутере идёт другая проверка') : T('the check did not run', 'проверка не выполнена')};
+        return {kind:'none', words:error == 'busy' ? T('another test is already running', 'на роутере уже идёт проверка') : T('test failed to start', 'не удалось выполнить проверку')};
     let ow = 0, ook = 0, lw = 0, lok = 0;
     for (let r in results) {
         // known blocks (the regulator's, a service closed to Russia) and a name the tunnel takes say nothing of a
@@ -1038,10 +1037,10 @@ function blockLine(name, v) {
 }
 function blocksConfirm(count) {
     return {text:'🚦 ' + B(T('Blocking test', 'Тест блокировок')) + '\n\n' +
-        sprintf(T('Every tested service is asked through each connected modem in turn (%d), straight through the modem: the router\'s routes and the main channel are not switched. About 10 s and a little traffic per modem.',
-                  'Проверка всех заданных серверов напрямую через каждый подключённый модем по очереди (всего %d). Маршруты и основной канал роутера не меняются. Около 10 секунд и небольшой расход трафика на модем.'), count) +
-        '\n' + I(T('The answer says per modem whether whitelists are on now, by the weights of the services that answered; no site is named.',
-                    'Результат — оценка ограничений по белому списку с учётом значимости ответивших сервисов, без перечня сайтов.')),
+        sprintf(T('Tests all probe services directly over each connected modem (%d) in turn without changing active routes or the primary uplink (~10 s and minimal traffic per modem).',
+                  'Проверка тестовых сервисов напрямую через каждый подключённый модем (%d) по очереди. Маршруты и основной канал не меняются (~10 с и <1 МБ на модем).'), count) +
+        '\n' + I(T('Reports whether each modem appears whitelisted based on weighted probe results (no site names listed).',
+                    'В результате показано, действует ли на модеме белый список (по весам ответивших сервисов, без перечня сайтов).')),
         markup:{inline_keyboard:[[{text:T('▶️ Run', '▶️ Запустить'), callback_data:'wby'}], [{text:T('◀️ Back', '◀️ Назад'), callback_data:'bl'}]]}};
 }
 // «🧪 Проверить сервисы»: one button, then the links one per row with their whole names
@@ -1094,16 +1093,16 @@ function netPage(info) {
         push(lines, '     ' + esc(l.device) + (l.addr ? ' · ' + C(l.addr) : '') +
              (p ? ' → ' + C(p) : c.ip && p === null ? T(' · public address unknown', ' · внешний адрес не определён') : ''));
     }
-    if (!length(info.links)) push(lines, T('No link with an address.', 'Нет ни одного канала с адресом.'));
+    if (!length(info.links)) push(lines, T('No uplinks with an IP address.', 'Нет ни одного канала с адресом.'));
     if (c.ip) push(lines, I(T('Public addresses checked at ', 'Внешние адреса проверены в ') + hm(c.ip.at)));
     let t = c.tunnel?.r;
     if (t) {
         push(lines, '');
         let ms = type(t.managers) == 'array' ? t.managers : [];
-        if (!length(ms)) push(lines, '🛡 ' + T('No podkop, podkop-plus, forkop or netshift on the router', 'podkop, podkop-plus, forkop, netshift не установлены'));
+        if (!length(ms)) push(lines, '🛡 ' + T('podkop, podkop-plus, forkop, or netshift not installed', 'podkop, podkop-plus, forkop, netshift не установлены'));
         for (let m in ms)
             push(lines, '🛡 ' + B(label(m.name)) + (m.version ? ' ' + C(m.version) : '') + ' · ' +
-                 (m.enabled ? T('enabled', 'включён') : T('not enabled at boot', 'не включён в автозапуск')));
+                 (m.enabled ? T('enabled', 'включён') : T('autostart disabled', 'не включён в автозапуск')));
         if (length(ms)) {
             push(lines, (t.builtin ? T('sing-box (inside podkop): ', 'sing-box (встроен в podkop): ') : 'sing-box: ') +
                  (t.sing_box ? T('running', 'работает') : T('not running', 'не запущен')));
@@ -1120,23 +1119,23 @@ function netPage(info) {
              ' (' + esc(v.link?.device) + ')') + ', ' + hm(v.at));
         // a modem's own device: straight through its operator, the router's tunnel not used (the owner, 2026-11-14)
         if (!v.link?.main) push(lines, I(T('Straight through the modem, without the tunnel', 'Напрямую через модем, без туннеля')));
-        if (!v.results) push(lines, v.error == 'busy' ? T('Another check runs on the router, try again in a minute', 'На роутере уже идёт другая проверка, повторите через минуту') :
-                                    T('The check did not run', 'Проверка не выполнена'));
+        if (!v.results) push(lines, v.error == 'busy' ? T('Another test is running — retry in a minute', 'На роутере уже идёт другая проверка, повторите через минуту') :
+                                    T('Test failed', 'Проверка не выполнена'));
         else for (let x in svcLines(v.results)) push(lines, x);
     }
     // other modem helpers on the router (the engine's neighbours, 2026-10-28): names and holders only
     let nb = info.neighbours, pk = type(nb?.packages) == 'array' ? nb.packages : [], ho = type(nb?.holders) == 'array' ? nb.holders : [],
         sc = type(nb?.scripts) == 'array' ? nb.scripts : [];
     if (length(pk) || length(ho) || length(sc)) {
-        push(lines, '', '⚠️ ' + B(T('Other modem helpers on the router', 'Другие программы управления модемами')));
+        push(lines, '', '⚠️ ' + B(T('Other modem tools on the router', 'Другие службы управления модемами')));
         for (let p in slice(pk, 0, 8))
             push(lines, '• ' + esc(label(p.id)) + (p.running ? T(' · running', ' · работает') : '') + (p.cron ? T(' · by cron', ' · по cron') : ''));
         for (let h in slice(ho, 0, 6))
             push(lines, '• ' + esc(label(h.comm)) + T(' holds ', ' занимает ') + esc(label(h.node)));
         if (length(sc)) push(lines, '• ' + T('scripts using the modems: ', 'скрипты, обращающиеся к модемам: ') + length(sc));
-        push(lines, I(T('MedveModem does not stop them; the details and possible conflicts are in LuCI', 'MedveModem их не останавливает; подробности и возможные конфликты — в LuCI')));
+        push(lines, I(T('MedveModem does not stop them; see LuCI for details and potential conflicts', 'MedveModem их не останавливает; подробности и возможные конфликты — в LuCI')));
     }
-    if (info.busy) push(lines, '', '⏳ ' + T('A check is running…', 'Идёт проверка…'));
+    if (info.busy) push(lines, '', '⏳ ' + T('Testing…', 'Идёт проверка…'));
     push(lines, '', freshWords(info.now));
     return {text:join('\n', lines), markup:{inline_keyboard:[
         [{text:T('🔍 Public IP', '🔍 Внешние IP'), callback_data:'wi'}, {text:T('🛡 Tunnel', '🛡 Туннель'), callback_data:'wt'}],
@@ -1153,7 +1152,7 @@ function wlPage(info) {
         let lim = p.reach == 'limited' || p.role == 'limited' || p.role == 'backup_limited';
         let st = lim ? (info.tunnel?.ok && p.role == 'limited' ? '🟢 ' + T('the whitelist; the internet through the tunnel', 'белый список; интернет через туннель') :
                                                                  '🟡 ' + T('the whitelist only', 'только белый список')) :
-                 p.reach == 'available' ? '🟢 ' + T('the whole internet', 'весь интернет') : p.reach == 'unavailable' ? '🔴 ' + T('no internet', 'нет интернета') :
+                 p.reach == 'available' ? '🟢 ' + T('full internet access', 'полный доступ в интернет') : p.reach == 'unavailable' ? '🔴 ' + T('no internet', 'нет интернета') :
                  '⚪ ' + T('not checked yet', 'ещё не проверен');
         // a modem without a channel yet (no device, no name) has nothing to say here
         if (!p.name && !p.device) continue;
@@ -1161,18 +1160,18 @@ function wlPage(info) {
     }
     if (!length(info.paths || [])) push(lines, T('No channel is checked yet.', 'Каналы ещё не проверялись.'));
     let wl = info.wlmode, wlRow = [];
-    push(lines, '', wl?.on ? wlmodeText(wl) : wl?.enabled ? '🛡 ' + T('Whitelist mode: waits for the operator\'s whitelist', 'Режим белых списков: ожидание ограничений оператора') :
+    push(lines, '', wl?.on ? wlmodeText(wl) : wl?.enabled ? '🛡 ' + T('Whitelist mode: standby (waiting for carrier whitelist)', 'Режим белых списков: ожидание ограничений оператора') :
                     '🛡 ' + T('Whitelist mode is not set up: LuCI → Modem → MedveModem → Whitelists', 'Режим белых списков не настроен: LuCI → Модем → MedveModem → Белые списки'));
     if (info.control && (wl?.enabled || wl?.on))
-        push(wlRow, wl.on ? {text:T('🛡 Turn the mode off', '🛡 Выключить режим'), callback_data:'wwf'} :
-                            {text:T('🛡 Turn the mode on', '🛡 Включить режим'), callback_data:'wwo'});
+        push(wlRow, wl.on ? {text:T('🛡 Disable mode', '🛡 Выключить режим'), callback_data:'wwf'} :
+                            {text:T('🛡 Enable mode', '🛡 Включить режим'), callback_data:'wwo'});
     let bl = c.blocks;
     if (bl) {
         push(lines, '', '🚦 ' + B(T('Blocking test', 'Тест блокировок')) + ', ' + hm(bl.at));
-        if (!length(bl.rows)) push(lines, T('No connected modem to check.', 'Нет подключённых модемов для проверки.'));
+        if (!length(bl.rows)) push(lines, T('No connected modems to test.', 'Нет подключённых модемов для проверки.'));
         for (let r in bl.rows) push(lines, blockLine(r.name, blockVerdict(r.results, r.error)));
     }
-    if (info.busy) push(lines, '', '⏳ ' + T('A check is running…', 'Идёт проверка…'));
+    if (info.busy) push(lines, '', '⏳ ' + T('Testing…', 'Идёт проверка…'));
     push(lines, '', freshWords(info.now));
     return {text:join('\n', lines), markup:{inline_keyboard:[
         [{text:T('🚦 Blocking test', '🚦 Тест блокировок'), callback_data:'wb'}], ...(length(wlRow) ? [wlRow] : []),

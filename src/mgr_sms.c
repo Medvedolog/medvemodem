@@ -943,7 +943,7 @@ static void sms_forward(const char *id, json_object *fwd)
 {
 	const char *helper = getenv("MEDVEMODEM_SMS_FORWARD");
 	struct uloop_process *proc;
-	int fd[2], nul;
+	int tfd, nul;
 	size_t i;
 	pid_t pid;
 
@@ -975,20 +975,49 @@ static void sms_forward(const char *id, json_object *fwd)
 	/* the process record first: a child uloop never learned of would stay a zombie */
 	if (access(helper, X_OK) || !(proc = calloc(1, sizeof(*proc))))
 		return;
-	/* a socket, not a pipe: a helper that exits at once must not SIGPIPE the engine */
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fd)) {
-		free(proc);
-		return;
+	/* the messages through a file, not a socket: a non-blocking send into a helper that has not started reading yet
+	 * lost the rest of a batch on EAGAIN, and a short write cut a line (audit STAB-02, 2026-11-19); the file is unlinked
+	 * at once, so the text never stays in /tmp */
+	{
+		char tmpl[] = "/tmp/medvemodem-smsfwd.XXXXXX";
+		FILE *f;
+
+		if ((tfd = mkostemp(tmpl, O_CLOEXEC)) < 0) {
+			free(proc);
+			return;
+		}
+		unlink(tmpl);
+		if (!(f = fdopen(dup(tfd), "w"))) {
+			close(tfd);
+			free(proc);
+			return;
+		}
+		for (i = 0; i < json_object_array_length(fwd); i++) {
+			json_object *m = json_object_array_get_idx(fwd, i), *o = json_object_new_object();
+			char lb[64];
+			const char *name = daemon_modem_label(id, lb, sizeof(lb));
+
+			json_object_object_add(o, "modem", json_object_new_string(name ? name : id));
+			json_object_object_add(o, "number", json_object_new_string(jstr(m, "number") ? jstr(m, "number") : ""));
+			json_object_object_add(o, "text", json_object_new_string(jstr(m, "text") ? jstr(m, "text") : ""));
+			json_object_object_add(o, "time", json_object_new_string(jstr(m, "timestamp") ? jstr(m, "timestamp") : ""));
+			fprintf(f, "%s\n", json_object_to_json_string_ext(o, JSON_C_TO_STRING_PLAIN));
+			json_object_put(o);
+		}
+		if (fclose(f) || lseek(tfd, 0, SEEK_SET) < 0) {
+			close(tfd);
+			free(proc);
+			return;
+		}
 	}
 	if ((pid = fork()) < 0) {
-		close(fd[0]);
-		close(fd[1]);
+		close(tfd);
 		free(proc);
 		return;
 	}
 	if (pid == 0) {
 		setpgid(0, 0);
-		dup2(fd[0], 0);
+		dup2(tfd, 0);
 		if ((nul = open("/dev/null", O_RDWR)) >= 0) {
 			dup2(nul, 1);
 			dup2(nul, 2);
@@ -998,24 +1027,7 @@ static void sms_forward(const char *id, json_object *fwd)
 		execl(helper, helper, (char *)NULL);
 		_exit(127);
 	}
-	close(fd[0]);
-	for (i = 0; i < json_object_array_length(fwd); i++) {
-		json_object *m = json_object_array_get_idx(fwd, i), *o = json_object_new_object();
-		char lb[64];
-		const char *name = daemon_modem_label(id, lb, sizeof(lb)), *line;
-
-		json_object_object_add(o, "modem", json_object_new_string(name ? name : id));
-		json_object_object_add(o, "number", json_object_new_string(jstr(m, "number") ? jstr(m, "number") : ""));
-		json_object_object_add(o, "text", json_object_new_string(jstr(m, "text") ? jstr(m, "text") : ""));
-		json_object_object_add(o, "time", json_object_new_string(jstr(m, "timestamp") ? jstr(m, "timestamp") : ""));
-		line = json_object_to_json_string_ext(o, JSON_C_TO_STRING_PLAIN);
-		if (send(fd[1], line, strlen(line), MSG_NOSIGNAL | MSG_DONTWAIT) < 0 || send(fd[1], "\n", 1, MSG_NOSIGNAL | MSG_DONTWAIT) < 0) {
-			json_object_put(o);
-			break;
-		}
-		json_object_put(o);
-	}
-	close(fd[1]);
+	close(tfd);
 	proc->pid = pid;
 	proc->cb = sms_forward_exited;
 	uloop_process_add(proc);

@@ -67,8 +67,8 @@ var AUTOFIX = { 'interface-retry': _('the interface brought up again after a fai
 	'recovery-no-internet': _('a recovery brought the session up, but there is no internet') };
 /* the kernel's trouble in words (the owner, 2026-10-31, after the R3S hung: «HC died и failed to set voltage — да обязательно
  * и не только для r3s»): what it means for the modems, and who said it */
-var KFAULT = { 'hc-died': _('the USB controller %s died: the modems on it are gone until the router restarts'),
-	voltage: _('the board could not set a voltage (%s): usually the power supply or the power chip'),
+var KFAULT = { 'hc-died': _('USB controller %s failed: attached modems are unavailable until router reboot'),
+	voltage: _('board voltage regulator fault (%s): check power supply or hardware'),
 	undervoltage: _('the supply voltage sags (%s): a weak power supply or cable'),
 	stall: _('a processor core hung (%s)'), lockup: _('a processor core hung (%s)'), oops: _('a kernel error (oops)%s'),
 	panic: _('a kernel panic%s'), overheat: _('critical temperature (%s)'), 'hung-task': _('a task hung for minutes (%s)'),
@@ -95,10 +95,11 @@ function autofixLine(a) {
 
 /* why netifd gave up on an interface (proto modemmanager's error codes); the engine brings it up again */
 var NETIFD_WHY = { MM_CONNECT_FAILED: _('the modem could not connect'), MM_INTERFACE_RESTART: _('reconnecting'),
+	NO_DEVICE: _('the interface is not linked to the modem'),
 	MM_FAILED_REASON_SIM_MISSING: _('no SIM card'), MM_PINCODE_REQUIRED: _('a PIN is needed'), MM_CHECK_UNLOCK_PIN: _('the SIM card is locked') };
-var PAUSE_WHY = { 'the modem has no network interface yet': _('the modem has no network interface yet'), 'a recovery is running on this modem': _('a recovery is running'),
+var PAUSE_WHY = { 'the modem has no network interface yet': _('modem has no network interface yet'), 'a recovery is running on this modem': _('a recovery is running'),
 	'a bring-up is running': _('a bring-up is running'), 'a configuration change is being applied': _('settings are being applied'), 'netifd did not take the request': _('netifd did not take the command'),
-	'an eSIM operation holds this modem': _('an eSIM operation is running'), 'the modem is frozen by the operator': _('the modem management is paused: resume it first'),
+	'an eSIM operation holds this modem': _('eSIM operation in progress'), 'the modem is frozen by the operator': _('the modem management is paused: resume it first'),
 	'a bring-up is running on this modem': _('this modem is being brought up'), 'device not present': _('the modem is not plugged in'),
 	'another configuration change is being applied': _('other settings are being applied now, try again in a few seconds'),
 	'the modem is not known to the registry': _('the engine does not know this modem (unplugged or removed)') };
@@ -137,10 +138,10 @@ function carriers(mm) {
 }
 /* what only the operator can fix (the engine's action_needed, HANDOFF 176): said on the dashboard, done on the modem page */
 var ACTIONS = { drivers: _('a driver is missing'), modemmanager: _('ModemManager is not installed'),
-	'modeswitch-rule': _('a usb-modeswitch rule resets the modem'), 'modeswitch-pending': _('the modem is in flash drive mode, it needs switching'),
-	'sim-pin': _('the SIM card waits for its PIN'), 'sim-puk': _('the SIM card is locked, a PUK is needed'),
-	'fcc-unlock': _('the radio is off, an FCC unlock is needed'),
-	'foreign-interface': _('an interface set up outside MedveModem drives it: hand it over on the modem page') };
+	'modeswitch-rule': _('usb-modeswitch rule resets modem'), 'modeswitch-pending': _('modem is in mass-storage mode and needs mode switching'),
+	'sim-pin': _('SIM requires PIN'), 'sim-puk': _('the SIM card is locked, a PUK is needed'),
+	'fcc-unlock': _('radio off (FCC unlock required)'),
+	'foreign-interface': _('managed by an external interface — transfer control on the modem page') };
 /* the packages the neighbours helper knows: the name and what it does to a modem (read in their sources, 2026-10-28) */
 var NEIGHBOUR = {
 	'5gmodem': ['luci-app-5gmodem', _('its hotplug scripts switch USB modes and rebind drivers, its services restart interfaces')],
@@ -215,7 +216,7 @@ function usbWhen(t) {
 }
 /* a channel's role in words: the channels table and the plain USB tree */
 var CHAN_ROLE = { carrying: _('carries the traffic'), backup_ready: _('backup ready'), backup_not_ready: _('backup not ready'), backup_limited: _('backup, limited access'),
-	limited: _('limited access'), limited_tunnel: _('whitelist, the rest through the tunnel'), no_internet: _('no internet'), checking: _('being checked'), down: _('no session') };
+	limited: _('whitelist only'), limited_tunnel: _('whitelisted; rest via tunnel'), no_internet: _('no internet'), checking: _('being checked'), down: _('no session') };
 function usbEventWords(e, place) {
 	var who = place ? place(e.path) : e.path || '', p = words(e.product);
 	switch (e.kind) {
@@ -225,7 +226,7 @@ function usbEventWords(e, place) {
 		(e.modem ? _('A modem connected (%s)') : _('A device plugged in (%s)')).format(who);
 	case 'disconnected': return p ? (e.modem ? _('Modem “%s” disconnected (%s)') : _('Device “%s” unplugged (%s)')).format(p, who) :
 		(e.modem ? _('A modem disconnected (%s)') : _('A device unplugged (%s)')).format(who);
-	case 'reconnected': return p ? _('Device “%s” (%s) was unplugged and came back between two checks').format(p, who) :
+	case 'reconnected': return p ? _('Device "%s" (%s) reconnected between checks').format(p, who) :
 		_('The device (%s) was unplugged and came back between two checks').format(who);
 	case 'hub-gone': return N_(e.devices, 'After hub %s was disconnected, %d device disappeared', 'After hub %s was disconnected, %d devices disappeared').format(who, e.devices) +
 		(e.modems ? ', ' + _('of them modems: %d').format(e.modems) : '');
@@ -247,7 +248,7 @@ function checkWords(reach, bare) {
 	if (!reach || typeof reach.ok !== 'boolean') return '';
 	var target = String(reach.target || '').replace(/^\[|\]?:\d+$/g, '');
 	var head = function(w) { return bare ? w : _('connection check (%s)').format(w); };
-	if (reach.limited) return _('%s: access to the internet is limited: only %s from the second group of addresses answers; the operator may restrict access')
+	if (reach.limited) return _('%s: limited internet access — only %s from the whitelist group responds; carrier restriction possible')
 		.format(head(reach.device), target) + (ago(reach.age_s) ? ' (' + _('updated %s').format(ago(reach.age_s)) + ')' : '');
 	return head(reach.device + ', ' + target) + ': ' + (reach.ok ? _('%d ms').format(reach.latency_ms) :
 		_('no answer') + (reach.error && reach.error !== 'no answer' ? ' (' + words(mm.reachError(reach.error)) + ')' : '')) + (ago(reach.age_s) ? (reach.ok ? ' (' + _('updated %s').format(ago(reach.age_s)) + ')' : '; ' + _('updated %s').format(ago(reach.age_s))) : '');
@@ -288,14 +289,14 @@ function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 /* [the pill, its tone, the pill with the backup's place, the table's short word, the short word with the place] (the owner,
  * 2026-10-19: a backup says its place in the priority) */
-var ROLES = { carrying: [_('Main channel'), 'ok', null, _('Main channel')],
-	backup_ready: [_('Backup channel, ready'), 'backup', _('Backup channel %d, ready'), _('Backup, ready'), _('Backup %d, ready')],
+var ROLES = { carrying: [_('Primary uplink'), 'ok', null, _('Primary uplink')],
+	backup_ready: [_('Backup uplink (ready)'), 'backup', _('Backup uplink #%d (ready)'), _('Backup, ready'), _('Backup %d, ready')],
 	backup_not_ready: [_('Backup channel, not ready'), 'warn', _('Backup channel %d, not ready'), _('Backup, not ready'), _('Backup %d, not ready')],
 	no_internet: [_('No internet access'), 'warn'], checking: [_('Connection check'), 'neutral'],
-	limited: [_('Limited access'), 'warn'],
+	limited: [_('Whitelist only'), 'warn'],
 	/* the whitelist with a tunnel over it that answers (the owner, 2026-10-28): the traffic passes, through the tunnel */
-	limited_tunnel: [_('Whitelist, the internet through the tunnel'), 'ok', null, _('Main channel, through the tunnel')],
-	backup_limited: [_('Backup channel, limited access'), 'warn', _('Backup channel %d, limited access'), _('Backup, limited access'), _('Backup %d, limited access')] };
+	limited_tunnel: [_('Whitelisted; internet via tunnel'), 'ok', null, _('Main channel, through the tunnel')],
+	backup_limited: [_('Backup channel, limited access'), 'warn', _('Backup channel %d, limited access'), _('Backup, limited access'), _('Backup #%d (whitelist)')] };
 var REASONS = mm.REASONS;
 /* a tile folded or open as the person left it; never touched: open when it is the only modem (spec 25.9.7) */
 function stored(id, alone) {
@@ -309,6 +310,7 @@ function remember(id, open) {
 function describe(device, status) {
 	var mm = device.modemmanager || {}, session = device.session || {}, net = session.netifd || {};
 	var owner = device.owner || {}, config = device.configuration || {}, stability = device.stability || {};
+	var qmodem = device.qmodem || {};
 	var uplink = device.uplink || {}, traffic = uplink.traffic || {}, health = device.health || {};
 	var mmAge = (status.modemmanager || {}).age_s;
 	/* ModemManager's view goes stale with its read; a modem it does not hold (HiLink web, QModem, AT) has its own reading,
@@ -354,7 +356,7 @@ function describe(device, status) {
 	/* a problem marked err colours the card's line red when it comes first (a SIM, a failed connection, a network error) */
 	var problems = [], errs = [], retune = false, rescue = false, prob = function(t, err) { problems.push(t); errs.push(!!err); };
 	if (device.usb_power)
-		prob(_('USB power failure (kernel error: “%s”). A restart will not help: connect the modem through a USB hub with its own power or into another port.').format(words(device.usb_power.last)));
+		prob(_('USB power fault (kernel: "%s"). Rebooting will not help — use a powered USB hub or try another port.').format(words(device.usb_power.last)));
 	if (!present) prob(_('The modem is not found. Check its connection and power.'));
 	else {
 		retune = !!owner.conflict || config.state === 'locked' || !!(config.state && ['unknown', 'ready', 'ok', 'expected'].indexOf(config.state) < 0) ||
@@ -364,18 +366,22 @@ function describe(device, status) {
 			prob(_('The router lacks a driver for this modem (%s). It can be installed on the modem\'s page, the “Diagnostics” tab.')
 				.format(list(device.drivers_missing).map(function(m) { return (m && (m.package || m.driver)) || ''; }).join(', ')));
 		if (phone && !sharing) prob(/^phone-iphone/.test(device.profile.id) ?
-			_('The iPhone does not share its internet: switch on “Personal Hotspot” on it and keep the screen unlocked; the first time it asks “Trust this computer?”.') :
-			_('The phone does not share its internet: switch on “USB tethering” in its settings (Hotspot and tethering).'));
+			_('iPhone tethering inactive: enable "Personal Hotspot", unlock the screen, and tap "Trust this computer?" on first connection.') :
+			_('Phone tethering inactive: enable "USB tethering" in phone settings.'));
 		else if (noIface && phone) prob(_('The phone shares its internet, but the router has no interface for it: “Connect” creates one (the address from the phone, by DHCP).'));
 		else if (noIface) prob(_('The modem is not connected: it has no interface yet. “Connect” creates one with the modem\'s settings.'));
 		else if (userIf && !(device.connection || {}).foreign) prob(_('The interface “%s” set up outside MedveModem serves this modem: hand it over to MedveModem on the modem page.').format(userIf));
 		/* bench 2026-10-20 (FM350): handed to QModem while QModem's services were stopped — no one drove it, and the card
 		 * said only «нет подключения», no operator, no signal, no «Исправить» */
 		var qmodemDown = owner.control === 'qmodem' && state !== 'connected' && !frozen && status.qmodemRunning === false;
-		if (qmodemDown)
-			prob(_('QModem should manage the modem, but its modem connection service (qmodem_network) is not running: nobody connects the modem. “Fix” starts it (or Settings → MedveModem service → “Start QModem”); another way of management can also be chosen on the modem\'s page.'));
+		if (qmodem.adoption_failed)
+			prob(status.qmodemRunning === false ?
+				_('QModem is selected, but no modem-device section was created and qmodem_network is stopped. Check QModem and AT-port detection, or switch backend.') :
+				_('QModem is selected, but no modem-device section was created. Check AT-port detection or switch backend.'));
+		else if (qmodemDown)
+			prob(_('QModem is assigned to this modem, but its qmodem_network service is stopped. Click "Fix" to start it (or go to Settings → MedveModem service → "Start QModem"), or select another backend on the modem page.'));
 		if (owner.conflict) prob(_('Management conflict: several services manage the modem.'));
-		if (mmFresh && mm.failed_reason === 'sim-missing') prob(_('The SIM card is not found: insert it until it clicks.'), true);
+		if (mmFresh && mm.failed_reason === 'sim-missing') prob(_('SIM card not detected — ensure it is seated properly.'), true);
 		if (list(device.action_needed).indexOf('fcc-unlock') >= 0)
 			prob(_('The modem\'s radio is off: this model does so without an FCC unlock. It can be switched on on the modem\'s page, the “Diagnostics” tab.'));
 		else if (config.state === 'locked') prob(_('The SIM is locked or the radio is off.'), true);
@@ -390,16 +396,16 @@ function describe(device, status) {
 		if (state === 'failed' && !denied) prob(_('The connection could not be set up.'), true);
 		if (state === 'disconnected' && !paused && !noSim && !denied && !(phone && !sharing)) prob(_('The connection is broken.'));
 		if (state === 'connected' && uplink.dns && uplink.dns.ok === false)
-			prob(_('The router\'s DNS does not answer: there is a link, but sites will not open. If the DNS servers are set by hand, use 77.88.8.8 and 77.88.8.1 under whitelists.'));
+			prob(_('Router DNS is not responding: the link is up, but domains fail to resolve. If using custom DNS under a whitelist, try 77.88.8.8 and 77.88.8.1.'));
 		if (list(net.errors).length) prob(_('Network error: %s').format(net.errors.join(', ')), true);
 		if (state === 'connected' && uplink.role === 'no_internet') prob(_('The connection is up, but there is no internet access.') + ' ' + cap(checkWords(uplink.reach)) + '.');
 		if (health.state === 'stalled' && /^carrier restriction/.test(health.stalled || ''))
-			prob(_('Reconnecting did not help. Check the balance, the traffic limit and the operator\'s network.'));
+			prob(_('Reconnect failed. Check SIM balance, data cap, and carrier coverage.'));
 		else if (denied || (health.state === 'stalled' && /^registration denied/.test(health.stalled || '')))
 			prob(_('Registration denied: the SIM card is blocked, there is no roaming, or the modem\'s firmware is for another region.') +
 				(deniedAt && deniedAt.retry_in_s > 0 ? ' ' + _('The next connection attempt in %s min.').format(num(Math.ceil(deniedAt.retry_in_s / 60))) : ''), true);
 		else if (health.state === 'stalled')
-			prob(_('The link could not be restored automatically (%s). A check by hand is needed.').format(REASONS[health.reason] || health.reason), true);
+			prob(_('Automatic recovery failed (%s). Manual inspection required.').format(REASONS[health.reason] || health.reason), true);
 		/* the ladder spent, or its USB step failed: the last resort is on the modem's page (the owner, 2026-11-09: «иногда
 		 * оправдано направить пользователя»); not for a SIM or an operator's refusal, where it would not help */
 		var lastStep = ((device.recovery || {}).last_steps) || {};
@@ -415,7 +421,7 @@ function describe(device, status) {
 	var running = present && (device.recovery || {}).state === 'running';
 	var owners = { modemmanager: 'ModemManager', 'netifd-qmi': 'MedveModem · QMI',
 		'netifd-mbim': 'MedveModem · MBIM', 'medvemodem-at': 'MedveModem · AT',
-		qmodem: 'QModem', hilink: _('The modem itself (a router inside it)'), unresolved: _('Not determined'), none: _('Not assigned') };
+		qmodem: 'QModem', hilink: _('Built-in modem router (HiLink)'), unresolved: _('Not determined'), none: _('Not assigned') };
 	var quality = mmFresh && present && typeof mm.signal_quality === 'number' ? mm.signal_quality : null;
 	return {
 		name: words(device.name) || model,
@@ -503,7 +509,7 @@ function describe(device, status) {
 		smsWarn: (function(h) {
 			if (!h) return '';
 			if (h.full === true) return _('The SMS storage is full: new messages are not received');
-			if (h.stuck && h.stuck.length) return _('An unsent message in the modem\'s storage blocks receiving SMS');
+			if (h.stuck && h.stuck.length) return _('Unsent message in modem memory is blocking incoming SMS');
 			if (h.full === false) return _('The SMS storage is almost full');
 			return '';
 		})(device.sms && device.sms.health),
@@ -520,7 +526,8 @@ function describe(device, status) {
 		quality: quality !== null && quality >= 0 && quality <= 100 ? quality : null,
 		icon: mmFresh && present ? signalIcon(mm) : null,
 		/* how the modem is driven (bench 2026-10-15): the protocol of its control function and the service, «QMI · ModemManager» */
-		owner: [CTL_PROTO[((device.port_roles || {}).control || {}).driver] || '', owners[owner.control] || words(owner.control) || ''].filter(Boolean).join(' · ') || _('Not determined'),
+		owner: [CTL_PROTO[((device.port_roles || {}).control || {}).driver] || '',
+			qmodem.adoption_pending ? _('Handing off to QModem') : owners[owner.control] || words(owner.control) || ''].filter(Boolean).join(' · ') || _('Not determined'),
 		iface: words(session.interface), proto: words(session.proto),
 		/* the address itself and the interface, «10.187.44.19 · wwan0» (mockup): netifd's list (with the prefix), else
 		 * ModemManager's bearer address; a flag only says it was given (bench 2026-10-19: «IPv4 получен» with the list there) */
@@ -536,8 +543,8 @@ function describe(device, status) {
 		reason: words(session.reason) || (['unknown', 'ready', 'ok', 'expected'].indexOf(config.state) < 0 ? list(config.evidence).join('; ') : '') ||
 			chainLine(device.diagnosis) || '—',
 		generation: device.generation,
-		freshness: present && device.reading_stale ?
-			(owner.control === 'qmodem' ? _('Last QModem reading is stale.') : _('Last modem reading is stale.')) :
+		freshness: present && device.reading_stale && !qmodem.adoption_failed ?
+			(owner.control === 'qmodem' ? _('QModem data is stale.') : _('Modem data is stale.')) :
 			present && owner.control === 'modemmanager' && mm.model && !mmFresh ? _('ModemManager\'s data is stale or unavailable.') : ''
 	};
 }
@@ -547,7 +554,7 @@ function describe(device, status) {
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r10';
+var VIEW_VERSION = '0.16.0-alpha1-r12';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -599,7 +606,7 @@ return view.extend({
 			var b = this;
 			b.disabled = true;
 			return uciSet('medvemodem', 'core', { failover: '1' }).then(function() { return uciCommit('medvemodem'); })
-				.then(function() { mm.toast('fo', _('Channel switching is on.'), 'ok', 8000); return self.update(); })
+				.then(function() { mm.toast('fo', _('Failover enabled.'), 'ok', 8000); return self.update(); })
 				.catch(function() {}).then(function() { b.disabled = false; });
 		}) }, _('Turn switching on'));
 		this.foOff = E('div', { 'class': 'mm-verdict-sub mm-fo-off', hidden: true }, [this.foOffText, ' ', this.foOn]);
@@ -649,18 +656,18 @@ return view.extend({
 			return getNeighbours(true).then(function() { return new Promise(function(r) { setTimeout(r, 4000); }); })
 				.then(function() { return self.neighboursShow(); }).catch(function() {}).then(function() { b.disabled = false; });
 		}) }, _('Check again'));
-		this.nb = E('section', { 'class': 'mm-callout is-warn mm-neighbours', role: 'status', 'aria-label': _('Other modem helpers on this router'), hidden: true }, [
-			E('strong', {}, _('Other modem helpers on this router')),
-			E('p', { 'class': 'mm-faint' }, _('They may talk to the same modems: answers mixed with ours, USB resets, a second dial, a watchdog of their own. MedveModem does not stop them; switch off what you do not need.')),
+		this.nb = E('section', { 'class': 'mm-callout is-warn mm-neighbours', role: 'status', 'aria-label': _('Other modem tools on this router'), hidden: true }, [
+			E('strong', {}, _('Other modem tools on this router')),
+			E('p', { 'class': 'mm-faint' }, _('May conflict over the same modems (garbled AT replies, USB resets, duplicate dialing, competing watchdogs). MedveModem does not stop them — disable any you do not need.')),
 			this.nbList, this.nbAgain]);
 		/* the router's health in the kernel's words: this boot, and what the last troubled boot ended with */
 		this.kList = E('ul', { 'class': 'mm-act-list' });
 		this.kern = E('section', { 'class': 'mm-callout is-err mm-kernel', role: 'alert', hidden: true }, [
-			E('strong', {}, _('The router itself is in trouble')), this.kList,
-			E('p', { 'class': 'mm-faint' }, _('This is the hardware or the power, not the modems: MedveModem cannot fix it with a restart of a modem. Save the logs (logread, dmesg) and restart the router. If it comes back: a power supply with a margin, a USB hub with its own power for the modems, cooling.'))]);
+			E('strong', {}, _('Router hardware fault')), this.kList,
+			E('p', { 'class': 'mm-faint' }, _('Hardware or power fault — restarting a modem will not fix this. Save logs (logread, dmesg) and reboot the router. If it recurs, check the power adapter, use a powered USB hub, and verify cooling.'))]);
 		this.kPrevList = E('ul', { 'class': 'mm-act-list' });
 		this.kPrev = E('section', { 'class': 'mm-callout is-warn mm-kernel-prev', role: 'status', hidden: true }, [
-			E('strong', {}, _('Before the last restart the router was in trouble')), this.kPrevList,
+			E('strong', {}, _('Router experienced errors before the last reboot')), this.kPrevList,
 			E('p', { 'class': 'mm-faint' }, _('Told by the kernel before the router was restarted. If the router hung, check its power and the USB hub.'))]);
 		/* the banners close with ×; the closed ones are counted under them with «Show again» (the owner, 2026-10-31) */
 		this.hiddenLine = E('p', { 'class': 'mm-faint mm-hidden-notices', hidden: '' });
@@ -710,7 +717,7 @@ return view.extend({
 		this.suspects = E('section', { 'class': 'mm-suspects', hidden: true, 'aria-label': _('Possibly a modem') });
 		this.empty = E('div', { 'class': 'mm-card mm-pad mm-empty', hidden: true }, [
 			E('h3', {}, _('No modems found')),
-			E('p', { 'class': 'mm-dim' }, _('Connect a modem and check its power. The list refreshes by itself.'))
+			E('p', { 'class': 'mm-dim' }, _('Plug in a modem and verify power. The list refreshes automatically.'))
 		]);
 		/* «Порты и устройства» (r84): Expert only, off by default, kept per browser; one line folded */
 		try { this.usbOn = localStorage.getItem('mm:usbtree') === '1'; this.usbOpen = localStorage.getItem('mm:usbtree-open') === '1'; } catch (e) { this.usbOn = this.usbOpen = false; }
@@ -731,7 +738,7 @@ return view.extend({
 		this.usbName.save = E('button', { type: 'button', 'class': 'mm-btn mm-usb-name-save', click: mm.busy(function() { return self.usbNameSave(); }) }, _('Save the name'));
 		this.usbName.box = E('div', { 'class': 'mm-usb-name-box', hidden: true }, [
 			E('label', { 'for': 'mm-usb-name' }, _('Port name')), ' ', this.usbName.input, ' ', this.usbName.save, ' ', this.usbName.out,
-			E('p', { 'class': 'mm-faint' }, _('The name belongs to the port: another device in it is shown with the same name. An empty field removes it.'))]);
+			E('p', { 'class': 'mm-faint' }, _('Name is bound to this USB port (any device plugged in here inherits it). Leave blank to clear.'))]);
 		this.usbEvents = E('ol', { 'class': 'mm-usb-events' });
 		this.usbNote = E('p', { 'class': 'mm-faint mm-usb-note', hidden: true });
 		this.usbBody = E('div', { 'class': 'mm-usb-body', hidden: true }, [
@@ -872,7 +879,7 @@ return view.extend({
 				E('td', {}, (function(box) { box.checked = self.tableSel.has(id); return box; })(E('input', { type: 'checkbox', 'class': 'mm-row-check',
 					'aria-label': _('Select “%s”').format(card.titleLink.textContent),
 					change: function(ev) { ev.target.checked ? self.tableSel.add(id) : self.tableSel.delete(id); self.applyTable(); } }))),
-				E('td', { 'class': 'num', 'data-h': '№', title: self.ranked.indexOf(id) >= 0 ? _('Place in the channel priority') : _('No interface: outside the priority') }, String(i + 1)),
+				E('td', { 'class': 'num', 'data-h': '№', title: self.ranked.indexOf(id) >= 0 ? _('Place in the channel priority') : _('No interface (excluded from priority)') }, String(i + 1)),
 								E('td', { 'data-h': _('Modem') }, [E('a', { href: href }, card.titleLink.textContent),
 					card.subtitle.hidden ? '' : E('div', { 'class': 'mm-faint' }, card.subtitle.textContent)]),
 				E('td', { 'data-h': _('State') }, [E('span', { 'class': 'mm-row mm-table-state' }, [light, net,
@@ -937,8 +944,8 @@ return view.extend({
 		};
 		var items = [E('strong', {}, _('Selected: %d').format(cards.length))];
 		items.push(run(_('Switch the connection on'), null, function(c) { return connect(c.device.device_id, true, 'LuCI'); }));
-		items.push(run(_('Switch the connection off'), _('Switch the connection off for'), function(c) { return connect(c.device.device_id, false, 'LuCI'); }));
-		if (cards.length === 1) items.push(run(_('Make main'), _('Make main'), function(c) {
+		items.push(run(_('Disconnect'), _('Switch the connection off for'), function(c) { return connect(c.device.device_id, false, 'LuCI'); }));
+		if (cards.length === 1) items.push(run(_('Set as primary'), _('Set as primary'), function(c) {
 			var id = c.device.device_id;
 			return setPriority([id].concat((self.ranked || []).filter(function(x) { return x !== id; }))).then(function(r) {
 				if (r && r.result === 'done') self.followMain(id, c.titleLink.textContent, r);
@@ -1075,7 +1082,7 @@ return view.extend({
 		var self = this;
 		refs.pause = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-pause', hidden: true, click: mm.busy(function() {
 			var up = refs.pause.getAttribute('data-up') !== '1';
-			if (!up && !window.confirm(_('Switch the connection “%s” off? The link through this modem is gone until “Switch the connection on” or a router restart.').format(refs.titleLink.textContent)))
+			if (!up && !window.confirm(_('Disconnect "%s"? Connection will remain off until re-enabled manually or after a router reboot.').format(refs.titleLink.textContent)))
 				return;
 			refs.pause.disabled = true;
 			return connect(id, up, 'LuCI').then(function(r) {
@@ -1094,7 +1101,7 @@ return view.extend({
 			var name = refs.titleLink.textContent;
 			/* the wired channels keep their place in the common order, before or after the modems (audit r101 R07: the
 			 * text said a WAN always stays above, the engine keeps «WAN second» second) */
-			if (!window.confirm(_('Put “%s” first among the modems? When it has internet, the modems\' traffic goes through it, the rest stay as backups. The wired channels keep their place in the common order.').format(name)))
+			if (!window.confirm(_('Set "%s" as the primary modem? When online, cellular traffic will use it while other modems stay as backups. Wired uplinks keep their current priority.').format(name)))
 				return;
 			refs.main.disabled = true;
 			return setPriority(order).then(function(r) {
@@ -1102,20 +1109,20 @@ return view.extend({
 				else self.followMain(id, name, r);
 			}, function() { window.alert(_('The MedveModem service does not answer.')); })
 				.finally(function() { refs.main.disabled = false; return self.update(); });
-		}) }, _('Make the main modem'));
+		}) }, _('Set as primary modem'));
 		/* «Приостановить управление» (the owner, 2026-10-19): not only the interface down — no service touches the modem on USB:
 		 * MedveModem starts nothing on it, ModemManager is kept off it, QModem's dial of it stops */
 		refs.freeze = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-freeze', hidden: true, click: mm.busy(function() {
 			var on = refs.freeze.getAttribute('data-frozen') !== '1';
-			if (on && !window.confirm(_('Pause the management of the modem “%s”? The connection through it goes off, MedveModem stops reading, connecting and recovering it, ModemManager lets it go, QModem stops dialling. The modem stays untouched until you unfreeze it (also after a router restart).').format(refs.titleLink.textContent)))
+			if (on && !window.confirm(_('Pause management for "%s"? Its connection will drop. MedveModem will stop polling, dialing, and recovery, ModemManager will release it, and QModem will stop dialing. Stays paused across reboots until resumed.').format(refs.titleLink.textContent)))
 				return;
 			refs.freeze.disabled = true;
 			return freeze(id, on, 'LuCI').then(function(r) {
 				r = r || {};
 				if (r.result !== 'done' && r.result !== 'unchanged') window.alert((on ? _('Management not paused: %s') : _('Management not resumed: %s')).format(PAUSE_WHY[r.reason] || r.reason || r.result));
-				else if (r.qmodem_warning) window.alert(on ? _('The modem management is paused, but QModem\'s dialling is not stopped: QModem is busy, try again in a minute.') :
+				else if (r.qmodem_warning) window.alert(on ? _('Management paused, but QModem dialing is still active (QModem busy; retry in a minute).') :
 					_('The modem management is resumed, but QModem\'s dialling is not switched on: QModem is busy, try again in a minute.'));
-			}, function() { window.alert(_('The MedveModem service does not answer or cannot freeze the modem.')); })
+			}, function() { window.alert(_('MedveModem service is not responding or does not support pausing.')); })
 				.finally(function() { refs.freeze.disabled = false; return self.update(); });
 		}) });
 		/* «Замерить скорость» from the card (the owner, 2026-11-08): the modem page's
@@ -1147,11 +1154,11 @@ return view.extend({
 		 * it until the router or the service restarts, so its name and settings come back with it; here it is hidden in this
 		 * browser until it is plugged in again */
 		refs.goneNote = E('p', { 'class': 'mm-faint mm-gone-note', hidden: '' },
-			_('A disconnected modem stays on the list until the router or the MedveModem service restarts: then its name and settings come back when it is plugged in again.'));
+			_('Unplugged modems remain listed until the router or MedveModem restarts, preserving their name and settings when reconnected.'));
 		refs.forget = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-forget', hidden: '', click: function() {
 			hiddenGone(id, true);
 			refs.node.hidden = true;
-			mm.toast('gone-' + id, _('The modem is taken off the list. It comes back by itself when it is plugged in again.'), 'ok', 6000);
+			mm.toast('gone-' + id, _('Modem removed from the list. It will reappear automatically when reconnected.'), 'ok', 6000);
 		} }, _('Remove from the list'));
 		refs.titleLink = E('a', { href: href });
 		refs.title.appendChild(refs.titleLink);
@@ -1260,12 +1267,12 @@ return view.extend({
 			card.freeze.setAttribute('data-frozen', data.frozen ? '1' : '0');
 			text(card.freeze, data.frozen ? _('Resume management') : _('Pause management'));
 			card.pause.setAttribute('data-up', data.connected ? '1' : '0');
-			text(card.pause, data.connected ? _('Switch the connection off') : _('Switch the connection on'));
+			text(card.pause, data.connected ? _('Disconnect') : _('Switch the connection on'));
 			var rank = self.ranked.indexOf(id);
 			card.main.hidden = !data.present || rank <= 0 || data.paused;
 			var carrier = (uplink && uplink.carrier) || {}, carrierCard = carrier.device_id && self.cards.get(carrier.device_id);
 			var notFirst = rank === 0 && data.present && !data.carrying && !data.frozen && carrier.device_id && carrier.device_id !== id;
-			text(card.firstNote, notFirst ? _('First in the priority · the traffic still goes through “%s”').format(carrierCard ? carrierCard.titleLink.textContent : words(carrier.name) || carrier.device) +
+			text(card.firstNote, notFirst ? _('Highest priority · traffic still on "%s"').format(carrierCard ? carrierCard.titleLink.textContent : words(carrier.name) || carrier.device) +
 				((data.reach || {}).ok === false ? ': ' + _('this modem has no internet') : '') : '');
 			card.firstNote.hidden = !notFirst;
 			var spDev = data.present && data.connected && !data.frozen ? words((device.uplink || {}).device) : '';
@@ -1278,8 +1285,8 @@ return view.extend({
 			card.more.hidden = card.main.hidden && card.pause.hidden && card.freeze.hidden && card.speed.hidden;
 			/* the header: the hardware's name, its place in the priority or why it carries nothing */
 			parts.push([rank < 0 ? 1e9 : rank, data.hw + ' (' + (!data.present ? _('disconnected from USB') + (device.frozen ? ', ' + _('management paused') : '') : data.frozen ? _('management paused') : data.pausedAuto ? _('switched off, reconnecting') : data.paused ? _('deactivated') :
-				(rank === 0 ? (data.carrying ? _('main') : _('first in the priority')) : rank > 0 ? (self.ranked.length > 2 ? _('backup %d').format(rank) : _('backup')) : _('no interface')) +
-				(data.connected ? '' : ', ' + _('no link'))) + ')']);
+				(rank === 0 ? (data.carrying ? _('primary') : _('first in the priority')) : rank > 0 ? (self.ranked.length > 2 ? _('backup %d').format(rank) : _('backup')) : _('no interface')) +
+				(data.connected ? '' : ', ' + _('no connection'))) + ')']);
 			/* the normal level names only bad noise; the experienced one the numbers too */
 			/* a phone's signal is on the phone: nothing said here rather than «нет данных» */
 			var sigPct = lv === 'normal' ? mmc.signalPct(data.icon) : null;
@@ -1314,7 +1321,11 @@ return view.extend({
 			card.apn.hidden = lv === 'normal' || !apnNow;
 			/* the modem's temperature, when its page's «Температура» asks for it (the owner, 2026-10-19): from «Подробный» */
 			var tp = lv !== 'normal' && data.present ? mmc.tempPrefs(id) : {};
-			text(card.temp, tp.dash && tp.c != null ? num(tp.c) + ' °C' : '');
+			/* a reading the modem no longer answers is said old, not shown as measured now (the owner, 2026-11-19: a hung T99
+			   kept its temperature on the card) */
+			var tOld = tp.c != null && Date.now() / 1000 - (tp.ok || tp.t || 0) > 3 * mmc.TEMP_EVERY_S;
+			text(card.temp, tp.dash && tp.c != null ? (tOld ? _('%s (old)').format(num(tp.c) + ' °C') : num(tp.c) + ' °C') : '');
+			card.temp.classList.toggle('mm-is-old', !!tOld);
 			card.temp.hidden = !(tp.dash && tp.c != null);
 			if (tp.dash && !data.frozen) self.tempMeasure(id, tp);
 			/* the second line: only what is there, so the dots separate real parts */
@@ -1370,6 +1381,8 @@ return view.extend({
 			card.node.hidden = !data.present && hiddenGone(id);
 			text(card.recovering, data.recovering); card.recovering.hidden = !data.recovering;
 			text(card.freshness, data.freshness); card.freshness.hidden = !data.freshness;
+			/* the operator, the signal and the rest of a stale reading are dimmed: what was, not what is */
+			card.sub.classList.toggle('mm-is-old', !!data.freshness); card.network.classList.toggle('mm-is-old', !!data.freshness);
 			/* the internet lamp at every level and in the table (the owner, 2026-11-12: «и в подробном режиме карточки тоже») */
 			var role = (device.uplink || {}).role, st = data.present && !data.frozen ? mmc.checkState(data.reach, role) : null;
 			text(card.health, st ? st.text : ''); card.health.hidden = !st;
@@ -1418,7 +1431,7 @@ return view.extend({
 		/* the engine knows its version without the release (0.15.0), the page with it (0.15.0-r69): one version when they agree */
 		var engineVersion = String(status.version || '').replace(/_/g, '-');
 		var same = engineVersion === APP_VERSION || engineVersion === String(APP_VERSION).replace(/-r\d+$/, '');
-		text(this.version, 'MedveModem ' + (same ? APP_VERSION : _('%s · web interface %s (another version)').format(status.version, APP_VERSION)));
+		text(this.version, 'MedveModem ' + (same ? APP_VERSION : _('%s · web UI %s (version mismatch)').format(status.version, APP_VERSION)));
 		this.lastSuccess = new Date();
 		text(this.updated, _('updated at %s').format(this.lastSuccess.toLocaleTimeString(LANG)));
 		this.error.hidden = true; this.root.classList.remove('mm-stale');
@@ -1510,7 +1523,7 @@ return view.extend({
 	followMain: function(id, name, r) {
 		var self = this, tries = 0;
 		if (r && r.routes === 'failed') {
-			mm.toast('main', _('The order is saved, but the routes are not moved: the MedveModem service could not move them. Try again; if it repeats, the log is needed.'), 'warn', 30000);
+			mm.toast('main', _('Priority saved, but active routes could not be updated. Retry; check logs if the error persists.'), 'warn', 30000);
 			return;
 		}
 		mm.toast('main', _('The order is saved: “%s” is first. Switching the traffic…').format(name), 'run', 0);
@@ -1522,8 +1535,8 @@ return view.extend({
 				if (tries < 7) { window.setTimeout(look, 3000); return; }
 				var via = c.device_id && self.cards.get(c.device_id) ? self.cards.get(c.device_id).titleLink.textContent : words(c.name) || c.device || '';
 				mm.toast('main', _('The order is saved, but the traffic still goes through “%s”').format(via) +
-					((path.reach || {}).ok === false ? ': ' + _('“%s” has no internet, it stays a backup until the link comes.').format(name) :
-						'. ' + _('It switches when “%s” passes the connection check.').format(name)), 'warn', 30000);
+					((path.reach || {}).ok === false ? ': ' + _('"%s" has no internet and will remain on standby until connectivity recovers.').format(name) :
+						'. ' + _('Traffic will switch once "%s" passes the connectivity check.').format(name)), 'warn', 30000);
 			}, function() { if (tries < 7) window.setTimeout(look, 3000); });
 		})();
 	},
@@ -1548,18 +1561,18 @@ return view.extend({
 				words(((byId[carrier.device_id] || {}).modemmanager || {}).model) || _('modem')) :
 				wireName(path, carrier.device);
 			/* as the mockup says it (the owner, 2026-10-17): «Интернет работает», then through whom and who backs it up */
-			var heads = { available: _('The internet works'), limited: _('Limited access'), unavailable: _('No internet access'), checking: _('Checking the connection') };
+			var heads = { available: _('Internet online'), limited: _('Whitelist only'), unavailable: _('No internet access'), checking: _('Checking the connection') };
 			/* an operator's whitelist with a tunnel over it (podkop's VLESS on an allowed address; the owner 2026-10-23):
 			 * the carrier is limited, the rest goes through the tunnel, which answers */
 			var tun = uplink.internet === 'limited' && uplink.tunnel && uplink.tunnel.ok === true ? uplink.tunnel : null;
-			text(this.summary, tun ? _('The internet works through the tunnel') :
+			text(this.summary, tun ? _('Online via tunnel') :
 				(heads[uplink.internet] || _('State unknown')) + (who && uplink.internet !== 'available' ? ' (' + who + ')' : ''));
 			var simple = this.level === 'normal', r0 = path && path.reach;
 			text(this.internet, path ? (simple ? [who ? _('Now through “%s”').format(who) : '', !r0 || typeof r0.ok !== 'boolean' ? _('the connection check has not run yet') :
 				r0.limited ? _('not all sites open') : r0.ok ? (typeof r0.latency_ms === 'number' ? _('response %d ms').format(r0.latency_ms) : _('the internet answers')) :
 				_('the internet does not answer')] : [who ? _('The traffic goes through “%s”').format(who) : '', checkWords(path.reach) || _('the connection check has not run yet')]).filter(Boolean).join(' · ') :
 				carrier ? (who ? (simple ? _('Now through “%s”') : _('The traffic goes through “%s”')).format(who) : '') : _('There is no default route.'));
-			if (tun) text(this.internet, [who ? _('Directly through “%s” only the operator\'s whitelist opens').format(who) : _('Directly only the operator\'s whitelist opens'),
+			if (tun) text(this.internet, [who ? _('Direct via "%s": carrier whitelist only').format(who) : _('Direct: carrier whitelist only'),
 				_('the rest goes through the tunnel %s').format([words(tun.via), words(tun.outbound)].filter(Boolean).join(', ') || '—') +
 				(typeof tun.delay_ms === 'number' ? ', ' + _('response %d ms').format(tun.delay_ms) : '')].join(' · '));
 			var modems = paths.filter(function(p) { return p.device_id; });
@@ -1604,11 +1617,11 @@ return view.extend({
 				wireName(q, dev);
 		};
 		var said = [];
-		if (away.length) said.push(_('no internet through %s: the traffic goes through another channel.').format(away.map(name).join(', ')));
-		if (kept.length) said.push(_('%s answers again, but is kept last by the setting.').format(kept.map(name).join(', ')));
-		if (spent.length) said.push(_('%s used up the SIM\'s traffic limit: the channel is kept as a backup.').format(spent.map(name).join(', ')));
+		if (away.length) said.push(_('no internet via %s; traffic routed via backup uplink.').format(away.map(name).join(', ')));
+		if (kept.length) said.push(_('%s is back online, kept as lowest priority per settings.').format(kept.map(name).join(', ')));
+		if (spent.length) said.push(_('%s reached its SIM data cap; kept as fallback.').format(spent.map(name).join(', ')));
 		this.failover.hidden = !(fo && fo.enabled && (said.length || !fo.active));
-		text(this.foText, !fo || !fo.enabled ? '' : !fo.active ? _('Channel switching does not work: %s.').format(/mwan3/.test(fo.why || '') ? _('mwan3 manages the routes') : words(fo.why) || _('the reason is unknown')) :
+		text(this.foText, !fo || !fo.enabled ? '' : !fo.active ? _('Failover unavailable: %s.').format(/mwan3/.test(fo.why || '') ? _('mwan3 manages the routes') : words(fo.why) || _('unknown error')) :
 			said.length ? _('Switching: %s').format(said.join(' ')) : '');
 		this.foBack.hidden = !(fo && fo.active && kept.length);
 		var dead = paths.filter(function(p) { return p.role === 'no_internet'; })[0], alive = paths.filter(function(p) { return p.role === 'backup_ready'; })[0];
@@ -1627,7 +1640,7 @@ return view.extend({
 		text(this.dpiLine, dpi.length ? _('%s is installed: under the operator\'s whitelist it does not help and may break the tunnel; on mobile internet it is better stopped or removed.').format(dpi.join(', ')) : '');
 		this.foOff.hidden = !(fo && fo.enabled === false && dead && alive);
 		if (!this.foOff.hidden)
-			text(this.foOffText, _('No internet through %s, while %s works: channel switching is off, so the traffic stays on the dead channel.')
+			text(this.foOffText, _('No internet via %s while %s is online: failover is disabled, so traffic remains on the failed uplink.')
 				.format(words(dead.name) || name(dead.device), words(alive.name) || name(alive.device)));
 		/* a backup moved aside while the internet works is said in the line, not by an «!» (the owner, 2026-10-30: «почему
 		 * восклицательный знак у сетевой таблицы»): the first in the priority idle or the DNS down still turn it amber */
@@ -1665,10 +1678,10 @@ return view.extend({
 			var d = byId[p.device_id] || {}, r = all.filter(function(x) { return x && x.device === p.device; })[0] || {};
 			var why = d.frozen ? _('management paused') : (d.connection || {}).deactivated ? _('deactivated') :
 				!p.device ? (d.present === false ? _('disconnected from USB') : _('no session: no network device')) :
-				r.steered_away && r.quota ? _('SIM limit used up: moved aside') : r.steered_away && r.manual ? _('a manual channel waits') :
+				r.steered_away && r.quota ? _('SIM data cap reached (deprioritized)') : r.steered_away && r.manual ? _('a manual channel waits') :
 				r.demoted ? _('answers again, kept last by the setting') :
-				r.steered_away && p.reach && p.reach.limited ? _('whitelist only: moved aside') :
-				r.steered_away ? _('no internet: moved aside by switching') :
+				r.steered_away && p.reach && p.reach.limited ? _('whitelist only (deprioritized)') :
+				r.steered_away ? _('no internet (deprioritized by failover)') :
 				typeof p.metric === 'number' && typeof p.kernel_metric === 'number' && p.metric !== p.kernel_metric ? _('the kernel has not moved the route yet') :
 				p.role !== 'carrying' && typeof p.kernel_metric !== 'number' ? _('no default route') : '';
 			/* the modems' order moved by one place; the wired channels keep theirs in the common order (as «Make main») */
@@ -1692,11 +1705,11 @@ return view.extend({
 			var editKey = p.device_id ? ((d.connection || {}).interface ? p.device_id : null) : p.interface ? 'iface:' + p.interface : null;
 			var editMetric = mm.busy(function() {
 				var name = p.device_id ? words(p.name) || p.device_id : wireName(p);
-				var v = window.prompt(_('Metric of “%s”: 0–9999, the lower one carries the traffic first').format(name),
+				var v = window.prompt(_('Metric for "%s" (0–9999; lower value has higher priority)').format(name),
 					typeof p.metric === 'number' ? String(p.metric) : '');
 				if (v === null) return;
 				v = String(v).trim();
-				if (!/^[0-9]{1,4}$/.test(v)) { window.alert(_('A metric is a whole number from 0 to 9999.')); return; }
+				if (!/^[0-9]{1,4}$/.test(v)) { window.alert(_('Metric must be an integer from 0 to 9999.')); return; }
 				var set = {};
 				set[editKey] = parseInt(v, 10);
 				return setPriority([editKey], set).then(function(res) {
@@ -1768,7 +1781,7 @@ return view.extend({
 		text(this.feedSum, this.feedItems ? _('messages: %d · modems: %d').format(items.length, this.feedModems || 0) : '');
 		this.feedNote.hidden = !(q && !shown.length) && !this.feedFailed;
 		text(this.feedNote, q && !shown.length ? _('Nothing found for “%s”.').format(q) :
-			this.feedFailed ? _('The messages of some modems are not read yet (%d): they come in a moment.').format(this.feedFailed) : '');
+			this.feedFailed ? _('SMS from %d modem(s) are still loading and will appear shortly.').format(this.feedFailed) : '');
 		var page = L.url('admin/modem/medvemodem/modem');
 		this.feedList.replaceChildren.apply(this.feedList, shown.map(function(x) {
 			var m = x.m, out = m.type === 'submit', op = !out && mm.smsOperator(m.number), code = out || m.binary ? '' : mm.smsCode(m.text);
@@ -1874,7 +1887,7 @@ return view.extend({
 		var sel = nodes[this.usbSel] || null, gone = !sel && ((t.absent || []).filter(function(a) { return a.path === self.usbSel; })[0] || null);
 		var rows = [], row = function(k, v) { if (v) rows.push(E('dt', {}, k), E('dd', {}, v)); };
 		if (sel) {
-			row(_('Path'), sel.path + (sel.label ? ' (' + sel.label + ')' : ''));
+			row(_('Route'), sel.path + (sel.label ? ' (' + sel.label + ')' : ''));
 			row(_('Device'), [sel.vidpid, words(sel.manufacturer), words(sel.product)].filter(Boolean).join(' · '));
 			row(_('Type'), sel.kind === 'controller' ? _('controller') : sel.kind === 'hub' ? _('hub') : sel.modem ? _('modem') : USB_KIND[sel.class_kind]);
 			row(_('USB speed'), usbSpeed(sel.speed_mbps) + (sel.downgraded ? ' — ' + _('a USB 3 device works as USB 2: a cable, a socket or a hub without USB 3') : ''));
@@ -2001,7 +2014,7 @@ return view.extend({
 			if (!gone && n.bounce && n.bounce.state === 'unstable')
 				warn = n.bounce.hour && n.bounce.hour.reconnects ? N_(n.bounce.hour.reconnects, 'Disconnected %d time in an hour: check the cable or the hub\'s power',
 					'Disconnected %d times in an hour: check the cable or the hub\'s power').format(n.bounce.hour.reconnects) : _('USB errors: check the cable or the hub\'s power');
-			else if (!gone && n.downgraded) warn = _('Works slower than it can: another cable or a USB 3 port');
+			else if (!gone && n.downgraded) warn = _('Running below rated speed: try another cable or a USB 3 port');
 			var glyph = gone ? '⊘' : n.kind === 'hub' ? '⑂' : n.modem ? '📶' : '🔌';
 			var body = [E('strong', {}, head), E('br'), E('span', { 'class': 'mm-faint' }, sub.join(' · '))];
 			if (chips.length) body.push(E('span', { 'class': 'mm-usb-chips' }, chips.map(function(c) { return E('span', { 'class': 'mm-usb-chip is-owner' }, c); })));
@@ -2091,7 +2104,7 @@ return view.extend({
 					(h.device_id ? ' · ' + _('modem “%s”: no AT command goes to that port while it is held').format(names[h.device_id] || h.device_id) : '')));
 			});
 			list(n && n.scripts).forEach(function(sc) {
-				rows.push(E('li', {}, [sc.path === 'cron' ? _('A cron task touches modems') : _('Script %s touches modems').format(sc.path),
+				rows.push(E('li', {}, [sc.path === 'cron' ? _('Cron job accesses modems') : _('Script %s accesses modems').format(sc.path),
 					' (' + list(sc.words).join(', ') + ')']));
 			});
 			self.nbList.replaceChildren.apply(self.nbList, rows);
@@ -2109,7 +2122,7 @@ return view.extend({
 			this.cacheShown = true;
 			var c = cacheGet('mm:dash');
 			if (c && c.status && Array.isArray(c.devices)) {
-				try { this.apply(c.status, c.devices, c.uplink); text(this.updated, _('the data of the last visit, refreshing…')); } catch (e) { /* only a head start */ }
+				try { this.apply(c.status, c.devices, c.uplink); text(this.updated, _('cached data, refreshing…')); } catch (e) { /* only a head start */ }
 				this.lastSuccess = null;	/* nothing from the engine yet */
 			}
 		}

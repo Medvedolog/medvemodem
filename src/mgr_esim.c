@@ -235,10 +235,10 @@ static bool esim_spawn(struct esim_job *j, const char *action, int timeout_ms)
 
 			ports[0] = '\0';
 			for (k = 0; k < j->nports; k++) {
+				size_t l = strlen(ports);
+
 				esim_dev_path(j->port_node[k], path, sizeof(path));
-				if (k)
-					strcat(ports, " ");
-				strcat(ports, path);
+				snprintf(ports + l, sizeof(ports) - l, "%s%s", k ? " " : "", path);	/* bounded (audit STAB-08) */
 			}
 			setenv("MM_ESIM_PORTS", ports, 1);
 		}

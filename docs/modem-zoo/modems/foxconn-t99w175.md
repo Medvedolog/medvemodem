@@ -13,7 +13,7 @@ T99W175 should not be reduced to “an MBIM modem”. The family is seen in sepa
 | `05c6:90d5` | MBIM |
 | `05c6:9025` | QMI/RMNET |
 
-Historical archived modem utility tty hints exist for all four IDs, but they are observations only.
+Historical another modem manager tty hints exist for all four IDs, but they are observations only.
 
 a field report also documents a critical ID collision: Compal RXM-G1 / SG500M2-X can reuse some of these IDs with a different firmware and AT command set. VID:PID alone is not model identity.
 
@@ -30,12 +30,12 @@ This is a **control subtransport**, not another USB composition. libqmi can send
 
 Current a field report code uses that path for QMI extras/eSIM-related work when the WDM node is owned by `cdc_mbim`. The Foxconn FCC unlock path in ModemManager/libqmi uses the same principle.
 
-The modeminfo lineage used around archived modem utility explicitly exposes two QMI telemetry choices: **Direct QMI** and **QMI over MBIM**. Our a router maker's firmware package audit separately records archived modem utility configuring the T99W175 stack with ModemManager ownership plus modeminfo `qmi_mode`/`qmi_proxy` on the WDM device. The exact `qmi_trap` choice is therefore a modeminfo control-path setting, not the data protocol name. Zoo separates:
+The modeminfo lineage used around another modem manager explicitly exposes two QMI telemetry choices: **Direct QMI** and **QMI over MBIM**. Our a router maker's firmware package audit separately records another modem manager configuring the T99W175 stack with ModemManager ownership plus modeminfo `qmi_mode`/`qmi_proxy` on the WDM device. The exact `qmi_trap` choice is therefore a modeminfo control-path setting, not the data protocol name. Zoo separates:
 
 1. network owner/data protocol;
 2. telemetry/control protocol.
 
-archived modem utility may hand networking to ModemManager while companion modeminfo reads QMI-style telemetry through the WDM device. Where that WDM node is `cdc_mbim`, libqmi's MBIM-QMUX path is QMI-over-MBIM. Calling the whole stack merely “MBIM” or merely “QMI” loses the distinction between data ownership and control telemetry.
+another modem manager may hand networking to ModemManager while companion modeminfo reads QMI-style telemetry through the WDM device. Where that WDM node is `cdc_mbim`, libqmi's MBIM-QMUX path is QMI-over-MBIM. Calling the whole stack merely “MBIM” or merely “QMI” loses the distinction between data ownership and control telemetry.
 
 ## Composition switching
 
@@ -66,7 +66,7 @@ Web reports on CUSTOMER and MBIM (2026-10-19, read through a web search summary,
   [4PDA 1102595](https://4pda.to/forum/index.php?showtopic=1102595&st=300)
 - An OpenWrt wiki gives `AT+USBSWITCH=90D5` (MBIM) / `=9025` (QMI) and `CUSTOMER=0` first when the default
   CUSTOMER 14 does not let the composition change. [wiki.vps-server.ru](https://wiki.vps-server.ru/doku.php/wiki:openwrt:t77w175)
-- archived modem utility issue #40: MBIM + ModemManager unstable (connections drop) on `F0.6.0.0.6.GC.004057`.
+- another modem manager issue #40: MBIM + ModemManager unstable (connections drop) on `F0.6.0.0.6.GC.004057`.
   GitHub issue 40
 - Wireless Joint X55/T99W175 threads: AT enabling and composition notes for other hosts.
   [WJ 3267](https://wirelessjoint.com/viewtopic.php?t=3267&start=150), [WJ 3777](https://wirelessjoint.com/viewtopic.php?t=3777)
@@ -102,7 +102,7 @@ Commands are kept here even when destructive or unsuitable for automatic OpenWrt
 | `AT^WCDMA_LOCK?` | cell.lock | **READ** | Read WCDMA lock state. | a field report _qualcomm_sdx55_common |
 | `AT^WCDMA_LOCK` | cell.lock | **MUTATING** | Clear WCDMA lock. | a field report _qualcomm_sdx55_common |
 | `AT^NR5G_LOCK?` | cell.lock | **READ** | Read NR5G lock state. | a field report _qualcomm_sdx55_common |
-| `AT^NR5G_LOCK=<PCI>,<NR-ARFCN>` | cell.lock | **EXPERIMENTAL** | Proposed/set form used by archived modem utility by symmetry with LTE; write form was explicitly noted there as lacking a live forum dump and must remain unverified. | a field report _qualcomm_sdx55_common |
+| `AT^NR5G_LOCK=<PCI>,<NR-ARFCN>` | cell.lock | **EXPERIMENTAL** | Proposed/set form used by another modem manager by symmetry with LTE; write form was explicitly noted there as lacking a live forum dump and must remain unverified. | a field report _qualcomm_sdx55_common |
 | `AT^NR5G_LOCK` | cell.lock | **MUTATING** | Clear NR5G lock. | a field report _qualcomm_sdx55_common |
 | `AT^CA_ENABLE?` | radio.ca | **READ** | Read CA enable flag. | a field report _qualcomm_sdx55_common |
 | `AT+CFUN=1,1` | reset | **MUTATING** | Restart modem; also required after some cell-lock changes. | a field report and other scripts |
@@ -145,8 +145,8 @@ Important: the T99W175 `AT^SLMODE` mask is different from T77W968. Reusing mode 
 
 ## Provenance
 
-- архивные полевые сведения: live profile/transport logic;
-- other scripts / archived modem utility + modeminfo: historical compositions, QMI telemetry integration, operator presets;
+- a field report / another modem manager: live profile/transport logic;
+- other scripts / another modem manager + modeminfo: historical compositions, QMI telemetry integration, operator presets;
 - QModem: USB MBIM/RMNET and PCIe MBIM model evidence;
 - ModemManager/libqmi: QMI-over-MBIM control path;
 - community field corpus: firmware/customer/composition and destructive EFS observations.
@@ -175,8 +175,8 @@ See [Telegram field notes](../TELEGRAM-FIELD-NOTES.md).
 <!-- 4pda-field-2026-10-15:end -->
 
 
-<!-- upstream-field-notes-v3.5.2:start -->
-## Field incidents — archived field notes
+<!-- upstream-another modem manager-v3.5.2:start -->
+## Field incidents — a field report another modem manager
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -196,4 +196,4 @@ Exact operation stages, exit checks and prerequisites: [composition matrix](../C
 
 - **`foxconn-t99-qmi-mbim`** — `PERSISTENT_COMPOSITION_WRITE`; T99W175 QMI 05c6:9025/1e2d:00b7 or MBIM 05c6:90d5/1e2d:00b3 → firmware/personality-dependent; explicit approval required; Do not infer a valid numeric command from the VID/PID alone.
 
-<!-- upstream-field-notes-v3.5.2:end -->
+<!-- upstream-another modem manager-v3.5.2:end -->

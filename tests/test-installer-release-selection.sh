@@ -50,10 +50,10 @@ grep -Fq 'installed_version() {' medvemodem-install.sh
 grep -Fq '/^P:/ { pkg = substr($0, 3) }' medvemodem-install.sh
 grep -Fq '/^V:/ && pkg == name { print substr($0, 3); exit }' medvemodem-install.sh
 grep -Fq "sed 's/-alpha/_alpha/'" medvemodem-install.sh
-grep -Fq 'All selected packages already match $TAG; no package transaction is needed.' medvemodem-install.sh
+grep -Fq 'Selected packages are already at $TAG; nothing to do.' medvemodem-install.sh
 awk '
     /expected_version=.*TAG/ { version = NR }
-    /All selected packages already match/ { noop = NR }
+    /Selected packages are already at/ { noop = NR }
     /Downloading \$archive/ { download = NR }
     END { if (!version || !noop || !download || version >= noop || noop >= download) exit 1 }
 ' medvemodem-install.sh

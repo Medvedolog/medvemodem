@@ -21,6 +21,7 @@
 #include <libubus.h>
 
 #include "history.h"
+#include "identity.h"
 #include "lease.h"
 #include "mm_paths.h"
 #include "registry.h"
@@ -422,4 +423,10 @@ void identity_web_imei(const char *id, long long generation, const char *imei);
 void kfault_start(void);
 void kfault_stop(void);
 json_object *kfault_status(void);	/* {kinds, previous_boot?} (a new object) */
+/* the salted label key of a SIM by its ICCID (config sim / option key): false with no salt or no ICCID (r12) */
+bool sim_label_key_of(const char *iccid, char out[MM_IMEI_KEY_SIZE]);
+
+/* the USB rescue job stopped with the service (mgr_usbrescue.c) */
+void usbrescue_stop(void);
+
 #endif

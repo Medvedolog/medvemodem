@@ -87,6 +87,26 @@ void foreign_retain(json_object *devices)
 		}
 		json_object_put(gone);
 	}
+	/* «<id>|<generation>»: only the current attachment of a device still known; a flapping USB added one per replug and
+	 * kept them all until the service stopped (audit STAB-04) */
+	if (withdrawn) {
+		json_object *gone = json_object_new_array();
+
+		json_object_object_foreach(withdrawn, key, v) {
+			const char *bar = strrchr(key, '|');
+			char id[512];
+			json_object *rec;
+
+			(void)v;
+			snprintf(id, sizeof(id), "%.*s", bar ? (int)(bar - key) : 0, key);
+			rec = devices && bar ? json_object_object_get(devices, id) : NULL;
+			if (!rec || json_object_get_int64(json_object_object_get(rec, "generation")) != atoll(bar + 1))
+				json_object_array_add(gone, json_object_new_string(key));
+		}
+		for (size_t k = 0; k < json_object_array_length(gone); k++)
+			json_object_object_del(withdrawn, json_object_get_string(json_object_array_get_idx(gone, k)));
+		json_object_put(gone);
+	}
 }
 
 json_object *foreign_of(const char *id)

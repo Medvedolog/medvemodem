@@ -1,6 +1,6 @@
 # ubus API for other interfaces (read-only first)
 
-Checked against the engine of 0.15.0-r197 (16.11.2026): every method it registers is named here
+Checked against the engine of 0.16.0-alpha1-r12 (20.11.2026): every method it registers is named here
 (`tests/test_docs_contract.py`).
 
 The contract an interface other than luci-app-medvemodem (for example the
@@ -68,7 +68,7 @@ port; `esim_status` talks to the eUICC (seconds). Use them on demand only.
 | List and switch | `device_id`, `present`, `product`, `manufacturer`, `modemmanager.model`; the user's name `name` (UCI `medvemodem.@modem[].name` matched by `device_id`); `name_follows` serial / imei / port: what keeps the name and the modem's settings with it in another USB port (HANDOFF 167); `connection.usb_config` {count, current, wanted?, state kept/set/waiting/refused/failed, why} for a module with more than one USB configuration (UCI `config device` / `option usb_config`, HANDOFF 168) |
 | Registration and operator | `modemmanager.registration` (`home`, `roaming`, `searching`, `denied`, `idle`), `operator`, `operator_code` (PLMN), `access_tech` ([`lte`, `5gnr`, …]), `location` {mcc, mnc, tac, cid} |
 | Registration refused (r183) | `connection.registration_denied` {since, at, retry_in_s}: the network denied the registration and none came since; kept while ModemManager holds the modem disabled after the failed connect, the engine's retry waits 30 min between tries |
-| SIM | `modemmanager.unlock_required` (`sim-pin`, `sim-puk`, null), `sim` (object path or null = no SIM), `sim_card` {operator_code, operator_name, gid1, imsi, iccid}, `own_numbers` [..]; the operator's label `sim_label` {number, description} (top level of the device record, from UCI `config sim` / `option iccid`) |
+| SIM | `modemmanager.unlock_required` (`sim-pin`, `sim-puk`, null), `sim` (object path or null = no SIM), `sim_card` {operator_code, operator_name, gid1, imsi, iccid}, `own_numbers` [..]; the operator's label `sim_label` {number, description, sms_center} and its key `sim_label_key` (top level of the device record; UCI `config sim` / `option key`, a salted hash of the ICCID since 0.16.0-alpha1-r12, never the ICCID itself) |
 | Signal | `modemmanager.signal_quality` (%), `signal.lte` {rsrp, rsrq, rssi, snr}, `signal.5g` {rsrp, rsrq, snr} (also `umts` {rscp, ecio}, `gsm` {rssi}) — from `--signal-get`, refreshed every 30 s |
 | Radio settings | `radio_settings` {via `modemmanager`/`qmodem`/`at`/`none`, dialect, modes {allowed [2g,3g,4g,5g], preferred}, supported_modes, bands, supported_bands [`eutran-3`, `ngran-78`], bands_any (no restriction), age_s (a QModem / AT reading), writable false, why} — the same block whoever drives the modem (spec 25.9.12); read only for now. QModem's and the AT readers answer on request: `radio` below |
 | Radio | `modemmanager.cells` [{type lte/5gnr, serving, role primary/secondary/scg-primary/scg-secondary/neighbour, earfcn \| nrarfcn, band, pci, rsrp, rsrq, sinr, bandwidth (kHz from QMI), tac, ci, plmn}], `current_bands` ([`eutran-3`, `ngran-78`]: check a computed band against them), `antennas` {lte \| nr: {chains [{chain, tuned, rsrp, power, ecio, phase}], tx {traffic, power}}, why}, `radio_at` |
@@ -206,7 +206,7 @@ reads again at once.
 The device record carries `sms` {unread, inbox} (spec 38.2.2) once the modem's
 messages were read; an `sms_list` answer marks them seen.
 The device record carries `quota` (spec 20.9) while its SIM is known:
-{iccid, used_bytes, limit_bytes?, percent?, warn_percent, state: none | ok |
+{key (the SIM's label key, r12; the ICCID before), used_bytes, limit_bytes?, percent?, warn_percent, state: none | ok |
 warn | exceeded, period_start, resets_on, action: warn | backup}; failover's
 routes carry `quota: true` for a link held behind for it.
 `probe` (`id`; write ACL since 0.15.0-r13, LuCI «Найти AT-порт») →

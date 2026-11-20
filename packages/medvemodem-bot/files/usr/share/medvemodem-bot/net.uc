@@ -142,28 +142,28 @@ function onNet(pressed, answer, edit, mid) {
         let n = 0;
         for (let l in netLinks(netAddr())) if (!l.main) n++;
         answer('');
-        edit(n ? ui.blocksConfirm(n) : wlView(lang.T('No connected modem to check.', 'Нет подключённых модемов для проверки.')));
+        edit(n ? ui.blocksConfirm(n) : wlView(lang.T('No connected modems to test.', 'Нет подключённых модемов для проверки.')));
         return;
     }
     // spec §44: the admin's word on the whitelist mode, with management allowed only; the engine does the rest
     if (pressed.kind == 'net_wl') {
-        if (!CONTROL) { answer(lang.T('Management is off in LuCI', 'Управление выключено в LuCI')); edit(wlView()); return; }
+        if (!CONTROL) { answer(lang.T('Control disabled in LuCI', 'Управление отключено в LuCI')); edit(wlView()); return; }
         let r = null;
         try { r = state.bus ? state.bus.call('medvemodem', 'wlmode', {action:pressed.action}) : null; } catch (e) { r = null; }
-        answer(r?.result == 'started' ? (pressed.action == 'on' ? lang.T('Turning on…', 'Включение…') : lang.T('Turning off…', 'Выключение…')) :
+        answer(r?.result == 'started' ? (pressed.action == 'on' ? lang.T('Enabling…', 'Включение…') : lang.T('Disabling…', 'Выключение…')) :
                r?.result == 'busy' ? lang.T('Busy, try again in a minute', 'Занято, попробуйте через минуту') :
-               lang.T('Not done', 'Не выполнено'));
+               lang.T('Failed', 'Не удалось'));
         edit(wlView());
         return;
     }
     let link = null;
     if (pressed.kind == 'net_svc') {
         for (let l in netLinks(netAddr())) if (l.key == pressed.link) link = l;
-        if (!link) { answer(lang.T('The link is gone, the page is refreshed', 'Канала уже нет, страница обновлена')); edit(netView()); return; }
+        if (!link) { answer(lang.T('Uplink no longer exists; screen refreshed', 'Канал больше недоступен, экран обновлён')); edit(netView()); return; }
     }
     let kind = pressed.kind == 'net_ip' ? 'ip' : pressed.kind == 'net_tunnel' ? 'tunnel' : pressed.kind == 'net_blocks' ? 'blocks' : 'svc';
     if (!netJob(kind, link, mid)) {
-        answer(lang.T('A check is already running', 'Проверка уже идёт'));
+        answer(lang.T('Check already in progress', 'Проверка уже идёт'));
         return;
     }
     answer(lang.T('Checking…', 'Проверка…'));

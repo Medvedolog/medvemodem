@@ -48,7 +48,7 @@ Then reload the web page with Ctrl+F5. Upgrades and service restarts **may inter
 
 - **Top strip:** Internet availability, active carrier and ordered backups. Expands into a channel table showing channel number, device, status, route metric, today's traffic, health-check result and explanation.
 - **Modem cards or table:** operator, radio signal, main/backup role, traffic, and Internet health (for example, latency in milliseconds; a stale result is shown separately).
-- **Device menu:** Make primary, Pause, and Freeze. Freezing stops MedveModem, QModem and ModemManager from acting on that modem.
+- **Device menu:** Make primary and Pause management. Pausing stops MedveModem, QModem and ModemManager from acting on that modem.
 - **Ports and devices:** USB device tree, connect/disconnect history and port identities.
 - **Basic / Detailed:** show or hide engineering fields. **Hide identifiers** masks IMEI, ICCID, phone numbers, addresses and map links for screenshots.
 
@@ -173,7 +173,7 @@ Important paths: `/etc/config/medvemodem`, `/etc/config/medvemodem-bot` (configu
 
 **No AT tab for this modem.** Another owner (ModemManager or QModem) holds the AT port. Check **Modem settings → AT port**. The Foxconn T77/T99 ModemManager port rule has been generated automatically since r104; it takes effect after a ModemManager restart, which can interrupt its modem sessions.
 
-**USSD breaks Internet access.** Some LTE modems temporarily switch to 3G for USSD (including T99 and T77). LuCI asks for confirmation. SMS balance enquiries are sometimes more reliable.
+**USSD breaks Internet access.** Some LTE modems temporarily switch to 3G for USSD (including T99 and T77). LuCI asks for confirmation. SMS balance inquiries are sometimes more reliable.
 
 **Bot outputs a literal array like `["…","…"]`.** Upgrade both `medvemodem-bot` and `luci-app-medvemodem-bot` together.
 

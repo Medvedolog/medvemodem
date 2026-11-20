@@ -1,1 +1,3 @@
 /etc/medvemodem/
+/etc/hotplug.d/medvemodem/
+/etc/config/medvemodem-secret

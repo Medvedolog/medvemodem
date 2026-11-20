@@ -35,9 +35,9 @@ function withReading(d) {
 }
 
 /* a backup's words with its place in the priority third (the owner, 2026-10-19: «Резерв 2, готов») */
-var ROLE = { carrying: [_('Main channel'), 'is-ok'], backup_ready: [_('Backup, ready'), 'is-backup', _('Backup %d, ready')],
+var ROLE = { carrying: [_('Primary uplink'), 'is-ok'], backup_ready: [_('Backup, ready'), 'is-backup', _('Backup %d, ready')],
 	backup_not_ready: [_('Backup, not ready'), 'is-warn', _('Backup %d, not ready')],
-	backup_limited: [_('Backup, limited access'), 'is-warn', _('Backup %d, limited access')], limited: [_('Limited access'), 'is-warn'],
+	backup_limited: [_('Backup, limited access'), 'is-warn', _('Backup #%d (whitelist)')], limited: [_('Whitelist only'), 'is-warn'],
 	no_internet: [_('No internet'), 'is-warn'] };
 function words(v) { return typeof v === 'string' && v !== '--' ? v : ''; }
 function list(v) { return Array.isArray(v) ? v : []; }
@@ -56,13 +56,13 @@ function verdict(uplink, nameOf) {
 	if (!uplink || typeof uplink.internet !== 'string') return null;
 	var carrier = uplink.carrier || {}, paths = list(uplink.paths);
 	var path = paths.filter(function(p) { return carrier.device && p.device === carrier.device; })[0] || {};
-	var via = carrier.device_id ? _('through the modem “%s”').format(nameOf(carrier.device_id) || words(carrier.name) || _('modem')) :
-		carrier.device ? _('through the wired channel “%s”').format(words(path.interface) || carrier.device) : '';
+	var via = carrier.device_id ? _('via modem "%s"').format(nameOf(carrier.device_id) || words(carrier.name) || _('modem')) :
+		carrier.device ? _('via wired WAN "%s"').format(words(path.interface) || carrier.device) : '';
 	var tun = uplink.internet === 'limited' && uplink.tunnel && uplink.tunnel.ok === true;
 	var ready = paths.filter(function(p) { return p.device_id && p.role === 'backup_ready' && p.device_id !== carrier.device_id; }).length;
-	var head = tun ? _('The internet works through the tunnel') + (via ? ' (' + _('the operator\'s whitelist %s').format(via) + ')' : '') :
-		uplink.internet === 'available' ? _('The internet works') + (via ? ' ' + via : '') :
-		uplink.internet === 'limited' ? _('Limited access') + (via ? ' ' + via : '') :
+	var head = tun ? _('Online via tunnel') + (via ? ' (' + _('carrier whitelist (%s)').format(via) + ')' : '') :
+		uplink.internet === 'available' ? _('Internet online') + (via ? ' ' + via : '') :
+		uplink.internet === 'limited' ? _('Whitelist only') + (via ? ' ' + via : '') :
 		uplink.internet === 'unavailable' ? _('No internet access') : _('Checking the connection');
 	var tone = tun || uplink.internet === 'available' ? 'is-ok' : uplink.internet === 'unavailable' ? 'is-err' : 'is-warn';
 	return [head + (ready ? ' · ' + (ready === 1 ? _('the backup channel is ready') : _('backup channels ready: %d').format(ready)) : ''), tone];
@@ -74,7 +74,7 @@ function stateOf(d, mmFresh) {
 	if (d.present !== true) return [_('Disconnected from USB'), 'is-off'];
 	if ((d.recovery || {}).state === 'running') return [_('Recovery…'), 'is-run'];
 	if (session.state === 'connected' && uplink.role === 'limited' && (uplink.tunnel || {}).ok === true)
-		return [_('Whitelist, the internet through the tunnel'), 'is-ok'];
+		return [_('Whitelisted; internet via tunnel'), 'is-ok'];
 	if (session.state === 'connected') return ROLE[uplink.role] || [_('Connected'), 'is-ok'];
 	if (mmFresh && mmd.failed_reason === 'sim-missing') return [_('No SIM card'), 'is-err'];
 	if ((d.connection || {}).deactivated) return [_('Deactivated'), 'is-paused'];

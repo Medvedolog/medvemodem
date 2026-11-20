@@ -10,6 +10,10 @@
     "protocols": [
       "rndis"
     ],
+    "at_interface_numbers": [
+      4
+    ],
+    "at_source": "a tester's FM350-GL, firmware 29.24.02 F32, GTUSBMODE 40 (2026-11-19): MD AT is interface 4 (ttyUSB1), the only port that answers; 6, inherited from the 7127 composition, is NPT and silent (dial failed «AT+COPS?: no answer»)",
     "ussd": "unsupported",
     "ussd_source": "another modem manager quirks.sh: the same firmware family as 0e8d:7127 (AT+CUSD answers neither OK, ERROR nor +CUSD); field reports (Modem Zoo TELEGRAM-FIELD-NOTES)"
   }

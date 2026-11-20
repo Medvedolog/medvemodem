@@ -14,10 +14,10 @@ CPSI parser RAT-specific; USB IDs overlap SIMCom families, AT+CGMM required.
 ## Related reference
 
 - [USB composition and boot mode recipes](../COMPOSITION-AND-BOOT-MODES.md)
-- archive source map
+- another modem manager source map
 
-<!-- upstream-field-notes-v3.5.2:start -->
-## Field incidents — archived field notes
+<!-- upstream-another modem manager-v3.5.2:start -->
+## Field incidents — a field report another modem manager
 
 **External field reports / source comments, not MedveModem bench verification.** Pin `c2bd09cbef546c12b4fdd80d105993eaa3fb569b` (2026-10-15). No recipe below is enabled in runtime profiles.
 
@@ -31,4 +31,4 @@ CPSI parser RAT-specific; USB IDs overlap SIMCom families, AT+CGMM required.
 - **Safety:** Similar PID does not prove same SIMCom model; AT+CGMM after safe lease.
 - **Original source:** issue / release / pinned source
 
-<!-- upstream-field-notes-v3.5.2:end -->
+<!-- upstream-another modem manager-v3.5.2:end -->

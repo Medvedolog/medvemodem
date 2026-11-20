@@ -57,7 +57,7 @@ static int connect_to(const char *host, const char *dev)
 {
 	struct sockaddr_in sa = { .sin_family = AF_INET, .sin_port = htons(80) };
 	struct timeval tv = { .tv_sec = 10 };
-	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 
 	if (fd < 0 || inet_pton(AF_INET, host, &sa.sin_addr) != 1)
 		goto fail;

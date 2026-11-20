@@ -334,7 +334,7 @@ A single UCI file with sections by type. `modem` and `esim` sections identify a 
 | `core 'core'` | Service enablement; auto-connect/recovery, interface repair, `reach_target`, `reach_restricted`, SMS polling/archive, cell information, USB autosuspend |
 | `modem` | Device `device_id`, user-defined `name` |
 | `device` | Owner, USB composition `usb_config`, `quota_*`, `web_password`, radio and recovery settings |
-| `sim` | User-assigned SIM label, number, notes and SMS center |
+| `sim` | User-assigned SIM label, number, notes, SMS center and data limit; keyed by a salted ICCID hash |
 | `contact` | SMS address book |
 | `sms_forward 'sms_forward'` | ntfy/webhook: `web`, `kind`, `url`; forwarding by SMS: `sms`, `sms_number`, `sms_contact`, `sms_parts` (default 3 concatenated parts), `sms_max_per_hour`; eligible devices: `modems_all`, `modem` |
 | `alerts` | SMS connectivity alerts and thresholds |
@@ -342,6 +342,32 @@ A single UCI file with sections by type. `modem` and `esim` sections identify a 
 | `usb_port` | USB port labels |
 | `esim` | eSIM profile metadata |
 | `wlmode` | Whitelist-mode manager, section, servers, LAN/router rules |
+
+Options of `core` (the ones commented out in the default file show the service's default):
+
+| Option | Default | Effect |
+|---|---|---|
+| `enabled` | `1` | The service runs |
+| `update_channel` | `release` | Update channel: `release` (published releases) or `bench` (bench builds) |
+| `settle_ms` | `2500` | How long a USB modem is given to finish appearing before its ports are read |
+| `log_level` | `info` | Log detail: `info` or `debug` |
+| `host_fixes` | `1` | Driver bindings that bench-validated profiles declare (an AT port the stock driver misses) |
+| `auto_connect` | `1` | A new modem without an interface connects by itself, APN from the SIM (once per USB attachment) |
+| `auto_recovery` | `1` | Automatic recovery: gentle steps always, disruptive ones only from bench-validated profiles |
+| `repair_interfaces` | `1` | The modem's network interface is rewritten for this boot's device; into `wan` when it has no zone |
+| `cell_info` | `0` | ModemManager's cell info and 3GPP location (hung an Orange Pi Zero 3 with a T99W175) |
+| `antennas` | `1` | Per-antenna levels and carriers (qmicli through ModemManager's proxy while a page is open) |
+| `mm_poll_s` | `0` | Read ModemManager at most once in this many seconds while a page is open (`0`: every 15 s) |
+| `usb_autosuspend` | off | `1` leaves the kernel's USB autosuspend of the modems as it is (off by default: a suspended usbnet modem hangs) |
+| `reach_target` | `1.1.1.1:443`, `8.8.8.8:443` | Reachability targets, checked through each uplink's own device |
+| `reach_restricted` | two addresses | Tried when no `reach_target` answers: an answer means an operator whitelist (`none` turns it off) |
+| `sms_poll` | `60` | How often SMS are read from ModemManager-owned modems, seconds (min 15; `0`: only when a page asks) |
+| `sms_archive` | `1` | A modem's SMS storage three quarters full: the oldest received ones move to the router |
+| `sms_keep_all` | `0` | Every received SMS is copied to the router at once (the modem keeps its own) |
+
+Section `sim`: `key` (a salted hash of the ICCID since r12; the ICCID itself is not stored, older entries are converted
+by the service), `number`, `description`, `sms_center`, data limit `quota_gb`, `quota_day`, `quota_warn`, `quota_action`
+(`warn` or `backup`).
 
 The ntfy/webhook token lives in protected `/etc/config/medvemodem-secret`, not in the ordinary UCI file; the configuration form does not reveal it.
 
@@ -361,6 +387,32 @@ Salt: `/etc/medvemodem/id-salt`. If the same IMEI appears simultaneously on mult
 | `transport 'poll'`, `transport 'send'` | Direct/proxy policy for receiving and sending |
 | `notifications 'events'` | Enabled event categories |
 | `proxy 'backup1'` etc. | Alternate Telegram routes |
+
+Options:
+
+| Section | Option | Default | Effect |
+|---|---|---|---|
+| `bot 'main'` | `enabled` | `0` | The bot runs |
+| | `snapshot_minutes` | `15` | How often the state snapshot is refreshed |
+| | `lang` | `auto` | Message language: `auto` (the admin's Telegram app), `ru`, `en` |
+| | `allow_sms_content` | `0` | «Incoming SMS» in Telegram: number and text (nothing is marked read on the router) |
+| | `sms_forward` | `0` | Each new SMS as its own message; only with `allow_sms_content` |
+| | `allow_control` | `0` | Modem control from Telegram (disruptive actions ask first); `0`: view only |
+| | `allow_send` | `0` | Sending SMS and USSD from Telegram (they may cost money) |
+| | `allow_settings` | `1` | «⚙️ Settings» in Telegram: notifications and proxies; `0`: read only |
+| | `emergency_ip` | — | Owner-supplied IPv4 addresses for Telegram, used only after other routes fail, with strict TLS |
+| `administrator 'primary'` | `user_id`, `chat_id` | — | The admin's numeric Telegram ID and chat |
+| | `alias`, `role` | `admin1`, `admin` | Entry name and role |
+| `transport 'poll'`, `'send'` | `mode` | `auto` | Route to Telegram: direct, a proxy or a modem |
+| | `fallback_direct` | `1` | Direct when the proxies did not answer |
+| | `timeout_seconds` | `50` | Long-poll length (`poll` only) |
+| | `bind_interface` | — | Kernel interface for direct requests (e.g. `wwan0`) |
+| `notifications 'events'` | `enabled`, `mode` | `1`, `smart` | Notifications and their mode |
+| | `backup`, `services`, `kernel`, `quota`, `restart` | `1` | Kinds: backup modems, ModemManager/QModem restarts, router trouble in the kernel's words, limits, MedveModem restarted |
+| | `quiet`, `quiet_from`, `quiet_to` | `0`, `23:00`, `07:00` | Quiet hours: notifications without sound, none dropped |
+| | `quiet_urgent` | `1` | «No internet» and a used-up limit still ring in quiet hours |
+| `proxy 'backup1'` … | `enabled`, `role`, `priority`, `endpoint` | `0`, `fallback`, `50`, `socks5h://127.0.0.1:2080` | A backup route to Telegram (SOCKS: `socks5h` only) |
+| | `proxy_username` | — | Proxy user name; the password is in `medvemodem-bot-secret` |
 
 Bot token and proxy passwords are stored in `/etc/config/medvemodem-bot-secret` (section `secret 'main'`, `token` option), root-only with mode 0600 set/verified by `init-secrets`; the regular form never displays these values. `/etc/medvemodem-bot/` stores a salt and persistent snapshot.
 

@@ -1,4 +1,4 @@
-# Modem Zoo — USB compositions / boot modes
+# Modem Zoo — USB compositions / boot modes (another modem manager)
 
 Source: a field report. **Knowledge base only; no runtime script or automatic recipe is installed by this page.**
 

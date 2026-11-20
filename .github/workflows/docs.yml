@@ -28,43 +28,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-      - name: Verify Markdown encoding and documentation index links
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import pathlib
-          import re
-          import sys
-          from urllib.parse import unquote
-
-          root = pathlib.Path('.').resolve()
-          paths = list(root.rglob('*.md'))
-          errors = []
-          for path in paths:
-              if any(part in {'.git', 'node_modules', 'dist'} for part in path.parts):
-                  continue
-              try:
-                  path.read_text(encoding='utf-8')
-              except UnicodeError as exc:
-                  errors.append(f'{path.relative_to(root)}: not UTF-8: {exc}')
-
-          # The public documentation index is the entry point used by README.
-          # Validate its local file links, preserving anchors for the renderer.
-          index = root / 'docs' / 'README.md'
-          if not index.is_file():
-              errors.append('docs/README.md is missing')
-          else:
-              content = index.read_text(encoding='utf-8')
-              for target in re.findall(r'\]\(([^)]+)\)', content):
-                  url = target.split('#', 1)[0].strip()
-                  if not url or re.match(r'^[a-z]+:', url, re.I) or url.startswith('//'):
-                      continue
-                  resolved = (index.parent / unquote(url)).resolve()
-                  if not resolved.is_relative_to(root) or not resolved.is_file():
-                      errors.append(f'docs/README.md: broken link {target}')
-
-          if errors:
-              print('\n'.join(errors), file=sys.stderr)
-              sys.exit(1)
-          print(f'OK: checked {len(paths)} Markdown files and documentation index links')
-          PY
+      # every local link and #anchor of every Markdown file, not the index alone (docs sync audit DOC-03, 2026-11-19)
+      - name: Verify Markdown encoding, links and anchors
+        run: python3 tools/check-docs-sync.py

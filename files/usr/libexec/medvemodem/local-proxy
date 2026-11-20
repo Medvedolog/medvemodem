@@ -41,7 +41,10 @@ private() {
 }
 login_ok() {
 	case "$1" in ''|*[!A-Za-z0-9_.@-]*) return 1 ;; esac
-	[ -n "$2" ] && [ "${#1}" -le 80 ] && [ "${#2}" -le 256 ] && case "$2" in *'"'*|*'\'*) return 1 ;; esac
+	[ "${#1}" -le 80 ] && [ "${#2}" -le 256 ] || return 1
+	# no quote, backslash or control character: a newline would start a directive of its own in curl's -K config (audit
+	# SEC-03, 2026-11-19); a space is fine, the URL carries it encoded
+	case "$2" in ''|*'"'*|*'\'*|*[[:cntrl:]]*) return 1 ;; esac
 }
 lan_ip() {
 	local ip

@@ -352,7 +352,8 @@ static int cmd_run(int argc, char **argv)
 	to = fdopen(to_lpac[1], "w");
 	if (!from || !to) {
 		kill(pid, SIGKILL);
-		waitpid(pid, NULL, 0);
+		while (waitpid(pid, NULL, 0) < 0 && errno == EINTR)	/* a signal must not leave a zombie (audit STAB-03) */
+			;
 		mm_at_close(b.port);
 		return 125;
 	}

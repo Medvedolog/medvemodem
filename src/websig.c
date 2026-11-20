@@ -217,12 +217,25 @@ static int http_once(struct web *w, const char *method, const char *path, const 
 	}
 	if (n < 0 || (size_t)n >= sizeof(req))
 		goto out;
-	n += snprintf(req + n, sizeof(req) - n, "%s", headers ? headers : "");
-	if (body)
-		n += snprintf(req + n, sizeof(req) - n, "Content-Length: %zu\r\n", strlen(body));
-	n += snprintf(req + n, sizeof(req) - n, "\r\n%s", body ? body : "");
-	if ((size_t)n >= sizeof(req))
-		goto out;
+	/* each part checked before the next: a truncated one leaves n past the buffer, and «sizeof(req) - n» would then wrap
+	 * to a huge size for the next snprintf, which writes past req (audit STAB-01, 2026-11-19) */
+	{
+		int k = snprintf(req + n, sizeof(req) - n, "%s", headers ? headers : "");
+
+		if (k < 0 || (size_t)k >= sizeof(req) - n)
+			goto out;
+		n += k;
+		if (body) {
+			k = snprintf(req + n, sizeof(req) - n, "Content-Length: %zu\r\n", strlen(body));
+			if (k < 0 || (size_t)k >= sizeof(req) - n)
+				goto out;
+			n += k;
+		}
+		k = snprintf(req + n, sizeof(req) - n, "\r\n%s", body ? body : "");
+		if (k < 0 || (size_t)k >= sizeof(req) - n)
+			goto out;
+		n += k;
+	}
 	{
 		int off = 0;
 
@@ -243,7 +256,6 @@ static int http_once(struct web *w, const char *method, const char *path, const 
 			off += s;
 		}
 	}
-	explicit_bzero(req, sizeof(req));
 	while (got < sizeof(w->body) - 1) {
 		long long left = deadline - mono_ms();
 		ssize_t r;
@@ -320,6 +332,8 @@ static int http_once(struct web *w, const char *method, const char *path, const 
 	}
 	rc = w->code;
 out:
+	/* the request holds the login and cookies: wiped on every way out, a failed send too (audit STAB-01) */
+	explicit_bzero(req, sizeof(req));
 	close(fd);
 	return rc;
 }

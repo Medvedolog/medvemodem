@@ -14,47 +14,47 @@ static const char *const titles[][2] = {
 	{ "changed", "Modem ports changed" }, { "removed", "Modem gone from USB" },
 	{ "usb-add", "Modem attached to USB" }, { "usb-remove", "Modem detached from USB" },
 	{ "driver-bind", "Driver bound" }, { "driver-unbind", "Driver unbound" },
-	{ "mm-add", "ModemManager took the modem" }, { "mm-remove", "ModemManager released the modem" },
+	{ "mm-add", "ModemManager claimed the modem" }, { "mm-remove", "ModemManager released the modem" },
 	{ "mm-state", "Modem state changed" }, { "mm-kick", "Ports handed to ModemManager again" },
 	{ "port-held", "A modem port is held by another program" }, { "port-released", "Another program released a modem port" },
 	{ "mm-ports-withdrawn", "Serial ports withdrawn from ModemManager" },
 	{ "mm-restart", "ModemManager restart" }, { "mm-restart-end", "ModemManager restart finished" },
 	{ "sms-received", "SMS received" }, { "sms-sent", "SMS sent" },
 	{ "service-restart", "A modem service restarted" }, { "service-stop", "A modem service stopped" },
-	{ "web-login", "Login to the modem's web" },
-	{ "subnet-clash", "The modem's network clashes with another" },
-	{ "subnet-moved", "The modem moved to a free subnet" },
+	{ "web-login", "Logged in to modem web UI" },
+	{ "subnet-clash", "Modem subnet conflict" },
+	{ "subnet-moved", "Modem moved to a free subnet" },
 	{ "esim-switch", "eSIM profile switched: the SIM is read again" },
-	{ "subnet-move-failed", "The modem's web did not take the new subnet" },
-	{ "usb-rescue", "Last resort by hand: the USB controller or the power line" },
+	{ "subnet-move-failed", "Modem web UI rejected the new subnet" },
+	{ "usb-rescue", "Manual USB controller / power reset" },
 	{ "sms-cnmi-fixed", "Incoming SMS were not stored (CNMI 0,0): fixed" },
 	{ "sms-stuck-dropped", "Stuck part of a long SMS deleted" },
 	{ "sms-draft-dropped", "Unsent SMS draft deleted (it held a storage slot)" },
-	{ "sms-storage", "SMS storage switched" }, { "sms-cleared", "SMS storage cleared" }, { "sms-center", "SMS centre changed" },
+	{ "sms-storage", "SMS storage switched" }, { "sms-cleared", "SMS storage cleared" }, { "sms-center", "SMS center changed" },
 	{ "session-up", "Connected" }, { "session-down", "Connection lost" },
 	{ "session-failed", "Connection failed" },
 	{ "recovery-start", "Recovery step started" }, { "recovery-end", "Recovery step finished" },
-	{ "recovery-no-internet", "Session up after the recovery, but no internet" },
+	{ "recovery-no-internet", "Session restored after recovery, no internet" },
 	{ "hostfix-start", "Binding the service ports" }, { "hostfix-end", "Service ports bound" },
 	{ "radio-change", "Network mode and bands changed" }, { "radio-kept", "Network mode change kept" },
 	{ "radio-rollback", "Network mode and bands rolled back" }, { "radio-guard", "Cell lock guard" }, { "band-guard", "Band lock guard" },
-	{ "reregister", "Registered in the network again" }, { "fplmn-clear", "The SIM's forbidden networks cleared" }, { "band-change", "Band changed" }, { "cell-change", "Serving cell changed" }, { "ca-change", "Carrier aggregation changed" },
+	{ "reregister", "Registered in the network again" }, { "fplmn-clear", "SIM forbidden network list (FPLMN) cleared" }, { "band-change", "Band changed" }, { "cell-change", "Serving cell changed" }, { "ca-change", "Carrier aggregation changed" },
 	{ "backend-return", "Modem returned to ModemManager" },
-	{ "quota-warn", "SIM data limit nearly used" }, { "quota-exceeded", "SIM data limit used up" },
+	{ "quota-warn", "SIM data cap nearly reached" }, { "quota-exceeded", "SIM data cap reached" },
 	{ "ifup", "Interface brought up again" }, { "iface-repair", "Interface settings repaired" },
 	{ "interface-retry", "Interface brought up again after a failed connection" },
-	{ "registration-denied", "The network refused the registration" },
+	{ "registration-denied", "Network rejected registration" },
 	{ "interface-down", "Interface taken down" }, { "interface-up", "Interface brought up" },
 	{ "config", "Network settings changed" }, { "apn-auto", "APN chosen by the SIM" },
 	{ "auto-connect", "New modem connected automatically" },
 	{ "modeswitch-run", "Switching the modem out of storage mode" }, { "modeswitch-done", "Modem switched to modem mode" },
 	{ "modeswitch-fix", "usb-modeswitch rule disabled" }, { "priority", "Modem priority changed" },
 	{ "settings-follow", "Name and settings followed the modem" },
-	{ "usb-config", "USB configuration switched by the operator's choice" },
-	{ "fcc-unlock-on", "FCC unlock hook turned on by the operator" },
-	{ "frozen", "Frozen by the operator: no service touches it" }, { "unfrozen", "Unfrozen by the operator" },
-	{ "qmodem-release", "Taken back from QModem for the operator's choice" },
-	{ "fcc-unlock-off", "FCC unlock hook turned off by the operator" },
+	{ "usb-config", "USB configuration changed manually" },
+	{ "fcc-unlock-on", "FCC unlock enabled by user" },
+	{ "frozen", "Management paused by user" }, { "unfrozen", "Management resumed by user" },
+	{ "qmodem-release", "Reclaimed from QModem by user" },
+	{ "fcc-unlock-off", "FCC unlock disabled by user" },
 	{ "internet", "Internet through the modem" }, { "failover", "Traffic switching" },
 };
 
@@ -69,8 +69,8 @@ static const char *const words[][2] = {
 	{ "succeeded", "done" }, { "failed", "failed" }, { "refused", "refused" },
 	{ "busy", "busy" }, { "retry", "try later" }, { "started", "started" },
 	{ "luci", "from LuCI" }, { "cli", "from the command line" }, { "automatic", "automatically" },
-	{ "operator", "by the operator" }, { "user_requested", "by hand" }, { "session_stuck", "the session does not come up" }, { "mm_bearer_stuck", "ModemManager holds a dead connection" },
-	{ "registration_stuck", "the modem does not register" }, { "modem_firmware_hang", "the modem does not answer" },
+	{ "operator", "by the operator" }, { "user_requested", "manually" }, { "session_stuck", "session failed to connect" }, { "mm_bearer_stuck", "ModemManager holds a dead connection" },
+	{ "registration_stuck", "the modem does not register" }, { "modem_firmware_hang", "modem not responding" },
 	{ "no_internet", "connected but no internet" }, { "registration_denied", "registration denied" },
 };
 
@@ -139,9 +139,9 @@ void mm_event_words(const char *kind, const char *detail, char *out, size_t size
 	}
 	/* why a modem was found or came back (the owner, 2026-10-28) */
 	if (d && (!strcmp(kind, "added") || !strcmp(kind, "reattached"))) {
-		snprintf(out, size, "%s: %s", title, !strcmp(d, "start") ? "at the engine's start" : !strcmp(d, "uevent") ? "a USB event" :
-			 !strcmp(d, "rescan request") ? "a rescan" : !strcmp(d, "returned") ? "it was gone and came back" :
-			 strstr(d, "attachment") ? "its USB place changed" : strstr(d, "ports") ? "its ports changed" : d);
+		snprintf(out, size, "%s: %s", title, !strcmp(d, "start") ? "on service start" : !strcmp(d, "uevent") ? "a USB event" :
+			 !strcmp(d, "rescan request") ? "a rescan" : !strcmp(d, "returned") ? "reconnected" :
+			 strstr(d, "attachment") ? "USB port changed" : strstr(d, "ports") ? "its ports changed" : d);
 		return;
 	}
 	if (d && (!strcmp(kind, "radio-guard") || !strcmp(kind, "band-guard"))) {
@@ -153,8 +153,8 @@ void mm_event_words(const char *kind, const char *detail, char *out, size_t size
 		return;
 	}
 	if (d && !strcmp(kind, "internet")) {
-		snprintf(out, size, "%s: %s", title, !strcmp(d, "ok") ? "the whole internet answers" :
-			 !strcmp(d, "limited") ? "only the operator's whitelist answers" : !strcmp(d, "down") ? "no answer" : d);
+		snprintf(out, size, "%s: %s", title, !strcmp(d, "ok") ? "full internet access" :
+			 !strcmp(d, "limited") ? "carrier whitelist only" : !strcmp(d, "down") ? "no answer" : d);
 		return;
 	}
 	if (d && !strcmp(kind, "failover") && sscanf(d, "%63s %63s", a, b) == 2) {
