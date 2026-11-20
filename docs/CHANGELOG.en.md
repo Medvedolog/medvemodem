@@ -143,7 +143,8 @@ No separate public release was published.
 - Existing downloaded installer workaround: `sh /tmp/medvemodem-install.sh --tag v0.16.0-alpha1-r7 --install`; refresh from `main` for automatic selection.
 - This changes the standalone installer in `main`, not the published r7 package archives. Router acceptance of the new auto-selector is pending.
 
-## 0.16.0 Alpha 1 r7 — release candidate (2026-11-19)
+## 0.16.0-alpha1-r7 — 2026-11-19
+Published release: `v0.16.0-alpha1-r7`.
 
 - Fix the r6 blank modem details regression triggered by a stale cached LuCI module missing the optional `mm.setOwnerBadge` method. The badge now fails safely and page-rendering exceptions display a diagnostic notice.
 - Gate package builds on LuCI API/version contract checks and a Chromium smoke test that covers RPC failures, render errors and cached-module fallback.
@@ -151,7 +152,7 @@ No separate public release was published.
 - Provide a README one-line SSH installer with rollback/access warnings, SHA256 verification and dependency dry-runs.
 - Fix orphaned `/etc/config/…` producing false-positive competing-controller alerts without ignoring active another modem manager hotplug handlers.
 - Synchronize core/LuCI/bot package revisions; only explicitly tagged commits can publish releases.
-- **Status:** pending CI and release publication in PR #12.
+- **Historical preparation note:** PR #12 and the original CI/publication gate were pending when this entry was drafted; the release tag was published subsequently.
 
 ## Unreleased — r6 LuCI regression fix and release QA gates (2026-11-19)
 
@@ -163,7 +164,7 @@ No separate public release was published.
 [Original complete Russian changelog](CHANGELOG.md) · [Documentation](README.md) · [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases)
 
 > [!NOTE]
-> English rendering of **all 238 release-history entries** from the [original Russian changelog](CHANGELOG.md). Descriptions are translated and occasionally condensed, not reproduced word for word. Version headings and technical identifiers are retained; consult the Russian original for full detail. Historical entries describe capabilities **as of that version**.
+> English translation of the release history in the [Russian changelog](CHANGELOG.md). The Alpha 1 versioned headings are synchronized with the Russian original; some earlier entries are condensed rather than translated word for word. Historical source-only notes describe the state **when written**, not the current release status. Consult the Russian original for full detail.
 
 ## 0.16.0-alpha1-r6 — 2026-11-18 (release candidate)
 
@@ -183,6 +184,14 @@ No separate public release was published.
 - Add informational manager badges **MM** (ModemManager), **QM** (QModem), **MV** (native MedveModem) and WEB (HiLink) on dashboard modem cards, fleet table and **individual modem header**. Based only on the actual resolved owner.
 - Settings → Modems offers a browser-local management-badge switch, **off by default**; no UCI or modem-control side effects.
 - Draft PR #8 only. **Not in published r5.** Bump the entire package release coherently and validate on OPiZ3 before the next release. See handoff.
+
+## 0.16.0-alpha1-r5 — 2026-11-18
+Published release: `v0.16.0-alpha1-r5`.
+
+- **FM350-GL under QModem:** read the operator through `AT+GTCURCAR?` using QModem's own serialized AT-port queue, with cell information as the fallback. No second owner opens the AT port.
+- **Safer QModem handover and shutdown:** bounded restarts, targeted cleanup of hung dial processes and procd state verification.
+- **More accurate LuCI telemetry:** distinguish stale readings from pending and failed queries; discard old values after a modem reconnects or changes owner.
+- **QModem core:** update to `qmodem-3.3.0_p20261108-r2`, installed separately from LuCI. Access to eSIM operations remains intentionally unavailable while QModem owns the modem.
 
 ## 0.16.0-alpha1-r4 — 2026-11-18
 
@@ -224,6 +233,13 @@ Published [Alpha 1 r2](https://github.com/Medvedolog/medvemodem/releases/tag/v0.
 Public Alpha 1, published from the `0.15.0-r197` source snapshot without functional changes. The package release counter `r1` belongs to the renamed package version; `r197` remains the source baseline in the historical log.
 
 CI builds in `.github/workflows/build.yml` require independent verification. The packaging issue in the first published commit was corrected subsequently by switching OpenWrt APK package versions to `0.16.0_alpha1-r1`; this is a packaging correction rather than a feature change.
+
+## 0.16.0-r1 — 2026-11-16
+Bench build: `bench-v0.16.0-r1-3cc60b8`.
+
+A separate build in the working repository, never released to the public. By then, the public line was numbered `0.16.0-alpha1-rN`, and subsequent revisions continued as r11 after public r10. The intended stable version after Alpha 1 is `0.16.1`.
+
+Alpha 1, candidate 1: this is the same functionality as `0.15.0-r197` below, re-versioned to `0.16.0-r1`. A router running 0.15.0 recognizes it as an upgrade with either opkg or apk. No additional modem functionality was introduced.
 
 ## 0.15.0-r197 — 2026-11-16
 
