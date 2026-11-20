@@ -19,7 +19,7 @@
 | Архитектура плагинов / Plugin architecture | [PLUGIN-ARCHITECTURE.ru.md](PLUGIN-ARCHITECTURE.ru.md) | [PLUGIN-ARCHITECTURE.md](PLUGIN-ARCHITECTURE.md) |
 | Техническое ТЗ: SIM-слоты и eSIM / SIM-slot and eSIM handoff | [HANDOFF-SIM-SLOTS-ESIM.md](HANDOFF-SIM-SLOTS-ESIM.md) | [Технические идентификаторы сохранены](HANDOFF-SIM-SLOTS-ESIM.md) |
 | Темы LuCI / LuCI themes | [LUCI-THEMES.ru.md](LUCI-THEMES.ru.md) | [LUCI-THEMES.md](LUCI-THEMES.md) |
-| История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (all 238 entries) |
+| История / Changelog | [CHANGELOG.md](CHANGELOG.md) | [CHANGELOG.en.md](CHANGELOG.en.md) (through Alpha 1 r14) |
 | Telegram-бот / Telegram bot | [README](../packages/medvemodem-bot/README.md) · [Архитектура и макеты экранов](BOT-ARCHITECTURE.md) | [README.en.md](../packages/medvemodem-bot/README.en.md) · [Architecture and Telegram screen wireframes (RU)](BOT-ARCHITECTURE.md) |
 | Modem Zoo / Зоопарк модемов | [modem-zoo/README.md](modem-zoo/README.md) | [Original field notes](modem-zoo/README.md) |
 
@@ -31,9 +31,9 @@
 
 ## Состояние перевода / Translation coverage
 
-- **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines and complete release history (238 entries).
+- **Full translated counterparts:** installation, building, quick user guide, full manual (11 chapters), Telegram bot guide, plugin architecture, LuCI theme guidelines and release history through Alpha 1 r14 (251 versioned entries).
 - **ubus API:** подробный русский справочник методов и полей с сохранением идентификаторов; английский оригинал остаётся исходным контрактом для сверки.
-- **Changelog:** полный английский перевод всех 238 исторических записей от начала разработки до публичной Alpha 1; русский оригинал сохранён без изменений.
+- **Changelog:** английский журнал охватывает те же 251 версию, что и русский, включая Alpha 1 r14; старые описания местами сокращены.
 - **Intentionally not translated:** field observations and modem zoo.
 - **Telegram bot:** English translation is now available alongside the original Russian/mixed document.
 
