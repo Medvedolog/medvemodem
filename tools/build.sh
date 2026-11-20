@@ -34,7 +34,7 @@ docker run --rm \
 	-v "$qout:/out-qmodem" \
 	${qmodem:+-v "$qmodem:/feed-qmodem:ro"} \
 	-e JOBS="${JOBS:-$(nproc)}" -e FEEDS_GITHUB="${FEEDS_GITHUB:-}" -e QMODEM="${qmodem:+1}" \
-	-e MEDVEMODEM_DOWNLOAD_BASE="${MEDVEMODEM_DOWNLOAD_BASE:-}" ${DOCKER_ARGS:-} \
+	${MEDVEMODEM_DOWNLOAD_BASE:+-e MEDVEMODEM_DOWNLOAD_BASE="$MEDVEMODEM_DOWNLOAD_BASE"} ${DOCKER_ARGS:-} \
 	"openwrt/sdk:$arch-$release" /bin/bash -c '
 set -eu
 trap "chmod -R a+rwX /out /out-qmodem 2>/dev/null || true" EXIT

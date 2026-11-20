@@ -999,7 +999,7 @@ var SEC_CLOSED = { events: 1, stab: 1, neigh: 1, ant: 1, rset: 1, netcheck: 1, r
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r12';
+var VIEW_VERSION = '0.16.0-alpha1-r14';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -1701,8 +1701,11 @@ return view.extend({
 				.map(function(m) { return [m.id, m.number, m.text].join('|'); });
 		}, was;
 		this.say(_('Reading the messages from the modem…'));
-		/* a read already under way finishes first: «новых» counts from what the page showed, and this read is a fresh one */
-		var go = function() { was = keys(); return self.loadSms(true); };
+		/* a read already under way finishes first, and this read is a fresh one; «новых» counts from what the page showed
+		   when the button was pressed, not after that earlier read (CI, 2026-11-20: a background poll in between took the
+		   new message, and the refresh said «новых нет») */
+		was = keys();
+		var go = function() { return self.loadSms(true); };
 		return (this.smsPending ? this.smsPending.then(go, go) : go()).then(function() {
 			var r = self.smsLast || {}, now = keys(), fresh = now.filter(function(k) { return was.indexOf(k) < 0; }).length;
 			if (typeof r.refused === 'string') self.say(_('SMS unavailable: %s').format(why(r.refused)));

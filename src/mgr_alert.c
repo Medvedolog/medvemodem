@@ -504,6 +504,9 @@ void alert_tick(const char *default_dev)
 			name_one(names, jstr(e, "link"), r);
 			name_one(names, jstr(e, "from"), r);
 			name_one(names, jstr(e, "to"), r);
+			/* why the traffic left (failover's cause, r14) */
+			if (jstr(e, "kind") && !strcmp(jstr(e, "kind"), "switch") && failover_cause_of(jstr(e, "from")))
+				json_object_object_add(e, "cause", json_object_new_string(failover_cause_of(jstr(e, "from"))));
 			mm_alert_text(e, names, host, r, text, sizeof(text));
 			enqueue(jstr(e, "kind"), text);
 		}

@@ -40,13 +40,20 @@ if command -v apk >/dev/null 2>&1; then PM=apk
 elif command -v opkg >/dev/null 2>&1; then PM=opkg
 else PM=
 fi
-REPO=$(uci -q get medvemodem.core.update_repo 2>/dev/null)
-[ -n "$REPO" ] || REPO=Medvedolog/medvemodem
-case "$REPO" in */*) case "$REPO" in *[!A-Za-z0-9_./-]*|*..*) REPO= ;; esac ;; *) REPO= ;; esac
 CHANNEL=$(uci -q get medvemodem.core.update_channel 2>/dev/null)
 [ "$CHANNEL" = bench ] || CHANNEL=release
+# each channel from where it is published (2026-11-20): the releases from the public repository, the bench builds from
+# the working one; a router of a bench build asked its private repository for releases and read «no build»
+REPO=$(uci -q get medvemodem.core.update_repo 2>/dev/null)
+if [ -z "$REPO" ]; then
+	if [ "$CHANNEL" = bench ]; then REPO=Medvedolog/medvemodem; else REPO=Medvedolog/medvemodem; fi
+fi
+case "$REPO" in */*) case "$REPO" in *[!A-Za-z0-9_./-]*|*..*) REPO= ;; esac ;; *) REPO= ;; esac
 
 T() { if [ "$(cat "$LANG_FILE" 2>/dev/null)" = ru ]; then printf '%s' "$2"; else printf '%s' "$1"; fi; }
+# the working repository is not named on the router (the owner, 2026-11-20: «не светим дев репо»): the public one is,
+# any other is said as the bench builds' source
+shown() { case "$REPO" in Medvedolog/medvemodem) printf '%s' "$REPO" ;; *) T "the bench builds' source" "источник стендовых сборок" ;; esac; }
 say() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*"; }
 
 installed_version() {
@@ -124,12 +131,19 @@ check_error() {
 	printf 'error %s %s %s\n' "$CHANNEL" "$(date +%s)" "$*" > "$CHECK"
 }
 check() {
-	local json="$RUN/releases.json" line url
+	local json="$RUN/releases.json" line url msg
 	mkdir -p "$RUN"
 	: > "$RUN/fetch.log"
 	if [ -z "$REPO" ]; then check_error 'no update source (medvemodem.core.update_repo)'; return 1; fi
 	if ! fetch "$API/repos/$REPO/releases?per_page=15" "$json"; then
 		check_error 'the releases are not reachable, straight or through a local proxy'
+		return 1
+	fi
+	# GitHub's own refusal (a private repository: «Not Found»; «API rate limit exceeded») said as it is, not as a
+	# missing build
+	if ! grep -q '"tag_name"' "$json"; then
+		msg=$(sed -n 's/.*"message"[ \t]*:[ \t]*"\([^"]*\)".*/\1/p' "$json" | head -n 1)
+		check_error "GitHub did not list the releases of $(shown): ${msg:-no answer}"
 		return 1
 	fi
 	line=$(pick "$json")
@@ -231,7 +245,7 @@ status() {
 	done
 	printf '{"ok":true,"installed":{"engine":"%s","luci":"%s","bot":"%s","luci_bot":"%s"},"latest":"%s","tag":"%s","checked_at":%s,"error":"%s","newer":%s,"highlights":%s,"repo":"%s","channel":"%s","arch":"%s","openwrt":"%s","pm":"%s","state":"%s","result":"%s","log":"%s"}\n' \
 		"$(jstr "$eng")" "$(jstr "$luci")" "$(jstr "$bot")" "$(jstr "$lbot")" "$(jstr "$latest")" "$(jstr "$tag")" "${at:-0}" \
-		"$(jstr "$err")" "$newer" "$( [ "$newer" = true ] && highlights "$oldest" || printf '[]')" "$(jstr "$REPO")" "$CHANNEL" "$(jstr "$ARCH")" "$(jstr "$REL")" "$PM" "$state" "$(jstr "$result")" "$LOG"
+		"$(jstr "$err")" "$newer" "$( [ "$newer" = true ] && highlights "$oldest" || printf '[]')" "$(jstr "$(shown)")" "$CHANNEL" "$(jstr "$ARCH")" "$(jstr "$REL")" "$PM" "$state" "$(jstr "$result")" "$LOG"
 }
 
 finish() {
@@ -270,7 +284,7 @@ addon() {
 	[ -n "$PM" ] || { say "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"; exit 1; }
 	fail() { say "$(T ERROR ОШИБКА): $1"; rm -rf "$RUN/work"; exit 1; }
 	RUN="$RUN/addon"; mkdir -p "$RUN"; CHECK="$RUN/check"
-	say "$(T "Asking the releases of $REPO for $kind" "Проверка релизов $REPO: пакет $kind")"
+	say "$(T "Asking the releases of $(shown) for $kind" "Проверка релизов: $(shown), пакет $kind")"
 	# Explicitly select a published MedveModem release; bench artifacts are not
 	# permanent release downloads and may not have these optional packages.
 	CHANNEL=release
@@ -329,7 +343,7 @@ run() {
 	exec >>"$LOG" 2>&1
 	[ -n "$PM" ] || fail "$(T "the router has no package manager (apk or opkg)" "на роутере нет менеджера пакетов (apk или opkg)")"
 	say "$(T "Router: OpenWrt ${REL:-?} ($ARCH), packages: $PM; installed: $(installed_version medvemodem)" "Роутер: OpenWrt ${REL:-?} ($ARCH), пакеты: $PM; установлено: $(installed_version medvemodem)")"
-	say "$(T "Asking the releases of $REPO ($CHANNEL)" "Запрос выпусков $REPO ($CHANNEL)")"
+	say "$(T "Asking the releases of $(shown) ($CHANNEL)" "Проверка релизов: $(shown) ($CHANNEL)")"
 	check || fail "$(sed 's/^error [^ ]* [^ ]* //' "$CHECK")"
 	set -- $(cat "$CHECK"); latest=$4; tag=$5; url=$6; sums=$7
 	[ -s "$RUN/fetch.log" ] && sed 's/^/    /' "$RUN/fetch.log"

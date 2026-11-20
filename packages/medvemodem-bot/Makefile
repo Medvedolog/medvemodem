@@ -4,7 +4,7 @@ PKG_NAME:=medvemodem-bot
 # the engine's version, as luci-app-medvemodem (tests/test_bench_notes.py checks it): no path
 # arithmetic, which the SDK's package scan does not resolve like a build
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=12
+PKG_RELEASE:=14
 PKG_LICENSE:=GPL-3.0-only
 PKG_MAINTAINER:=Medvedolog
 

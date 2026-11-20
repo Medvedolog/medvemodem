@@ -21,7 +21,8 @@
           "usbtree",
           "usbtree_detail",
           "usb_rescue",
-          "neighbours"
+          "neighbours",
+          "orphans"
         ],
         "medvemodem.forward": [
           "status"
@@ -126,7 +127,9 @@
           "esim_action",
           "wlmode",
           "usb_class",
-          "usb_rescue_run"
+          "usb_rescue_run",
+          "orphan_remove",
+          "pin"
         ],
         "medvemodem.forward": [
           "token_set",

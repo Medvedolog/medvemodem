@@ -45,7 +45,7 @@ require(served, '"adoption_pending"', "served owner")
 
 # The dashboard explains failed adoption and does not present QModem telemetry
 # as stale data when QModem never took the modem.
-require(DASH, "var VIEW_VERSION = '0.16.0-alpha1-r12';", "dashboard version")
+require(DASH, "var VIEW_VERSION = '0.16.0-alpha1-r14';", "dashboard version")
 require(DASH, "qmodem.adoption_failed", "dashboard")
 require(DASH, "QModem is selected, but no modem-device section was created", "dashboard")
 require(DASH, "qmodem.adoption_pending", "dashboard")

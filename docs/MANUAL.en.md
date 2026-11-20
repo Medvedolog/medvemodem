@@ -355,6 +355,8 @@ Options of `core` (the ones commented out in the default file show the service's
 | `auto_connect` | `1` | A new modem without an interface connects by itself, APN from the SIM (once per USB attachment) |
 | `auto_recovery` | `1` | Automatic recovery: gentle steps always, disruptive ones only from bench-validated profiles |
 | `repair_interfaces` | `1` | The modem's network interface is rewritten for this boot's device; into `wan` when it has no zone |
+| `orphan_days` | `10` | The interface of a modem away this many days is removed by itself unless it holds your settings other than the metric (`0`: never; the list and «Delete»: Settings → Modems → Interfaces without a modem) |
+| `pin` | none | the `device_id` of the pinned modem («Pin as the only channel» in the card's menu): the internet goes through it alone, with or without its internet, with automatic switching on or off; written by the service (ubus `pin`) |
 | `cell_info` | `0` | ModemManager's cell info and 3GPP location (hung an Orange Pi Zero 3 with a T99W175) |
 | `antennas` | `1` | Per-antenna levels and carriers (qmicli through ModemManager's proxy while a page is open) |
 | `mm_poll_s` | `0` | Read ModemManager at most once in this many seconds while a page is open (`0`: every 15 s) |

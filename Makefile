@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=medvemodem
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=12
+PKG_RELEASE:=14
 
 # QModem's core, built from its source by CI for the LuCI installer
 # (files/usr/libexec/medvemodem/qmodem-install);
@@ -11,6 +11,11 @@ QMODEM_VERSION:=3.3.0_p20261108
 QMODEM_COMMIT:=3196ab787e06f93ef343d0beceadd9758e78ef8b
 QMODEM_ARCHES:=aarch64_cortex-a53 aarch64_generic x86_64
 MEDVEMODEM_DOWNLOAD_BASE?=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r2
+# an empty one passed through the environment (tools/build.sh, sdk-build.sh) counts as set for ?=: the public r12
+# shipped with no QModem source at all («нет адреса пакетов QModem», the owner's router 2026-11-20)
+ifeq ($(strip $(MEDVEMODEM_DOWNLOAD_BASE)),)
+override MEDVEMODEM_DOWNLOAD_BASE:=https://github.com/Medvedolog/medvemodem/releases/download/qmodem-$(QMODEM_VERSION)-r2
+endif
 
 PKG_LICENSE:=GPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE
@@ -111,7 +116,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/uevent.c $(PKG_BUILD_DIR)/history.c $(PKG_BUILD_DIR)/recovery.c $(PKG_BUILD_DIR)/hostfix.c $(PKG_BUILD_DIR)/watch.c $(PKG_BUILD_DIR)/uplink.c $(PKG_BUILD_DIR)/apn.c $(PKG_BUILD_DIR)/mmgr.c \
 		$(PKG_BUILD_DIR)/roles.c $(PKG_BUILD_DIR)/lease.c $(PKG_BUILD_DIR)/sms.c $(PKG_BUILD_DIR)/simid.c $(PKG_BUILD_DIR)/pdu.c $(PKG_BUILD_DIR)/sms_at.c $(PKG_BUILD_DIR)/presets.c $(PKG_BUILD_DIR)/radio.c $(PKG_BUILD_DIR)/failover.c $(PKG_BUILD_DIR)/quota.c $(PKG_BUILD_DIR)/sighist.c \
 		$(PKG_BUILD_DIR)/mgr_radio.c $(PKG_BUILD_DIR)/mgr_quota.c $(PKG_BUILD_DIR)/mgr_sms_seen.c $(PKG_BUILD_DIR)/mgr_signal.c \
-		$(PKG_BUILD_DIR)/mgr_sms.c $(PKG_BUILD_DIR)/mgr_sim.c $(PKG_BUILD_DIR)/mgr_web.c $(PKG_BUILD_DIR)/mgr_usbconf.c $(PKG_BUILD_DIR)/mgr_usbtree.c $(PKG_BUILD_DIR)/mgr_modemclass.c $(PKG_BUILD_DIR)/mgr_usbrescue.c $(PKG_BUILD_DIR)/usbtree.c $(PKG_BUILD_DIR)/mgr_esim.c $(PKG_BUILD_DIR)/mgr_at_history.c $(PKG_BUILD_DIR)/mgr_foreign.c $(PKG_BUILD_DIR)/mgr_downtime.c $(PKG_BUILD_DIR)/downtime.c $(PKG_BUILD_DIR)/mgr_traffic.c $(PKG_BUILD_DIR)/trafhist.c $(PKG_BUILD_DIR)/mgr_mmlog.c $(PKG_BUILD_DIR)/mmlog.c $(PKG_BUILD_DIR)/mgr_neighbours.c $(PKG_BUILD_DIR)/mgr_alert.c $(PKG_BUILD_DIR)/mgr_wlmode.c $(PKG_BUILD_DIR)/mgr_redirect.c $(PKG_BUILD_DIR)/cellev.c $(PKG_BUILD_DIR)/alert.c $(PKG_BUILD_DIR)/mgr_clash.c $(PKG_BUILD_DIR)/mgr_procs.c $(PKG_BUILD_DIR)/mgr_kfault.c $(PKG_BUILD_DIR)/kfault.c $(PKG_BUILD_DIR)/subnet.c $(PKG_BUILD_DIR)/chain.c \
+		$(PKG_BUILD_DIR)/mgr_sms.c $(PKG_BUILD_DIR)/mgr_sim.c $(PKG_BUILD_DIR)/mgr_web.c $(PKG_BUILD_DIR)/mgr_usbconf.c $(PKG_BUILD_DIR)/mgr_usbtree.c $(PKG_BUILD_DIR)/mgr_modemclass.c $(PKG_BUILD_DIR)/mgr_usbrescue.c $(PKG_BUILD_DIR)/usbtree.c $(PKG_BUILD_DIR)/mgr_esim.c $(PKG_BUILD_DIR)/mgr_at_history.c $(PKG_BUILD_DIR)/mgr_foreign.c $(PKG_BUILD_DIR)/mgr_downtime.c $(PKG_BUILD_DIR)/downtime.c $(PKG_BUILD_DIR)/mgr_traffic.c $(PKG_BUILD_DIR)/trafhist.c $(PKG_BUILD_DIR)/mgr_mmlog.c $(PKG_BUILD_DIR)/mmlog.c $(PKG_BUILD_DIR)/mgr_neighbours.c $(PKG_BUILD_DIR)/mgr_alert.c $(PKG_BUILD_DIR)/mgr_wlmode.c $(PKG_BUILD_DIR)/mgr_redirect.c $(PKG_BUILD_DIR)/cellev.c $(PKG_BUILD_DIR)/alert.c $(PKG_BUILD_DIR)/mgr_clash.c $(PKG_BUILD_DIR)/mgr_procs.c $(PKG_BUILD_DIR)/mgr_kfault.c $(PKG_BUILD_DIR)/mgr_orphans.c $(PKG_BUILD_DIR)/kfault.c $(PKG_BUILD_DIR)/subnet.c $(PKG_BUILD_DIR)/chain.c \
 		$(addprefix $(PKG_BUILD_DIR)/,$(MEDVEMODEM_CONFIG)) \
 		$(PKG_BUILD_DIR)/medvemodemd.c \
 		$(TARGET_LDFLAGS) $(MEDVEMODEM_STATIC)/libuci.a $(MEDVEMODEM_LIBS)

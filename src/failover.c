@@ -284,6 +284,8 @@ json_object *mm_failover_plan(json_object *routes, json_object *levels, json_obj
 	bool active = get(opts, "active") && json_object_get_boolean(get(opts, "active"));
 	bool demote = get(opts, "demote") && json_object_get_boolean(get(opts, "demote"));
 	long long penalty = json_object_get_int64(get(opts, "penalty"));
+	const char *pin = str(opts, "pin");
+	bool pinned = false;
 
 	/* bases: a metric we did not set is netifd's */
 	for (i = 0; i < n; i++) {
@@ -333,12 +335,28 @@ json_object *mm_failover_plan(json_object *routes, json_object *levels, json_obj
 		json_object_object_del(state, json_object_get_string(json_object_array_get_idx(gone, i)));
 	json_object_put(gone);
 
+	/* the operator's pin (opts.pin, «Закрепить»): its route alone carries the traffic, alive or not, failover on or off;
+	 * every other one waits behind it. Only while the pinned link has a route: without one the others carry (the kernel
+	 * would have nothing else) */
+	for (i = 0; pin && i < n; i++)
+		pinned = pinned || !strcmp(str(json_object_array_get_idx(routes, i), "dev"), pin);
 	for (i = 0; i < n; i++) {
 		json_object *r = json_object_array_get_idx(routes, i), *st = get(state, str(r, "dev"));
 		const char *dev = str(r, "dev"), *lv = str(levels, dev), *why, *hold = NULL;
 		long long metric = json_object_get_int64(get(r, "metric")), base = json_object_get_int64(get(st, "base")), to;
 
-		if (!active || n < 2) {
+		if (pinned && n >= 2) {
+			if (!strcmp(dev, pin)) {
+				to = base;
+				why = "pinned";
+			} else {
+				why = "pin";
+				if (get(st, "set") && json_object_get_int64(get(st, "set")) == metric)
+					continue;
+				for (to = base + penalty; taken(routes, moves, dev, to); to++)
+					;
+			}
+		} else if (!active || n < 2) {
 			to = base;
 			why = "off";
 		} else if (!alive) {

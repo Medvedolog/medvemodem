@@ -12,6 +12,8 @@ config core 'core'
 	option auto_recovery '1'
 	# the modem's network interface: device path of this boot, a firewall zone (wan) when it has none
 	option repair_interfaces '1'
+	# the interface of a modem away this many days goes by itself unless it holds the user's settings (0: never)
+	# option orphan_days '10'
 	# ModemManager's cell info and 3GPP location (neighbour cells, eNodeB, distance): off, they hung an
 	# Orange Pi Zero 3 with a T99W175 (bench 2026-10-15); turn on to try on other hardware
 	option cell_info '0'

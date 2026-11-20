@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-medvemodem
 # the engine's version (the owner, 2026-10-17): one number for both packages, tests/test_bench_notes.py checks it
 PKG_VERSION:=0.16.0_alpha1
-PKG_RELEASE:=12
+PKG_RELEASE:=14
 PKG_LICENSE:=GPL-3.0-only
 PKG_MAINTAINER:=Medvedolog
 # po2lmo from LuCI's host tools: the pages' Russian (po/ru) becomes the catalog LuCI reads (the owner, 2026-10-23)

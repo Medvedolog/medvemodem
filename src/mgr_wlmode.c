@@ -198,7 +198,9 @@ static void turn_on(void)
 		}
 	} else if (json_object_is_type(list, json_type_string))
 		args[n++] = json_object_get_string(list);
-	if (n == 6) {
+	/* podkop-exp's rule with fallback rows needs none: its fallbacks choose, the mode changes the routing only (the
+	 * helper says «no server given» for a rule without them) */
+	if (n == 6 && strcmp(opt("manager", ""), "podkop")) {
 		ULOG_WARN("wlmode: no server chosen: the mode cannot turn on\n");
 		next_try = now_mono_ms() + WL_CHECK_MS;
 		return;

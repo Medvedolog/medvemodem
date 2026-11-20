@@ -270,6 +270,15 @@ static void plan_section(const char *key, json_object *current, json_object *led
 		/* a value the engine found stale names nothing (a sysfs path of the last boot's bus numbering): taken back
 		 * whoever wrote it (a tester's OPiZ3, 2026-11-05: a path set by hand made every later repair «user-changed»,
 		 * and mm0 stayed down after the next boot renumbered the buses) */
+		/* an interface's proto or device gone is no choice of the user's: without it the interface cannot work at all
+		 * (netifd: NO_DEVICE), and one who wants no modem link disables it or deletes the section. Written again (the
+		 * owner's T99W175, 2026-11-19..20: mm0 kept only its metric, every bring-up skipped the two as «user-removed»
+		 * and the interface stayed broken for a day) */
+		if (!cv && dv && !strcmp(package, "network") && (!strcmp(f, "proto") || !strcmp(f, "device"))) {
+			json_object_array_add(mine, field_op("set", package, section, f, dv, NULL));
+			json_object_object_add(fields, f, copy(dv));
+			continue;
+		}
 		if (!same(cv, lv) && !(cv && get(get(des, "takes"), f) && same(cv, get(get(des, "takes"), f)))) {
 			conflict(conflicts, path, cv ? "user-changed" : "user-removed", cv, lv, dv);
 			continue;

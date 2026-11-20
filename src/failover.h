@@ -36,7 +36,10 @@ char *mm_failover_main6(void);
  * state: {dev: {"base", "set"?, "down"?, "demoted"?}} kept between turns
  * (updated here): base is the metric netifd gave the route, set the one we
  * put. A metric we did not set is the new base (netifd re-created the route).
- * opts: {"active", "penalty", "manual": [dev], "demote", "quota": [dev]}.
+ * opts: {"active", "penalty", "manual": [dev], "demote", "quota": [dev], "pin"?: dev}.
+ *
+ * Pinned (opts.pin, the operator's «Закрепить»): while that device has a route, it goes to its base and every other
+ * route behind it at base + penalty, whatever the levels say and whether failover is active or not.
  *
  * Rules: with fewer than two default routes, or with failover off (active
  * false), every route we moved goes back to its base. While at least one
@@ -59,7 +62,7 @@ char *mm_failover_main6(void);
  * (an operator's whitelist) while another, neither manual nor over its quota,
  * reaches the whole internet ("ok"); with every link limited nothing moves.
  *
- * Returns [{"dev", "from", "to", "why": "down" | "manual" | "demoted" |
+ * Returns [{"dev", "from", "to", "why": "pinned" | "pin" | "down" | "manual" | "demoted" |
  * "quota" | "limited" | "back" | "off"}] (new).
  */
 json_object *mm_failover_plan(json_object *routes, json_object *levels, json_object *state, json_object *opts);

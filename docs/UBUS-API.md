@@ -1,6 +1,6 @@
 # ubus API for other interfaces (read-only first)
 
-Checked against the engine of 0.16.0-alpha1-r12 (20.11.2026): every method it registers is named here
+Checked against the engine of 0.16.0-alpha1-r14 (20.11.2026): every method it registers is named here
 (`tests/test_docs_contract.py`).
 
 The contract an interface other than luci-app-medvemodem (for example the
@@ -51,6 +51,7 @@ or `null` on real hardware, and the interface must show «нет данных»,
 | `recovery` | `id` | the device's `recovery` block (below) |
 | `lookup` | `node` (`/dev/cdc-wdm0`, `wwan0`, `ttyUSB2`) | which device owns the node |
 | `leases`, `config_state` | — / `id` | port leases; configuration transaction state |
+| `orphans` | — | `{orphans: [{interface, device_id?, name?, backend?, section? (false: the ledger holds the name, the section is gone), since? (unix s, the modem away since), auto_after? (unix s, removed by itself then), kept: [the section's fields of the user's, but the metric; `frozen`]}], auto_days}` (r14): the interfaces of modems the registry does not show present (adopted ones excepted) and the `mmN` sections without a proto that no ledger names. Since when is on flash (`<state>/orphans.json`); one away `core.orphan_days` (10) with nothing in `kept` is removed by itself, one an hour, event `iface-removed` |
 | `sms_list` | `id`, `refresh` (bool), `peek` (bool) | `{device_id, path: modemmanager, read_at, messages: [{id, number, text, state, type deliver/submit, storage, timestamp, epoch, class, delivery_state, reference, binary}], unread_ids?: [id received and not seen before this answer], error?}` or `{refused}`; from the engine's cache (read in the background every `core.sms_poll` s, and when older than 15 s); `refresh` waits for a fresh read; `peek` marks nothing seen (the bot, the dashboard's «Все SMS») |
 | `presets` | `id` | `{at: {groups, sets: [{id, title, source, presets: [{group, title, command, hazard, allowed, why?}]}]}, at_owner, plmn, ussd: {name, plmn, codes: [{title, code, source, checked}]} \| null}` — AT console presets that fit the modem (data in `/usr/share/medvemodem/presets`), marked by the hazard list; the USSD codes of the SIM's operator |
 | `ussd_status` | `id` | `{state: idle / running / done / failed / cancelled, request, code, reply, error, session (MM's: idle / active / user-response), started_at, finished_at}` |
@@ -93,7 +94,11 @@ address), reused (the session the modem held), plmn, steps}, HANDOFF 171), `reco
 commands and AT beside ModemManager), `esim_action` (`id`, `action`: version / probe / chip / profiles, or enable with
 `iccid`: a switch to a profile already on the eUICC, answered {ok, restart_advised} — the ICCID is in no answer and no
 log; download and delete wait for Alpha 2: until then, provision new profiles on a built-in eUICC or removable UICC/9eSIM using a compatible phone/app such as EasyEUICC or OpenEUICC on Android. LuCI offers Diagnostics → Check for an eSIM, then the eSIM tab to read and enable an installed profile), `config_plan` /
-`config_apply` / `config_rollback` / `config_release`, `lease_*`, `rescan`,
+`config_apply` / `config_rollback` / `config_release`, `pin` (`id`, `pin` bool, `who`, r14: «Закрепить единственным каналом», core.pin; the pinned modem's route alone carries
+the traffic, its internet or not, failover on or off, while it has a route; answers {result done / unchanged / failed, failover}, `uplink.failover.pin` {device_id, dev?, why?}; events `pinned` / `unpinned`),
+`orphan_remove` (`interface`, r14: one the `orphans` list shows,
+its ledger released and the section deleted with every field; {status committed / unchanged / busy / failed, interface,
+ops, packages}; NOT_FOUND for another name), `lease_*`, `rescan`,
 `probe`, and `mm_restart` (`confirm` true, `reason`): the operator's emergency
 ModemManager restart, every modem on the router is affected, once in 5 min,
 answers started / running / refused {why, retry_s}. Each other method names
@@ -177,10 +182,16 @@ the engine writes it as netifd's `option pincode` of its proto
 modemmanager/qmi/mbim interface, serves only `connection.pin_saved`, and shows
 `(hidden)` in place of the digits in configuration plans, ledgers and logs.
 `uplink` carries `failover` {enabled, active, why?, failback: restore|demote,
-manual [device], routes [{device, ipv6?, metric, base, steered_away, manual?,
-demoted?}], events [{dev, from, to, why: down|manual|demoted|back|off, ipv6?,
-at}]} (spec 20.8; on with UCI `medvemodem.core.failover '1'`); each move is
-also the ubus event `medvemodem.failover`. It carries `proxy_guard` {enabled,
+manual [device], pin?, routes [{device, ipv6?, metric, base, steered_away, manual?,
+demoted?, reason?, since?}], events [{dev, from, to, why: down|limited|quota|manual|demoted|pinned|pin|back|off, ipv6?,
+at, reason?, away_s?}]} (spec 20.8; on with UCI `medvemodem.core.failover '1'`); each move is
+also the ubus event `medvemodem.failover`. `reason` (r14) {code, detail?, target?, error?} is why the channel lost
+the traffic, taken once at the move away (`down`, `limited`) and kept until the move back, which adds `away_s`: `code` is
+`absent` (not on USB), `recovery`, `paused`, `session-failed` (`detail`: netifd's code), a diagnosis reason
+(`sim-missing`, `sim-locked`, `registration-denied`, `searching`, `not-registered`, `no-session`, `composition`,
+`service-mode`), `no-link` (a wire without carrier), else the reach check's `whitelist`, `restricted` or `no-answer`
+(`target`, `error`). The modem's `failover` event detail is «why dev [code] [Ns]»; `medvemodem.switch` carries the
+old carrier's `reason`, and the switch alert says it in words. It carries `proxy_guard` {enabled,
 blocked_checks, age_s?} too: every check fails while the internet answers
 through the local proxy, so no modem is recovered for it.
 `failover_forgive` (`device`, optional; write ACL) → the `failover` block: a

@@ -526,6 +526,8 @@ static const char *sim_iccid_of(const char *id, json_object *mm)
 }
 
 static void caches_retain(void);
+static bool iface_rebuild_if_unusable(json_object *rec, const char *id, const char *iface, long long now);
+#define IFACE_REBUILD_EVERY_MS 600000
 static void sim_store(const char *id, long long gen, const char *source, const char *imsi, const char *iccid, bool direct)
 {
 	json_object *e = json_object_new_object(), *sec;
@@ -963,6 +965,7 @@ static void discovery_pass(const char *why)
 	sim_retain(registry.devices);
 	at_hist_retain(registry.devices);
 	caches_retain();
+	orphans_sync();
 	history_save();
 	json_object_put(events);
 	json_object_put(scan);
@@ -3144,6 +3147,11 @@ const char *ledger_backend(const char *id)
 	return json_object_object_get_ex(led, "backend", &b) ? json_object_get_string(b) : NULL;
 }
 
+json_object *ledger_devices(void)
+{
+	return json_object_object_get(cfg.ledger, "devices");
+}
+
 static void inhibit_spawn(struct inhibit *h);
 
 static void inhibit_restart(struct uloop_timeout *t)
@@ -4328,6 +4336,81 @@ static void release_after_qmodem(int status)
 	ubus_complete_deferred_request(pending_release.ctx, &pending_release.req, UBUS_STATUS_OK);
 	json_object_put(r);
 	memset(&pending_release, 0, sizeof(pending_release));
+}
+
+/*
+ * An interface whose modem is gone (mgr_orphans.c; the owner, 2026-11-20: «после всех перетыканий mm плодятся уже аж до
+ * mm10»): the device's ledger released (id NULL: a section no ledger knows), then the section itself where it is left
+ * with no proto: a release keeps the fields it never wrote, and the metric «Сделать основным» writes is one of them, so
+ * the name stayed taken. whole: the operator's «Удалить», the section goes with every field. The packages committed are
+ * reloaded as after any transaction (the hook tells netifd, never a restart). A new object.
+ */
+json_object *iface_drop(const char *id, const char *iface, bool whole)
+{
+	static const char *const npk[] = { "network", NULL };
+	json_object *r, *all, *sec, *ops, *checked, *apply, *v = NULL;
+	char err[160];
+
+	if (reload_running || job.active || pending_release.active) {
+		r = json_object_new_object();
+		json_object_object_add(r, "status", json_object_new_string("busy"));
+		json_object_object_add(r, "reason", json_object_new_string("another configuration change is being applied"));
+		return r;
+	}
+	if (id) {
+		r = mm_cfgtxn_run(&cfg, id, NULL, NULL, false, now_mono_ms());
+		if (strcmp(status_of(r), "committed") && strcmp(status_of(r), "unchanged"))
+			return r;
+	} else {
+		r = json_object_new_object();
+		json_object_object_add(r, "status", json_object_new_string("unchanged"));
+	}
+	if (!json_object_object_get_ex(r, "ops", &v) || !json_object_is_type(v, json_type_array))
+		json_object_object_add(r, "ops", json_object_new_array());
+	if (!json_object_object_get_ex(r, "packages", &v) || !json_object_is_type(v, json_type_array))
+		json_object_object_add(r, "packages", json_object_new_array());
+	if (iface && (all = mm_uci_read(conf_dir, npk, err, sizeof(err)))) {
+		sec = json_object_object_get(json_object_object_get(all, "network"), iface);
+		if (sec && jstr(sec, ".type") && !strcmp(jstr(sec, ".type"), "interface") && (whole || !jstr(sec, "proto"))) {
+			json_object *op = json_object_new_object();
+
+			json_object_object_add(op, "op", json_object_new_string("delete-section"));
+			json_object_object_add(op, "package", json_object_new_string("network"));
+			json_object_object_add(op, "section", json_object_new_string(iface));
+			json_object_object_add(op, "expect", json_object_get(sec));
+			ops = json_object_new_array();
+			json_object_array_add(ops, op);
+			checked = mm_cfg_check(all, ops);
+			apply = json_object_object_get(checked, "apply");
+			if (apply && json_object_array_length(apply)) {
+				if (mm_uci_apply(conf_dir, cfg.savedir, apply, err, sizeof(err))) {
+					json_object_object_add(r, "status", json_object_new_string("failed"));
+					json_object_object_add(r, "error", json_object_new_string(err));
+				} else {
+					json_object *pk = json_object_object_get(r, "packages");
+					bool has = false;
+
+					json_object_array_add(json_object_object_get(r, "ops"), json_object_get(op));
+					for (size_t i = 0; i < json_object_array_length(pk); i++)
+						has = has || !strcmp(json_object_get_string(json_object_array_get_idx(pk, i)), "network");
+					if (!has)
+						json_object_array_add(pk, json_object_new_string("network"));
+					json_object_object_add(r, "status", json_object_new_string("committed"));
+				}
+			}
+			json_object_put(checked);
+			json_object_put(ops);
+		}
+		json_object_put(all);
+	}
+	json_object_object_add(r, "interface", iface ? json_object_new_string(iface) : NULL);
+	if (!strcmp(status_of(r), "committed")) {
+		qmodem_global_sync();
+		inhibits_sync();
+		if (json_object_array_length(json_object_object_get(r, "ops")))
+			reload_start(json_object_object_get(r, "packages"));
+	}
+	return r;
 }
 
 static int m_config_plan(struct ubus_context *ctx, struct ubus_object *obj,
@@ -10310,6 +10393,12 @@ static void iface_retry_fired(struct uloop_timeout *t)
 		if (dn && now - json_object_get_int64(json_object_object_get(dn, "mono")) <
 			  (budget_override_ms ? 3000 : MM_DENIED_RETRY_MS))
 			continue;
+		/* broken as configured (no device: netifd's NO_DEVICE every time): written again, not brought up again as it is */
+		if (!job.active && !rec_busy(id) && registry.devices &&
+		    iface_rebuild_if_unusable(json_object_object_get(registry.devices, id), id, iface, now)) {
+			json_object_object_add(rs, "next", json_object_new_int64(now + IFACE_REBUILD_EVERY_MS));
+			continue;
+		}
 		{
 			char detail[64];
 
@@ -11147,7 +11236,42 @@ static const char *iface_unusable(const char *iface)
 }
 
 static json_object *iface_rebuilt;	/* device id -> monotonic ms of the last rebuild of its interface */
-#define IFACE_REBUILD_EVERY_MS 600000
+
+/*
+ * An interface that cannot work as configured (no proto, or a modem proto without its device) is written again by a
+ * bring-up, at most every IFACE_REBUILD_EVERY_MS: true when it was unusable (rebuilt now or lately), so the caller
+ * neither recovers the modem nor brings the broken interface up again. Called by the watch (a stuck session) and by
+ * the retry of an interface netifd gave up on (the owner's T99W175, r12 2026-11-20: 120 tries of «up again» on a
+ * mm0 with no device, NO_DEVICE each time, while the watch never reached its rebuild).
+ */
+static bool iface_rebuild_if_unusable(json_object *rec, const char *id, const char *iface, long long now)
+{
+	const char *bad = iface_unusable(iface);
+	json_object *last = iface_rebuilt ? json_object_object_get(iface_rebuilt, id) : NULL, *o;
+	char what[96];
+	bool ok;
+
+	if (!bad || !rec)
+		return false;
+	if (last && now - json_object_get_int64(last) <= IFACE_REBUILD_EVERY_MS)
+		return true;
+	if (!iface_rebuilt)
+		iface_rebuilt = json_object_new_object();
+	json_object_object_add(iface_rebuilt, id, json_object_new_int64(now));
+	ULOG_WARN("%s: interface %s is unusable as configured (%s): written again, no recovery\n", id, iface, bad);
+	/* what had written it, for the cause: the ledger's owner and the operator's backend choice */
+	ULOG_WARN("%s: its ledger's backend %s, the operator's choice %s\n", id, ledger_backend(id) ? ledger_backend(id) : "-",
+		  jstr(decision_of(id), "backend") ? jstr(decision_of(id), "backend") : "auto");
+	snprintf(what, sizeof(what), "%s: %s", iface, bad);
+	mm_history_add(&history, id, (long long)time(NULL), now, "iface-rebuild", what);
+	history_dirty = true;
+	o = json_object_new_object();
+	ok = bringup_go(rec, o);
+	if (!ok)
+		ULOG_INFO("%s: the rebuild of %s: %s\n", id, iface, jstr(o, "reason") ? jstr(o, "reason") : "refused");
+	json_object_put(o);
+	return true;
+}
 
 static void watch_run(struct uloop_timeout *t)
 {
@@ -11192,30 +11316,7 @@ static void watch_run(struct uloop_timeout *t)
 		    !strcmp(reason, "session_stuck") && !rec_busy(id)) {
 			json_object *s2 = served(rec);
 			const char *iface = jstr(json_object_object_get(s2, "session"), "interface");
-			const char *bad = iface_unusable(iface);
-			json_object *last = iface_rebuilt ? json_object_object_get(iface_rebuilt, id) : NULL;
-
-			if (bad && (!last || now - json_object_get_int64(last) > IFACE_REBUILD_EVERY_MS)) {
-				json_object *o = json_object_new_object();
-				bool ok;
-				char what[96];
-
-				if (!iface_rebuilt)
-					iface_rebuilt = json_object_new_object();
-				json_object_object_add(iface_rebuilt, id, json_object_new_int64(now));
-				ULOG_WARN("%s: interface %s is unusable as configured (%s): written again, no recovery\n", id, iface, bad);
-				/* what had written it, for the cause (the T99W175 of 2026-11-19 kept a metric only after the native
-				 * choice, its cause not found from the field log): the ledger's owner and its backend choice */
-				ULOG_WARN("%s: its ledger's backend %s, the operator's choice %s\n", id,
-					  ledger_backend(id) ? ledger_backend(id) : "-",
-					  jstr(decision_of(id), "backend") ? jstr(decision_of(id), "backend") : "auto");
-				snprintf(what, sizeof(what), "%s: %s", iface, bad);
-				mm_history_add(&history, id, (long long)time(NULL), now, "iface-rebuild", what);
-				history_dirty = true;
-				ok = bringup_go(rec, o);
-				if (!ok)
-					ULOG_INFO("%s: the rebuild of %s: %s\n", id, iface, jstr(o, "reason") ? jstr(o, "reason") : "refused");
-				json_object_put(o);
+			if (iface_rebuild_if_unusable(rec, id, iface, now)) {
 				json_object_put(s2);
 				json_object_put(step);
 				continue;
@@ -12809,6 +12910,25 @@ static bool failover_active(void)
 	return failover_enabled() && !failover_blocked();
 }
 
+/* the modem the operator pinned (core.pin, its device_id; «Закрепить» on its card, the owner, 2026-11-20: «чтобы не
+ * убегало даже если инет упал, даже если в настройках стоит автоматика») */
+static const char *pin_id(void)
+{
+	json_object *c = core_uci();
+	const char *v = c ? jstr(c, "pin") : NULL;
+
+	return v && *v ? v : NULL;
+}
+
+/* ... its uplink's device while it has one; never with mwan3, which owns the routes */
+static const char *pin_dev(void)
+{
+	const char *id = pin_id();
+	json_object *u = id && uplinks ? json_object_object_get(uplinks, id) : NULL;
+
+	return u && jstr(u, "dev") && !failover_blocked() ? jstr(u, "dev") : NULL;
+}
+
 /* the plan's options: active, penalty, manual links (core.failover_manual), failback (core.failback) */
 static json_object *failover_opts(bool active)
 {
@@ -12829,6 +12949,8 @@ static json_object *failover_opts(bool active)
 	}
 	json_object_object_add(o, "demote", json_object_new_boolean(c && jstr(c, "failback") && !strcmp(jstr(c, "failback"), "demote")));
 	json_object_object_add(o, "quota", quota_held_devs());
+	if (pin_dev())
+		json_object_object_add(o, "pin", json_object_new_string(pin_dev()));
 	return o;
 }
 
@@ -12846,6 +12968,7 @@ static json_object *failover_routes6(void)
 	return r;
 }
 
+static json_object *fo_reasons;		/* dev -> {reason, since}: kept from the move away to the move back */
 static char fo_switch_from[IFNAMSIZ + 1], fo_switch_to[IFNAMSIZ + 1];	/* the carrier the running moves change */
 static void carrier_switched(const char *from, const char *to, const char *why);
 
@@ -12971,6 +13094,9 @@ static void carrier_switched(const char *from, const char *to, const char *why)
 	json_object_object_add(e, "previous", json_object_new_string(from));
 	json_object_object_add(e, "why", json_object_new_string(why));
 	json_object_object_add(e, "at", json_object_new_int64((long long)time(NULL)));
+	/* why the old carrier lost it, when failover moved it for a cause */
+	if (fo_reasons && json_object_object_get(fo_reasons, from))
+		json_object_object_add(e, "reason", json_object_get(json_object_object_get(json_object_object_get(fo_reasons, from), "reason")));
 	broadcast("medvemodem.switch", e);
 	json_object_put(e);
 }
@@ -12982,7 +13108,87 @@ static const char *failover_why_text(const char *why)
 	       !strcmp(why, "demoted") ? "answers again, kept last until the operator takes it back" :
 	       !strcmp(why, "quota") ? "its SIM spent the monthly quota, kept behind the others" :
 	       !strcmp(why, "limited") ? "limited (White Lists), another link carries the traffic" :
-	       !strcmp(why, "back") ? "answers again, its priority restored" : "restored (failover off or one uplink left)";
+	       !strcmp(why, "back") ? "answers again, its priority restored" :
+	       !strcmp(why, "pinned") ? "is pinned: it alone carries the traffic" :
+	       !strcmp(why, "pin") ? "waits behind the pinned modem" : "restored (failover off or one uplink left)";
+}
+
+/*
+ * Why a channel lost the traffic (the owner, 2026-11-20: «продумай где писать причину ухода на резерв и откуда брать»),
+ * as the engine knows it at the move, the deepest cause first: the modem gone from USB or under recovery, its session
+ * down (netifd's code), the first broken link of its chain (SIM, registration, session), a wired link without carrier;
+ * else what the reach check said. {code, detail?, target?, error?}: the codes are the chain's (mm_chain) and a few more
+ * (recovery, paused, no-link). A new object.
+ */
+
+static json_object *failover_reason(const char *dev)
+{
+	json_object *o = json_object_new_object(), *st = NULL, *reach = NULL;
+	const char *id = NULL, *code = NULL;
+	char detail[64] = "";
+
+	if (uplinks) {
+		json_object_object_foreach(uplinks, k, v)
+			if (!id && jstr(v, "dev") && !strcmp(jstr(v, "dev"), dev)) {
+				id = k;
+				st = v;
+			}
+	}
+	reach = st ? json_object_object_get(st, "reach") : NULL;
+	if (id && strncmp(id, "dev:", 4)) {
+		json_object *rec = mm_registry_find(&registry, id);
+
+		if (!rec || !json_object_get_boolean(json_object_object_get(rec, "present"))) {
+			code = "absent";
+		} else if (rec_busy(id)) {
+			code = "recovery";
+		} else {
+			json_object *srv = served(rec), *conn = json_object_object_get(srv, "connection");
+			json_object *de = json_object_object_get(conn, "deactivated"), *dg = json_object_object_get(srv, "diagnosis");
+
+			if (frozen(id) || (de && jstr(de, "by") && !strcmp(jstr(de, "by"), "operator"))) {
+				code = "paused";
+			} else if (de) {
+				code = "session-failed";
+				if (jstr(de, "why"))
+					snprintf(detail, sizeof(detail), "%s", jstr(de, "why"));
+			} else if (dg && !json_object_get_boolean(json_object_object_get(dg, "ok")) && jstr(dg, "reason") && jstr(dg, "link") &&
+				   strcmp(jstr(dg, "link"), "internet") && strcmp(jstr(dg, "link"), "dns")) {
+				static char held[32];
+
+				snprintf(held, sizeof(held), "%s", jstr(dg, "reason"));
+				code = held;
+			}
+			json_object_put(srv);
+		}
+	} else {
+		char path[300], *c;
+
+		snprintf(path, sizeof(path), "%s/%s/carrier", SYS_NET, dev);
+		if ((c = slurp(path)) && c[0] == '0')
+			code = "no-link";
+		free(c);
+	}
+	if (!code)
+		code = reach && json_object_get_boolean(json_object_object_get(reach, "limited")) ?
+		       (jstr(reach, "redirect") ? "restricted" : "whitelist") : "no-answer";
+	json_object_object_add(o, "code", json_object_new_string(code));
+	if (*detail)
+		json_object_object_add(o, "detail", json_object_new_string(detail));
+	if (reach && jstr(reach, "target"))
+		json_object_object_add(o, "target", json_object_new_string(jstr(reach, "target")));
+	if (reach && jstr(reach, "error"))
+		json_object_object_add(o, "error", json_object_new_string(jstr(reach, "error")));
+	return o;
+}
+
+/* the cause failover keeps for an uplink (its key: a device_id or "dev:<netdev>"), or NULL: the alerts say it */
+const char *failover_cause_of(const char *key)
+{
+	json_object *st = key && uplinks ? json_object_object_get(uplinks, key) : NULL;
+	json_object *k = st && jstr(st, "dev") && fo_reasons ? json_object_object_get(fo_reasons, jstr(st, "dev")) : NULL;
+
+	return k ? jstr(json_object_object_get(k, "reason"), "code") : NULL;
 }
 
 static void failover_record(json_object *moves, bool v6)
@@ -12992,10 +13198,34 @@ static void failover_record(json_object *moves, bool v6)
 	for (i = 0; i < json_object_array_length(moves) && i < FAILOVER_MOVES; i++) {
 		json_object *m = json_object_array_get_idx(moves, i), *e = json_object_get(m);
 
-		json_object_object_add(e, "at", json_object_new_int64((long long)time(NULL)));
+		const char *why = jstr(m, "why") ? jstr(m, "why") : "?";
+		json_object *kept = fo_reasons ? json_object_object_get(fo_reasons, jstr(m, "dev")) : NULL;
+		long long now_s = (long long)time(NULL), away_s = -1;
+
+		json_object_object_add(e, "at", json_object_new_int64(now_s));
 		if (v6)
 			json_object_object_add(e, "ipv6", json_object_new_boolean(1));
-		ULOG_WARN("failover: %s%s %s (metric %lld -> %lld)\n", jstr(m, "dev"), v6 ? " (IPv6)" : "", failover_why_text(jstr(m, "why")),
+		/* the cause, taken once at the move away and kept until the move back, which says how long it lasted */
+		if (!strcmp(why, "down") || !strcmp(why, "limited")) {
+			if (!kept) {
+				if (!fo_reasons)
+					fo_reasons = json_object_new_object();
+				kept = json_object_new_object();
+				json_object_object_add(kept, "reason", failover_reason(jstr(m, "dev")));
+				json_object_object_add(kept, "since", json_object_new_int64(now_s));
+				json_object_object_add(fo_reasons, jstr(m, "dev"), kept);
+			}
+			json_object_object_add(e, "reason", json_object_get(json_object_object_get(kept, "reason")));
+		} else if (kept && (!strcmp(why, "back") || !strcmp(why, "off") || !strcmp(why, "demoted"))) {
+			away_s = now_s - json_object_get_int64(json_object_object_get(kept, "since"));
+			json_object_object_add(e, "reason", json_object_get(json_object_object_get(kept, "reason")));
+			json_object_object_add(e, "away_s", json_object_new_int64(away_s));
+			if (!v6)
+				json_object_object_del(fo_reasons, jstr(m, "dev"));
+		}
+		ULOG_WARN("failover: %s%s %s%s%s (metric %lld -> %lld)\n", jstr(m, "dev"), v6 ? " (IPv6)" : "", failover_why_text(jstr(m, "why")),
+			  json_object_object_get(e, "reason") ? ": " : "",
+			  json_object_object_get(e, "reason") ? jstr(json_object_object_get(e, "reason"), "code") : "",
 			  (long long)json_object_get_int64(json_object_object_get(m, "from")),
 			  (long long)json_object_get_int64(json_object_object_get(m, "to")));
 		broadcast("medvemodem.failover", e);
@@ -13006,7 +13236,15 @@ static void failover_record(json_object *moves, bool v6)
 
 				if (!strncmp(id, "dev:", 4) || !jstr(st, "dev") || strcmp(jstr(st, "dev"), jstr(m, "dev")))
 					continue;
-				snprintf(d, sizeof(d), "%s %s", jstr(m, "why") ? jstr(m, "why") : "?", jstr(m, "dev"));
+				/* «why dev [cause] [seconds away]»: the readers (LuCI, the bot, evtext.c) take the first two alone too */
+				json_object *rs = json_object_object_get(e, "reason");
+
+				if (away_s >= 0)
+					snprintf(d, sizeof(d), "%s %s %s %llds", why, jstr(m, "dev"), rs ? jstr(rs, "code") : "-", away_s);
+				else if (rs)
+					snprintf(d, sizeof(d), "%s %s %s", why, jstr(m, "dev"), jstr(rs, "code"));
+				else
+					snprintf(d, sizeof(d), "%s %s", why, jstr(m, "dev"));
 				mm_history_add(&history, id, (long long)time(NULL), now_mono_ms(), "failover", d);
 				history_dirty = true;
 			}
@@ -13511,7 +13749,7 @@ static void failover_turn(void)
 	bool active = failover_active();
 
 	if (fo_running || now_mono_ms() < fo_retry_ms ||
-	    (!active && (!fo_state || !json_object_object_length(fo_state)) && (!fo_state6 || !json_object_object_length(fo_state6)) &&
+	    (!active && !pin_dev() && (!fo_state || !json_object_object_length(fo_state)) && (!fo_state6 || !json_object_object_length(fo_state6)) &&
 	     !*fo_dns_applied))
 		return;
 	if (!fo_state)
@@ -13837,6 +14075,13 @@ static void failover_view_routes(json_object *out, json_object *now, json_object
 				json_object_object_add(v, "quota", json_object_new_boolean(1));
 		if (st && json_object_object_get(st, "demoted"))
 			json_object_object_add(v, "demoted", json_object_new_boolean(1));
+		/* why it was steered away and since when (failover_reason) */
+		if (fo_reasons && json_object_object_get(fo_reasons, jstr(r, "dev"))) {
+			json_object *k = json_object_object_get(fo_reasons, jstr(r, "dev"));
+
+			json_object_object_add(v, "reason", json_object_get(json_object_object_get(k, "reason")));
+			json_object_object_add(v, "since", json_object_get(json_object_object_get(k, "since")));
+		}
 		json_object_array_add(out, v);
 	}
 }
@@ -13860,6 +14105,16 @@ static json_object *failover_view(void)
 	json_object_object_add(o, "failback", json_object_new_string(
 		json_object_get_boolean(json_object_object_get(opts, "demote")) ? "demote" : "restore"));
 	json_object_object_add(o, "manual", json_object_get(json_object_object_get(opts, "manual")));
+	if (pin_id()) {
+		json_object *p = json_object_new_object();
+
+		json_object_object_add(p, "device_id", json_object_new_string(pin_id()));
+		if (pin_dev())
+			json_object_object_add(p, "dev", json_object_new_string(pin_dev()));
+		else if (blocked)
+			json_object_object_add(p, "why", json_object_new_string(blocked));
+		json_object_object_add(o, "pin", p);
+	}
 	failover_view_routes(routes, now, fo_state, json_object_object_get(opts, "manual"), json_object_object_get(opts, "quota"), false);
 	failover_view_routes(routes, now6, fo_state6, json_object_object_get(opts, "manual"), json_object_object_get(opts, "quota"), true);
 	json_object_put(now);
@@ -15148,6 +15403,79 @@ static int m_failover_forgive(struct ubus_context *ctx, struct ubus_object *obj,
 }
 
 /*
+ * «Закрепить» on a modem's card (the owner, 2026-11-20: «принудительное приколачивание, чтобы не убегало даже если инет
+ * упал, даже если в настройках стоит автоматика»): core.pin names the modem whose route alone carries the traffic, its
+ * internet or not, failover on or off (failover.c, opts.pin). One modem at a time; a pin false takes it off.
+ */
+enum { PIN_ID, PIN_ON, PIN_WHO, __PIN_MAX };
+static const struct blobmsg_policy pin_policy[] = {
+	[PIN_ID] = { .name = "id", .type = BLOBMSG_TYPE_STRING },
+	[PIN_ON] = { .name = "pin", .type = BLOBMSG_TYPE_BOOL },
+	[PIN_WHO] = { .name = "who", .type = BLOBMSG_TYPE_STRING },
+};
+
+static int m_pin(struct ubus_context *ctx, struct ubus_object *obj, struct ubus_request_data *req, const char *method,
+		 struct blob_attr *msg)
+{
+	struct blob_attr *tb[__PIN_MAX];
+	json_object *o = json_object_new_object(), *ops, *op, *rec;
+	const char *id, *was = pin_id(), *who;
+	char err[160], d[96], prev[160] = "";
+	bool on;
+	int rc;
+
+	(void)obj; (void)method;
+	blobmsg_parse(pin_policy, __PIN_MAX, tb, blob_data(msg), blob_len(msg));
+	if (!tb[PIN_ID] || !tb[PIN_ON]) {
+		json_object_put(o);
+		return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+	rec = mm_registry_find(&registry, blobmsg_get_string(tb[PIN_ID]));
+	if (!rec || !jstr(rec, "device_id")) {
+		json_object_put(o);
+		return UBUS_STATUS_NOT_FOUND;
+	}
+	id = jstr(rec, "device_id");
+	on = blobmsg_get_bool(tb[PIN_ON]);
+	who = tb[PIN_WHO] ? blobmsg_get_string(tb[PIN_WHO]) : "LuCI";
+	if (was)
+		snprintf(prev, sizeof(prev), "%s", was);
+	if (!on && strcmp(prev, id)) {
+		json_object_object_add(o, "result", json_object_new_string("unchanged"));
+		goto reply;
+	}
+	ops = json_object_new_array();
+	op = json_object_new_object();
+	json_object_object_add(op, "op", json_object_new_string(on ? "set" : "delete"));
+	json_object_object_add(op, "package", json_object_new_string("medvemodem"));
+	json_object_object_add(op, "section", json_object_new_string("core"));
+	json_object_object_add(op, "option", json_object_new_string("pin"));
+	if (on)
+		json_object_object_add(op, "value", json_object_new_string(id));
+	json_object_array_add(ops, op);
+	rc = mm_uci_apply(conf_dir, cfg.savedir, ops, err, sizeof(err));
+	json_object_put(ops);
+	if (rc) {
+		json_object_object_add(o, "result", json_object_new_string("failed"));
+		json_object_object_add(o, "reason", json_object_new_string(err));
+		goto reply;
+	}
+	snprintf(d, sizeof(d), "by the operator (%.40s)", who);
+	if (on && *prev && strcmp(prev, id))
+		mm_history_add(&history, prev, (long long)time(NULL), now_mono_ms(), "unpinned", "another modem pinned");
+	mm_history_add(&history, id, (long long)time(NULL), now_mono_ms(), on ? "pinned" : "unpinned", d);
+	history_dirty = true;
+	ULOG_INFO("failover: %s %s by the operator\n", id, on ? "pinned" : "unpinned");
+	failover_turn();
+	json_object_object_add(o, "result", json_object_new_string("done"));
+reply:
+	json_object_object_add(o, "failover", failover_view());
+	rc = reply_json(ctx, req, NULL, o);
+	json_object_put(o);
+	return rc;
+}
+
+/*
  * The links failover never makes main by itself (core.failover_manual), set whole: the Telegram bot's exclusion
  * menu edits a draft and applies it at once, with the list it started from in «expect» - when LuCI changed the list
  * in between, nothing is written and the reply carries the list as it is now (result «changed»).
@@ -15580,6 +15908,8 @@ static const struct ubus_method methods[] = {
 	UBUS_METHOD("config_release", m_config_release, config_policy),
 	UBUS_METHOD("config_rollback", m_config_rollback, config_policy),
 	UBUS_METHOD("config_state", m_config_state, config_policy),
+	UBUS_METHOD_NOARG("orphans", m_orphans),
+	UBUS_METHOD("orphan_remove", m_orphan_remove, orphan_remove_policy),
 	UBUS_METHOD("bringup", m_bringup, bringup_policy),
 	UBUS_METHOD("connect", m_connect, connect_policy),
 	UBUS_METHOD("freeze", m_freeze, freeze_policy),
@@ -15608,6 +15938,7 @@ static const struct ubus_method methods[] = {
 	UBUS_METHOD("mm_restart", m_mm_restart, mmr_policy),
 	UBUS_METHOD_NOARG("uplink", m_uplink),
 	UBUS_METHOD("failover_forgive", m_failover_forgive, forgive_policy),
+	UBUS_METHOD("pin", m_pin, pin_policy),
 	UBUS_METHOD("modeswitch_fix", m_modeswitch_fix, msw_policy),
 	UBUS_METHOD("fcc_unlock", m_fcc_unlock, fcc_policy),
 	UBUS_METHOD("modeswitch_run", m_modeswitch_run, msw_policy),
@@ -15851,6 +16182,7 @@ int main(int argc, char **argv)
 	mm_schedule(0);
 	uplink_load();
 	quota_mgr_start();
+	orphans_start();
 	downtime_mgr_start();
 	traffic_mgr_start();
 	mmlog_start();
@@ -15964,6 +16296,7 @@ int main(int argc, char **argv)
 	}
 	uplink_save();
 	quota_mgr_stop();
+	orphans_stop();
 	downtime_mgr_stop();
 	traffic_mgr_stop();
 	mmlog_stop();
@@ -15978,6 +16311,7 @@ int main(int argc, char **argv)
 	failover_restore_all();
 	json_object_put(fo_state);
 	json_object_put(fo_events);
+	json_object_put(fo_reasons);
 	json_object_put(fo_routes);
 	json_object_put(uplinks);
 	json_object_put(usb_power);

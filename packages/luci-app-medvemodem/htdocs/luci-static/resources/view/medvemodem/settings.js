@@ -85,6 +85,8 @@ var fwStatus = rpc.declare({ object: 'medvemodem.forward', method: 'status', rej
 var fwTokenSet = rpc.declare({ object: 'medvemodem.forward', method: 'token_set', params: ['token'], reject: true });
 var fwTokenClear = rpc.declare({ object: 'medvemodem.forward', method: 'token_clear', reject: true });
 var mmRestart = rpc.declare({ object: 'medvemodem', method: 'mm_restart', params: ['confirm', 'reason'], reject: true });
+var getOrphans = rpc.declare({ object: 'medvemodem', method: 'orphans', reject: true });
+var orphanRemove = rpc.declare({ object: 'medvemodem', method: 'orphan_remove', params: ['interface'], reject: true });
 
 function words(value) { return typeof value === 'string' && value !== '--' ? value : ''; }
 function list(value) { return Array.isArray(value) ? value : value == null || value === '' ? [] : [value]; }
@@ -130,6 +132,10 @@ function updateWhy(w) {
 	var m = /^no build for (.+) on OpenWrt (.+) in the (.+) releases$/.exec(w);
 	if (m) return _('No build for %s on OpenWrt %s in the %s channel.').format(m[1], m[2], m[3] === 'bench' ? _('Test builds (bench)') : _('Official releases'));
 	if (/^release channel changed|^old update result/.test(w)) return _('The update channel changed; check again.');
+	m = /^GitHub did not list the releases of (.+?): (.*)$/.exec(w);
+	if (m) return /rate limit/i.test(m[2]) ? _('GitHub limits requests from this address; try again in an hour.') :
+		/not found/i.test(m[2]) ? _('Repository %s is not available (private or renamed); check medvemodem.core.update_repo.').format(m[1]) :
+		_('GitHub did not list the releases of %s: %s').format(m[1], m[2]);
 	return w || _('no answer');
 }
 function agoLong(s) {
@@ -142,7 +148,7 @@ function parse(r) { try { return JSON.parse((r && r.stdout) || '{}'); } catch (e
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r12';
+var VIEW_VERSION = '0.16.0-alpha1-r14';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -194,13 +200,13 @@ return view.extend({
 		var c = {};
 		c.service = this.serviceCard(); c.rec = this.recoveryCard(); c.names = this.namesCard();
 		c.priority = this.priorityCard(); c.fo = this.failoverCard(); c.wl = this.wlCard(); c.reach = this.reachNode = this.reachCard(); c.svc = this.servicesCard();
-		c.check = this.checkNode = this.channelsCard(); c.radio = this.radioCard(); c.forward = this.forwardCard(); c.alerts = this.alertsCard(); c.archive = this.archiveCard(); c.bot = this.botCard();
+		c.orphans = this.orphansCard(); c.check = this.checkNode = this.channelsCard(); c.radio = this.radioCard(); c.forward = this.forwardCard(); c.alerts = this.alertsCard(); c.archive = this.archiveCard(); c.bot = this.botCard();
 		c.apn = this.apnNode = this.apnCard(); c.qm = this.qmodemCard(); c.up = this.updateCard(); c.pkgs = this.pkgsCard(); c.mmr = this.mmrCard();
 		if (this.wlPage) return this.renderWl(c);
 		/* moved to «Белые списки»: a pointer in their place */
 		this.al.wlRows.forEach(function(n) { n.hidden = true; });
 		this.al.wlRows[1].after(this.movedNote(_('The whitelist alert')));
-		c.wl = this.movedNote(_('The whitelist mode'), true);
+		c.wl = '';	/* said with the addresses in the reachability card: one line, not two in a row */
 		this.root = E('div', { 'class': 'mm-root mm-settings' }, [
 			E('link', { rel: 'stylesheet', href: L.resource('medvemodem/dashboard.css') + '?v=' + CSS_VERSION }),
 			this.head = pageHead(_('Settings'), E('p', {}, _('Common for all modems of this router')), function() { self.applyLevel(); }, 'settings'),
@@ -210,8 +216,10 @@ return view.extend({
 		].concat(this.tabPanels([
 			/* the service's state first, a tab of its own (the owner, 2026-10-23) */
 			['service', _('Service status'), [c.service]],
-			['net', _('Internet and backup'), [c.priority, E('div', { 'class': 'mm-grid2' }, [c.fo, c.reach]), c.wl, c.svc, this.chansPref()]],
-			['rec', _('Modems'), [c.rec, c.radio, c.names]],
+			/* one card a row: the reachability card lost the whitelist addresses to their own page, and side by side it left
+			   the backup channel and its scripts squeezed into half the width (the owner, 2026-11-20: «скукожился») */
+			['net', _('Internet and backup'), [c.priority, c.fo, c.reach, c.wl, c.svc, this.chansPref()]],
+			['rec', _('Modems'), [c.rec, c.radio, c.names, c.orphans]],
 			['notify', _('Notifications'), [c.alerts, c.forward, c.archive, c.bot]],
 			/* the emergency ModemManager restart and browser presentation preference belong at the very bottom */
 			['diag', _('Diagnostics and components'), [c.check, c.up, E('div', { 'class': 'mm-grid2' }, [c.apn, c.qm]), c.pkgs, c.mmr, this.ownerBadgePref()]]
@@ -230,11 +238,11 @@ return view.extend({
 		return this.root;
 	},
 
-	/* «moved to Белые списки», with the link; a card of its own where a whole card moved */
-	movedNote: function(what, card) {
-		var n = E('p', { 'class': 'mm-faint mm-wl-moved' }, [_('%s: on the «Whitelists» page.').format(what), ' ',
+	/* «moved to Белые списки», with the link: one quiet line, no card of its own (the owner, 2026-11-20: a bordered strip
+	   squeezed between the cards) */
+	movedNote: function(what) {
+		return E('p', { 'class': 'mm-faint mm-wl-moved' }, [_('%s: on the «Whitelists» page.').format(what), ' ',
 			E('a', { href: L.url('admin/modem/medvemodem/whitelist') }, _('Open') + ' →')]);
-		return card ? E('div', { 'class': 'mm-card mm-wl-moved-card' }, n) : n;
 	},
 
 	/* «Белые списки»: what each channel has now, the services through any or all, the mode, the addresses, the tunnels'
@@ -393,12 +401,16 @@ return view.extend({
 
 	/* each channel now, from the engine's uplink: open, the whitelist only, the internet through the tunnel, silent */
 	wlNowCard: function() {
+		/* a modem ModemManager does not hold (FM350 under MedveModem, HiLink, a router-mode stick) has no operator name of
+		   ModemManager's: its SIM's operator by the code the service read (the owner, 2026-11-20: «операторы не у всех») */
+		var opName = function(code) { var o = mm.OPS[String(code || '')]; return o ? o[0] : words(code); };
 		var self = this, u = this.uplinkData, names = {}, operators = {}, values = [];
 		Object.keys(this.names || {}).forEach(function(k) { var n = self.names[k]; if (n && n.device_id && words(n.name)) names[n.device_id] = words(n.name); });
 		list(this.devices).forEach(function(d) {
 			names[d.device_id] = names[d.device_id] || words(d.name) || words((d.modemmanager || {}).model) || words(d.product) || d.device_id;
 			operators[d.device_id] = words(((d.sim_card || {}).operator_name)) || words(((d.modemmanager || {}).sim_card || {}).operator_name) ||
-				words(((d.modemmanager || {}).operator_name)) || words(((d.connection || {}).operator)) || '';
+				words(((d.modemmanager || {}).operator_name)) || words(((d.modemmanager || {}).operator)) ||
+				words(((d.connection || {}).operator)) || opName((d.sim_operator || {}).code);
 		});
 		var main = function(p) { return p.role === 'carrying' || p.role === 'limited'; };
 		var metric = function(p) { return typeof p.metric === 'number' ? p.metric : typeof p.kernel_metric === 'number' ? p.kernel_metric : 1e9; };
@@ -962,6 +974,44 @@ return view.extend({
 			N_(ids.length, '%d modem', '%d modems').format(ids.length));
 	},
 
+	/* interfaces whose modem is gone (the owner, 2026-11-20: «mm плодятся уже аж до mm10» — «Список с кнопками сразу,
+	   автоматическая уборка через 10 дней»): shown only while there is one */
+	orphansCard: function() {
+		var self = this, ul = E('ul', { 'class': 'mm-thrs mm-orphans' }), note = E('p', { 'class': 'mm-faint' }),
+			say = E('p', { 'class': 'mm-faint mm-orphans-say', role: 'status' });
+		var card = this.sec('set-orphans', _('Interfaces without a modem'), [ul, say, note], '', true);
+		card.hidden = true;
+		function day(t) { return new Date(t * 1000).toLocaleDateString(mm.LANG); }
+		function fill() {
+			return getOrphans().then(function(r) {
+				var items = list(r && r.orphans).filter(function(o) { return o && words(o.interface); }), days = +(r && r.auto_days) || 0;
+				ul.textContent = '';
+				items.forEach(function(o) {
+					var bits = [words(o.name) || _('no modem record')];
+					if (o.since) bits.push(_('away since %s').format(day(o.since)));
+					if (o.auto_after) bits.push(_('removed by itself on %s').format(day(o.auto_after)));
+					else if (list(o.kept).length) bits.push(_('kept: has your settings (%s)').format(list(o.kept).join(', ')));
+					var btn = E('button', { type: 'button', 'class': 'mm-btn mm-orphan-rm', click: mm.busy(function() {
+						say.textContent = '';
+						return orphanRemove(o.interface).then(function(x) {
+							if (x && x.status === 'busy') say.textContent = _('Another change is being applied: try again in a moment.');
+							else if (x && x.status !== 'committed' && x.status !== 'unchanged') say.textContent = _('Not removed: %s').format(words(x.reason || x.error) || x.status);
+							return fill();
+						}, function(e) { say.textContent = _('Not removed: %s').format(e.message); });
+					}) }, _('Delete'));
+					ul.appendChild(E('li', { 'class': 'mm-contact' }, [E('div', { 'class': 'mm-field' }, [
+						E('span', {}, [E('b', { 'class': 'mm-mono' }, o.interface), ' ', E('span', { 'class': 'mm-faint' }, bits.join(' · '))]), btn])]));
+				});
+				note.textContent = (days ? _('An interface of a modem away %d days goes by itself, unless it holds settings of yours.').format(days) + ' ' : '') +
+					_('A removed interface frees its name: the modem plugged in again gets a new one.');
+				card.hidden = !items.length;
+				if (card.mmGist) card.mmGist(N_(items.length, '%d interface', '%d interfaces').format(items.length));
+			}, function() { card.hidden = true; });
+		}
+		fill();
+		return card;
+	},
+
 	recoveryCard: function() {
 		var self = this;
 		function check(name, title, hint) {
@@ -1494,7 +1544,11 @@ return view.extend({
 			text(w.live, d.auto ? (d.auto_now_name ? _('Now in the manager: the automatic choice (URL test), it uses “%s”.').format(d.auto_now_name) :
 				_('Now in the manager: the automatic choice (URL test).')) :
 				d.now ? _('Now in the manager: “%s”, chosen by hand or by the whitelist mode.').format(d.now_name || d.now) : '');
-			w.live.hidden = !d.auto && !d.now;
+			/* fallback rows in the rule (podkop-exp): podkop chooses the server itself, the mode pins none and changes the
+			   routing only (the owner and podkop's author, 2026-11-20) */
+			if (d.native) text(w.live, (w.live.textContent ? w.live.textContent + ' ' : '') +
+				_('The rule has fallback servers: podkop switches to them by itself. With no server chosen below, the whitelist mode pins none and only changes the routing; servers chosen below are pinned all the same.'));
+			w.live.hidden = !d.auto && !d.now && !d.native;
 			var away = list(d.sources).filter(function(x) { return !x.used; }).map(function(x) { return mm.LANG === 'ru' ? '«' + (x.label || x.name) + '»' : '“' + (x.label || x.name) + '”'; });
 			text(w.srcNote, away.length ? N_(away.length, 'The source %s is not in this rule: the manager has none of its servers in the rule\'s group. Add it to the rule\'s servers or fallbacks in the manager, and they will show here.',
 				'The sources %s are not in this rule: the manager has none of their servers in the rule\'s group. Add them to the rule\'s servers or fallbacks in the manager, and they will show here.').format(away.join(', ')) : '');
@@ -1581,7 +1635,7 @@ return view.extend({
 		this.reachWl = [r[1], E('p', { 'class': 'mm-faint' }, _('If primary hosts fail while these respond, the uplink is marked "Whitelist only" without restarting the modem (likely carrier whitelist). Defaults to ya.ru and vk.com (77.88.55.242:443, 87.240.132.72:443); enter "none" to disable.'))];
 		return this.sec('set-reach', _('Connection check'), [w[1],
 			E('p', { 'class': 'mm-faint' }, _('Through each modem the router checks whether these addresses answer. Any answer, even a refused connection, means there is a link. Empty means 1.1.1.1:443 and 8.8.8.8:443.')),
-			this.wlPage ? '' : this.movedNote(_('The whitelist addresses'))].concat(this.wlPage ? this.reachWl : []).filter(Boolean));
+			this.wlPage ? '' : this.movedNote(_('The whitelist mode and addresses'))].concat(this.wlPage ? this.reachWl : []).filter(Boolean));
 	},
 
 	apnCard: function() {

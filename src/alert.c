@@ -258,6 +258,27 @@ static const char *name_of(json_object *names, const char *key)
 	return n && *n ? n : key ? key : "?";
 }
 
+/* why failover moved the traffic away (medvemodemd.c failover_reason, r14), or NULL for a code it does not know */
+static const char *cause_words(const char *c, bool ru)
+{
+	static const char *const map[][3] = {
+		{ "absent", "the modem is not on USB", "модем не обнаружен на USB" }, { "recovery", "the modem was being recovered", "шло восстановление модема" },
+		{ "paused", "switched off by the administrator", "выключен администратором" },
+		{ "session-failed", "the connection dropped", "соединение оборвалось" }, { "no-session", "no session with the operator", "сеанс с оператором не установлен" },
+		{ "sim-missing", "no SIM card", "нет SIM-карты" }, { "sim-locked", "the SIM needs its PIN", "для SIM-карты требуется PIN-код" },
+		{ "registration-denied", "the network refused the registration", "оператор отказал в регистрации" },
+		{ "searching", "searching for a network", "модем ищет сеть" }, { "not-registered", "not registered in a network", "модем не зарегистрирован в сети" },
+		{ "no-link", "no cable link", "нет линка по кабелю" }, { "whitelist", "only the operator's whitelist works", "доступны только сайты из белого списка оператора" },
+		{ "restricted", "the operator restricted access", "оператор ограничил доступ" },
+		{ "no-answer", "the check addresses did not answer", "проверочные адреса не отвечают" },
+	};
+
+	for (size_t i = 0; c && i < sizeof(map) / sizeof(map[0]); i++)
+		if (!strcmp(map[i][0], c))
+			return map[i][ru ? 2 : 1];
+	return NULL;
+}
+
 void mm_alert_text(json_object *notice, json_object *names, const char *host, bool ru, char *out, size_t size)
 {
 	const char *kind = str(notice, "kind"), *link = name_of(names, str(notice, "link"));
@@ -278,6 +299,9 @@ void mm_alert_text(json_object *notice, json_object *names, const char *host, bo
 		snprintf(out, size, ru ? "%sнет интернета уже %s" : "%sno internet for %s", head, d);
 	else if (is(kind, "down-end"))
 		snprintf(out, size, ru ? "%sинтернет восстановлен, не было %s" : "%sinternet restored after %s", head, d);
+	else if (is(kind, "switch") && cause_words(str(notice, "cause"), ru))
+		snprintf(out, size, ru ? "%sтрафик перешёл с %s на %s: %s" : "%straffic switched from %s to %s: %s", head, from, to,
+			 cause_words(str(notice, "cause"), ru));
 	else if (is(kind, "switch"))
 		snprintf(out, size, ru ? "%sтрафик перешёл с %s на %s" : "%straffic switched from %s to %s", head, from, to);
 	else if (is(kind, "switch-back"))

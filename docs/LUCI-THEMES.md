@@ -27,15 +27,15 @@ what a view leaves behind lives on into the next one.
    `popstate` handlers; stock Save/Apply hidden by `handleSaveApply = null`, not by CSS.
 7. **`!important`** only inside our own subtree, never to beat a theme's stock rule elsewhere.
 
-## Our state (2026-11-02)
+## Our state (2026-11-20, r14)
 
 | Rule | State |
 |---|---|
 | 1 Lifetime | ok: dashboard.css and #mmb-css name only `mm-`/`mmb-` (two dead `.fx-*` rules removed) |
 | 2 Names | ok |
-| 3 Colours | partly: most colours read the contract with a fallback; some pills and charts still carry literals |
+| 3 Colours | ok: frames, buttons, borders, tabs and owner tags read the contract with a fallback (r14). Kept fixed on purpose, light and dark pairs: the backup, warn and paused pills and the USB chips (bench 2026-10-15: a theme's bright yellow on white could not be read), the filled blue button (Bootstrap's light theme made an outlined one vanish), the chart palette (the contract has no categorical colours) |
 | 4 Dark mode | ok by `data-darkmode` and the guarded media query |
-| 5 Layout | partly: 19 `@container` queries; a few `@media (max-width)` remain (the status include's table, tabs) |
+| 5 Layout | ok: every width query is `@container` (r14); the status include on «Обзор» is its own container. `@media` stays only for the pointer, dark mode and reduced motion |
 | 6 SPA | ok: no onload/popstate/intervals; toasts moved into `#view` |
 | 7 !important | ok: 8, all inside `.mm-root`/`.mm-modem`/`.mm-status` |
 

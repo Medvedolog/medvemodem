@@ -296,14 +296,21 @@ function stepWord(v) { return STEP_WORDS[v] ? W(STEP_WORDS[v]) : null; }
 // is never shown: it may carry anything
 const FOUND_WHY = {start:['on service startup', 'при запуске службы'], uevent:['USB event', 'событие USB'],
     'rescan request':['rescan', 'повторный поиск модемов'], returned:['disconnected and reconnected', 'отключался и подключился снова']};
-const NET_WHY = {ok:['full internet access', 'полный доступ в интернет'], limited:['whitelist only', 'только белый список'],
-    down:['no internet', 'интернета нет']};
+const NET_WHY = {ok:['full internet access', 'полный доступ в интернет'], limited:['whitelist only', 'только белый список'], down:['no internet', 'интернета нет']};
 const MOVE_WHY = {down:['no internet; traffic failed over', 'нет интернета, трафик переведён на другой канал'],
-    limited:['whitelist only; traffic failed over', 'только белый список, трафик переведён на другой канал'],
-    quota:['data cap reached; deprioritized', 'лимит трафика исчерпан, приоритет понижен'],
-    manual:['manual uplink (deprioritized)', 'ручной канал (приоритет понижен)'],
-    demoted:['back online; kept as fallback', 'снова в сети, оставлен последним'],
-    back:['back online; priority restored', 'снова в сети, приоритет восстановлен']};
+    limited:['whitelist only; traffic failed over', 'только белый список, трафик переведён на другой канал'], quota:['data cap reached; deprioritized', 'лимит трафика исчерпан, приоритет понижен'],
+    manual:['manual uplink (deprioritized)', 'ручной канал (приоритет понижен)'], demoted:['back online; kept as fallback', 'снова в сети, оставлен последним'],
+    back:['back online; priority restored', 'снова в сети, приоритет восстановлен'], pinned:['pinned; it alone carries the traffic', 'закреплён: трафик только через него'],
+    pin:['waits behind the pinned modem', 'ожидает, пока закреплён другой модем']};
+const MOVE_CAUSE = {absent:['the modem is not on USB', 'модем не обнаружен на USB'], recovery:['the modem was being recovered', 'шло восстановление модема'],
+    paused:['switched off by the administrator', 'выключен администратором'], 'session-failed':['the connection dropped', 'соединение оборвалось'],
+    'no-session':['no session with the operator', 'сеанс с оператором не установлен'], 'sim-missing':['no SIM card', 'нет SIM-карты'],
+    'sim-locked':['the SIM needs its PIN', 'для SIM-карты требуется PIN-код'], 'registration-denied':['the network refused the registration', 'оператор отказал в регистрации'],
+    searching:['searching for a network', 'модем ищет сеть'], 'not-registered':['not registered in a network', 'модем не зарегистрирован в сети'],
+    composition:['the modem was not fully recognised', 'модем распознан не полностью'], 'service-mode':['the modem is in service mode', 'модем в служебном режиме'],
+    'no-link':['no cable link', 'нет линка по кабелю'], whitelist:['only the operator\'s whitelist works', 'доступны только сайты из белого списка оператора'],
+    restricted:['the operator restricted access', 'оператор ограничил доступ'], 'no-answer':['the check addresses did not answer', 'проверочные адреса не отвечают'],
+    'dns-failed':['DNS does not answer', 'DNS не отвечает']};
 const EVENT_TITLES = {'quota-warn':['Data cap warning reached', 'Достигнут порог лимита трафика'],
     'quota-exceeded':['Data cap reached', 'Лимит трафика исчерпан'],
     'session-down':['Connection dropped', 'Подключение прервано'], 'session-up':['Connection established', 'Подключение установлено'],
@@ -319,8 +326,10 @@ function eventPair(kind, detail) {
         why = FOUND_WHY[d] || (index(d, 'attachment') >= 0 ? ['USB port changed', 'изменилось USB-подключение'] :
                                index(d, 'ports') >= 0 ? ['modem ports changed', 'сменились порты'] : null);
     else if (kind == 'internet') why = NET_WHY[d];
-    else if (kind == 'failover' && (m = match(d, /^([a-z]{1,12}) ([A-Za-z0-9_.-]{1,15})$/)) && MOVE_WHY[m[1]])
-        why = [m[2] + ': ' + MOVE_WHY[m[1]][0], m[2] + ': ' + MOVE_WHY[m[1]][1]];
+    else if (kind == 'failover' && (m = match(d, /^([a-z]{1,12}) ([A-Za-z0-9_.-]{1,15})( ([a-z-]{1,24}))?( ([0-9]{1,9})s)?$/)) && MOVE_WHY[m[1]]) {
+        let c = m[4] ? MOVE_CAUSE[m[4]] : null, n = m[6] ? int((int(m[6]) + 59) / 60) : null;
+        why = map([0, 1], (l) => m[2] + ': ' + MOVE_WHY[m[1]][l] + (c ? ' (' + c[l] + ')' : '') + (n == null ? '' : (l ? ', без интернета ' : ', away ') + n + (l ? ' мин' : ' min')));
+    }
     else if ((kind == 'session-up' || kind == 'session-down') && match(d, /^[A-Za-z0-9_.-]{1,15}$/)) why = [d, d];
     else if ((kind == 'recovery-start' || kind == 'recovery-end') && (m = match(d, /^([a-z-]{1,12})[ :]/)) && STEP_WORDS[m[1]])
         why = STEP_WORDS[m[1]];

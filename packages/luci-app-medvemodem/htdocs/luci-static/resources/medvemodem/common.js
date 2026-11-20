@@ -9,7 +9,7 @@
 
 /* the stylesheet carries the package version: LuCI versions its own scripts, not an app's
  * <link>, and a browser keeps an old dashboard.css after an upgrade (seen on the bench, 0.7.2) */
-var VERSION = '0.16.0-alpha1-r12';	/* = the engine's version */
+var VERSION = '0.16.0-alpha1-r14';	/* = the engine's version */
 
 /* a value as a list: the module has its own (a view's list is not in its scope; r26 broke the icon on this) */
 function list(v) { return Array.isArray(v) ? v : v == null || v === '' ? [] : [v]; }
@@ -482,7 +482,16 @@ var FOUND_WHY = { start: _('at the engine\'s start'), uevent: _('USB event'), 'r
 var INTERNET = { ok: [_('full internet access'), 'ok'], limited: [_('only the operator\'s whitelist answers'), 'warn'], down: [_('no answer'), 'warn'] };
 var FAILOVER_WHY = { down: _('no internet, traffic failed over'), limited: _('whitelist only, traffic on another uplink'),
 	quota: _('data cap reached, deprioritized'), manual: _('manual uplink (kept deprioritized)'), demoted: _('back online; kept as fallback'),
-	back: _('back online, priority restored') };
+	back: _('back online, priority restored'), pinned: _('pinned: it alone carries the traffic'), pin: _('waits behind the pinned modem') };
+/* why a channel lost the traffic (the engine's failover_reason, r14): the chain's words and failover's own */
+var CAUSE_MORE = { recovery: _('the modem was being recovered'), paused: _('switched off by the administrator'),
+	'no-link': _('no cable link') };
+function causeWords(r) {
+	if (!r || !r.code) return '';
+	var w = CAUSE_MORE[r.code] || CHAIN_WHY[r.code] || r.code;
+	if (r.code === 'session-failed' && r.detail) w += ' (' + r.detail + ')';
+	return w;
+}
 var FOLLOW_WHAT = { modem: _('name'), device: _('connection settings'), esim: _('eSIM settings') };
 var WHO = { luci: _('from the web interface'), cli: _('from the command line'), automatic: _('automatically'), operator: _('by the administrator') };
 function eventWords(e) {
@@ -533,7 +542,11 @@ function eventWords(e) {
 	else if (e.kind === 'radio-guard' || e.kind === 'band-guard')
 		d = (m = /^no network for (\d+) min$/.exec(d)) ? _('no signal for %s min, reverting pre-lock settings').format(m[1]) :
 			d === 'done' ? _('the settings before the lock are back') : _('failed to restore previous settings; stopped retrying');
-	else if (e.kind === 'failover' && (m = /^(\S+) (\S+)$/.exec(d))) d = _('%s: %s').format(m[2], FAILOVER_WHY[m[1]] || _('its priority restored'));
+	else if (e.kind === 'failover' && (m = /^(\S+) (\S+)(?: (\S+))?(?: (\d+)s)?$/.exec(d))) {
+		d = _('%s: %s').format(m[2], FAILOVER_WHY[m[1]] || _('its priority restored'));
+		if (m[3] && m[3] !== '-') d += ' (' + causeWords({ code: m[3] }) + ')';
+		if (m[4]) d += ', ' + _('away for %s').format(duration(+m[4]));
+	}
 	else if (/^(added|removed|reattached|changed|usb-add|usb-remove|driver-bind|driver-unbind|mm-add|mm-remove|hostfix-)/.test(e.kind)) d = '';
 	return [k[0] + (d ? ': ' + d : ''), k[1]];
 }
@@ -1073,7 +1086,7 @@ return baseclass.extend({
 	busy: busy, speedErr: speedErr,
 	toast: toast, recoveryNotes: recoveryNotes, execLong: execLong, staleWarn: staleWarn,
 	ownerBadgesEnabled: ownerBadgesEnabled, ownerBadgeInfo: ownerBadgeInfo, setOwnerBadge: setOwnerBadge,
-	VERSION: VERSION, plural: plural, LANG: LANG, langArg: langArg, langCode: langCode, num: num, CHAIN_LINKS: CHAIN_LINKS, CHAIN_WHY: CHAIN_WHY, dnsDetail: dnsDetail, reachError: reachError, chainLine: chainLine,
+	VERSION: VERSION, causeWords: causeWords, plural: plural, LANG: LANG, langArg: langArg, langCode: langCode, num: num, CHAIN_LINKS: CHAIN_LINKS, CHAIN_WHY: CHAIN_WHY, dnsDetail: dnsDetail, reachError: reachError, chainLine: chainLine,
 	text: text,
 	failText: failText,
 	duration: duration,

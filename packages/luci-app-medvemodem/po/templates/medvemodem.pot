@@ -2475,6 +2475,10 @@ msgid "automatically"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
+msgid "away for %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js
 msgid "back online, priority restored"
 msgstr ""
 
@@ -2679,6 +2683,10 @@ msgid "no address"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
+msgid "no cable link"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js
 msgid "no internet, traffic failed over"
 msgstr ""
 
@@ -2716,6 +2724,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
 msgid "permission denied: LuCI user lacks the luci-app-medvemodem-engineer role"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js
+msgid "pinned: it alone carries the traffic"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
@@ -2779,6 +2791,10 @@ msgid "started by hand"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
+msgid "switched off by the administrator"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js
 msgid "the connection broke"
 msgstr ""
 
@@ -2836,6 +2852,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
 msgid "the modem searches for a network"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js
+msgid "the modem was being recovered"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
@@ -2928,6 +2948,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
 msgid "waiting for: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/medvemodem/common.js htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "waits behind the pinned modem"
 msgstr ""
 
 #: htdocs/luci-static/resources/medvemodem/common.js
@@ -3747,6 +3771,10 @@ msgid "Not found"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Not pinned: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "Not put first: %s"
 msgstr ""
 
@@ -3764,6 +3792,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "Not sharing the internet"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Not unpinned: %s"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
@@ -3832,6 +3864,26 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "Pick a device in the tree."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Pin \"%s\"? All internet traffic will go through this modem only, even when it has no internet and automatic switching is on. Other channels wait until you unpin it."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Pin as the only channel"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Pinned, but not acting: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Pinned: the internet goes through this modem only"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Pinned: the internet goes through this modem only once it is connected"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
@@ -4383,6 +4435,10 @@ msgid "Total today: %s."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Traffic moved to the backup at %s: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "Traffic today"
 msgstr ""
 
@@ -4480,6 +4536,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "Unknown: the modem is not in a network"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "Unpin"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
@@ -4871,6 +4931,10 @@ msgid "of them modems: %d"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "on backup since %s: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "operator"
 msgstr ""
 
@@ -4976,6 +5040,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
 msgid "settings are being applied"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/dashboard.js
+msgid "since %s: %s"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/dashboard.js
@@ -10503,6 +10571,12 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "%d interface"
+msgid_plural "%d interfaces"
+msgstr[0] ""
+msgstr[1] ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "%d modem"
 msgid_plural "%d modems"
 msgstr[0] ""
@@ -10583,6 +10657,10 @@ msgid "A proxy of your own: it is tried first."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "A removed interface frees its name: the modem plugged in again gets a new one."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "A test SMS is on its way: it comes in a minute or two."
 msgstr ""
 
@@ -10644,6 +10722,14 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "An address and a port, for example 1.1.1.1:443 or [2606:4700:4700::1111]:443"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "An interface of a modem away %d days goes by itself, unless it holds settings of yours."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Another change is being applied: try again in a moment."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
@@ -10943,6 +11029,14 @@ msgid "Full internet restored"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "GitHub did not list the releases of %s: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "GitHub limits requests from this address; try again in an hour."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "How a whitelist is told"
 msgstr ""
 
@@ -10968,6 +11062,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Installing (%s), the log is below."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Interfaces without a modem"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
@@ -11199,6 +11297,10 @@ msgid "Not done: %s."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Not removed: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Not sent: %s."
 msgstr ""
 
@@ -11340,6 +11442,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "Remove QModem? Its services stop, its packages are removed; MedveModem connects the modems it drove by itself. QModem's settings stay."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "Repository %s is not available (private or renamed); check medvemodem.core.update_repo."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
@@ -11747,6 +11853,10 @@ msgid "The router's DNS under a whitelist: 77.88.8.8 and 77.88.8.1 (Yandex) usua
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "The rule has fallback servers: podkop switches to them by itself. With no server chosen below, the whitelist mode pins none and only changes the routing; servers chosen below are pinned all the same."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "The service is switched off: first “Switch the MedveModem service on”."
 msgstr ""
 
@@ -11789,15 +11899,11 @@ msgid "The update: QModem's stable line with fixes, without Chinese DNS by defau
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
-msgid "The whitelist addresses"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "The whitelist alert"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
-msgid "The whitelist mode"
+msgid "The whitelist mode and addresses"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
@@ -12107,6 +12213,10 @@ msgid "auto-connect"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "away since %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "by IMEI"
 msgstr ""
 
@@ -12207,6 +12317,10 @@ msgid "keep as lowest priority until manually restored"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "kept: has your settings (%s)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "likely reachable under whitelists"
 msgstr ""
 
@@ -12252,6 +12366,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "no modem can send SMS now"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "no modem record"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
@@ -12328,6 +12446,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js
 msgid "reads the eSIM chip and switches its profiles; MedveModem's own build, from its release on GitHub"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/medvemodem/settings.js
+msgid "removed by itself on %s"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/medvemodem/settings.js

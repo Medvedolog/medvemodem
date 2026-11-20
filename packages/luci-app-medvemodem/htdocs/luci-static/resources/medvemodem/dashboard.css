@@ -14,6 +14,8 @@
  * owner's phone, 2026-11-01) */
 .mm-root, .mm-status { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .mm-status .table { width: 100%; }
+/* the include's own width, not the window's: a theme's sidebar takes ~224 px of it (LUCI-THEMES.md rule 5) */
+.mm-status { container-type: inline-size; }
 .mm-status .td, .mm-status .th { overflow-wrap: break-word; }	/* a word breaks only when it alone is too wide */
 /* the modem the internet goes through (the owner, 2026-10-30): a green bar at its row's start, its name bold */
 .mm-status .tr.is-carrying > .td:first-child { box-shadow: inset 4px 0 0 var(--mm-ok, #1a7f37); padding-left: 12px; }
@@ -23,7 +25,7 @@
  * each modem a block: its name and state on the first line, the network under it, the protocol and the address on
  * the third; an empty «—» cell takes no line. The selectors carry the weight of a theme's own (Aurora's
  * «:is(table.table,.table) .tr» lost ours: the owner's phone, 2026-11-01, showed «Protocol:» lines and dashes) */
-@media (max-width: 600px) {
+@container (max-width: 600px) {
   .mm-status :is(table.table, .table), .mm-status :is(table.table, .table) tbody { display: block; width: 100%; box-shadow: none; border: 0; }
   .mm-status :is(table.table, .table) :is(tr, .tr).table-titles { display: none; }
   .mm-status :is(table.table, .table) :is(tr, .tr) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px;
@@ -41,7 +43,7 @@
   .mm-status .mm-pill { white-space: nowrap; }
   .mm-status .mm-status-verdict .mm-pill { white-space: normal; max-width: 100%; }	/* the verdict is a sentence: it wraps */
 }
-@media (max-width: 480px) { .mm-status .mm-pill { padding: 1px 6px; gap: 4px; } .mm-status .td, .mm-status .th { padding-left: 4px; padding-right: 4px; } }
+@container (max-width: 480px) { .mm-status .mm-pill { padding: 1px 6px; gap: 4px; } .mm-status .td, .mm-status .th { padding-left: 4px; padding-right: 4px; } }
 .mm-root {
  font-family: var(--mm-font-sans); color: var(--text-color-high, #2b3137);
  max-width: 1280px; margin: 0 auto; min-width: 0;
@@ -68,13 +70,13 @@
 
 .mm-card { background: var(--background-color-high, #ffffff); border: 1px solid var(--border-color-medium, #d8dee4); border-radius: 12px; }
 /* the modem the traffic goes through: a calm green fill, text keeps its contrast */
-.mm-card.mm-mcard.is-carrying { border-color: #4f9a2c; box-shadow: 0 0 0 1px #4f9a2c; }   /* the owner, 2026-10-20: a frame, no fill */
-@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-card.mm-mcard.is-carrying { border-color: #6fb840; box-shadow: 0 0 0 1px #6fb840; } }
-:root[data-darkmode="true"] .mm-card.mm-mcard.is-carrying { border-color: #6fb840; box-shadow: 0 0 0 1px #6fb840; }
+.mm-card.mm-mcard.is-carrying { border-color: var(--success-color-medium, #4f9a2c); box-shadow: 0 0 0 1px var(--success-color-medium, #4f9a2c); }   /* the owner, 2026-10-20: a frame, no fill */
+@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-card.mm-mcard.is-carrying { border-color: var(--success-color-medium, #6fb840); box-shadow: 0 0 0 1px var(--success-color-medium, #6fb840); } }
+:root[data-darkmode="true"] .mm-card.mm-mcard.is-carrying { border-color: var(--success-color-medium, #6fb840); box-shadow: 0 0 0 1px var(--success-color-medium, #6fb840); }
 /* the main one with limited access: the frame takes its pill's colour (the owner, 2026-10-28) */
-.mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: #d4a72c; box-shadow: 0 0 0 1px #d4a72c; }
-@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: #9e6a03; box-shadow: 0 0 0 1px #9e6a03; } }
-:root[data-darkmode="true"] .mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: #9e6a03; box-shadow: 0 0 0 1px #9e6a03; }
+.mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: var(--warn-color-medium, #d4a72c); box-shadow: 0 0 0 1px var(--warn-color-medium, #d4a72c); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: var(--warn-color-medium, #9e6a03); box-shadow: 0 0 0 1px var(--warn-color-medium, #9e6a03); } }
+:root[data-darkmode="true"] .mm-card.mm-mcard.is-carrying.is-carrying-warn { border-color: var(--warn-color-medium, #9e6a03); box-shadow: 0 0 0 1px var(--warn-color-medium, #9e6a03); }
 .mm-pad { padding: 14px 16px; }
 .mm-section { display: grid; gap: 12px; align-content: start; }
 .mm-root > *, .mm-section > *, .mm-grid2 > * { min-width: 0; }   /* a wide child scrolls or wraps inside its card, never widens the page */
@@ -88,12 +90,12 @@
 .mm-root .mm-btn.is-primary { background: var(--mm-btn, #0969da); border-color: var(--mm-btn, #0969da); color: #ffffff; }
 /* the level menu is a choice, not an action: the page's own text colour, so it shows on any theme */
 .mm-root summary.mm-btn, .mm-root summary.mm-btn:hover { background: transparent; color: inherit; border-color: currentColor; }
-.mm-root .mm-btn.is-danger { background: #ffffff; color: #cf222e; border-color: #cf222e; }
-.mm-root .mm-btn.is-danger:hover { background: #cf222e; color: #ffffff; border-color: #cf222e; }
+.mm-root .mm-btn.is-danger { background: var(--background-color-high, #ffffff); color: var(--error-color-medium, #cf222e); border-color: var(--error-color-medium, #cf222e); }
+.mm-root .mm-btn.is-danger:hover { background: var(--error-color-medium, #cf222e); color: var(--on-error-color, #ffffff); border-color: var(--error-color-medium, #cf222e); }
 .mm-root .mm-btn.is-quiet { border-color: transparent; background: transparent; color: var(--mm-link, #0969da); padding: 2px 4px; min-height: 0; position: relative; }
 .mm-root .mm-btn.is-quiet:hover { background: transparent; border-color: transparent; color: var(--mm-link, #0969da); text-decoration: underline; }
 .mm-btn.is-quiet::after { content: ''; position: absolute; inset: -6px 0; }   /* text-sized link, finger-sized target */
-.mm-root .mm-btn:disabled { cursor: not-allowed; color: #59636e; border-color: #d0d7de; background: #eaeef2; }
+.mm-root .mm-btn:disabled { cursor: not-allowed; color: var(--text-color-medium, #59636e); border-color: var(--border-color-high, #d0d7de); background: var(--background-color-low, #eaeef2); }
 .mm-root :focus-visible { outline: 2px solid var(--primary-color-medium, #0969da); outline-offset: 2px; }
 .mm-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
@@ -205,9 +207,9 @@
 .mm-svc-kv { grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; }
 .mm-svc-state { display: inline-flex; align-items: center; gap: 8px; }
 .mm-svc-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--text-color-low, #8c959f); }
-.mm-svc-dot.is-ok { background: var(--success-color-medium, #1a7f37); box-shadow: 0 0 6px rgba(46, 160, 67, .6); }
+.mm-svc-dot.is-ok { background: var(--success-color-medium, #1a7f37); box-shadow: 0 0 6px color-mix(in srgb, var(--success-color-medium, #2ea043) 60%, transparent); }
 .mm-svc-dot.is-bad { background: var(--error-color-medium, #cf222e); }
-@media (max-width: 480px) { .mm-svc-kv { grid-template-columns: minmax(0, 1fr); } .mm-svc-kv dd { margin-bottom: 4px; } }
+@container (max-width: 480px) { .mm-svc-kv { grid-template-columns: minmax(0, 1fr); } .mm-svc-kv dd { margin-bottom: 4px; } }
 /* drivers and packages (the owner, 2026-10-20: «таблицу разлиновать по строкам»): a rule under every row */
 .mm-pkg-rows { gap: 0 16px; }
 .mm-pkg-rows > dt, .mm-pkg-rows > dd { padding: 7px 0; border-bottom: 1px solid var(--border-color-low, #e6eaef); }
@@ -254,14 +256,14 @@
 .mm-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-color-medium, #d8dee4); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
 .mm-tabs button { scroll-snap-align: start; flex: 0 0 auto; min-width: max-content; }	/* a tab never narrower than its words */
 .mm-tabs button { font: 700 13px var(--mm-font-sans); background: none; border: 0; padding: 8px 12px; color: var(--text-color-medium, #59636e); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
-.mm-tabs button[aria-selected="true"] { color: var(--text-color-highest, #1f2328); border-bottom: 3px solid var(--primary-color-medium, #0969da); background: rgba(9, 105, 218, .08); border-radius: 6px 6px 0 0; }
+.mm-tabs button[aria-selected="true"] { color: var(--text-color-highest, #1f2328); border-bottom: 3px solid var(--primary-color-medium, #0969da); background: color-mix(in srgb, var(--primary-color-medium, #0969da) 8%, transparent); border-radius: 6px 6px 0 0; }
 /* spec §42.3: «Настройки» last, after a rule, in the theme's accent (LUCI-THEMES.md: the exported tokens, a fallback) */
 .mm-tabs button.mm-tab-set { position: relative; margin-left: 9px; color: var(--primary-color-medium, #0969da); }
 .mm-tabs button.mm-tab-set::before { content: ""; position: absolute; left: -6px; top: 8px; bottom: 8px; border-left: 1px solid var(--border-color-medium, #d8dee4); }
 .mm-tabs button.mm-tab-set[aria-selected="true"] { color: var(--primary-color-medium, #0969da); }
 /* a dark theme's primary colour can be as dark as its background: the chosen tab got lost (the owner, 2026-10-26) */
-@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-tabs button[aria-selected="true"], :root:where(:not([data-darkmode="false"])) .mm-tab-more > summary.is-on { color: #f0f6fc; border-bottom-color: #4493f8; background: rgba(68, 147, 248, .16); } }
-:root[data-darkmode="true"] .mm-tabs button[aria-selected="true"], :root[data-darkmode="true"] .mm-tab-more > summary.is-on { color: #f0f6fc; border-bottom-color: #4493f8; background: rgba(68, 147, 248, .16); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-tabs button[aria-selected="true"], :root:where(:not([data-darkmode="false"])) .mm-tab-more > summary.is-on { color: var(--text-color-highest, #f0f6fc); border-bottom-color: var(--primary-color-medium, #4493f8); background: color-mix(in srgb, var(--primary-color-medium, #4493f8) 16%, transparent); } }
+:root[data-darkmode="true"] .mm-tabs button[aria-selected="true"], :root[data-darkmode="true"] .mm-tab-more > summary.is-on { color: var(--text-color-highest, #f0f6fc); border-bottom-color: var(--primary-color-medium, #4493f8); background: color-mix(in srgb, var(--primary-color-medium, #4493f8) 16%, transparent); }
 .mm-grid2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
 @container (min-width: 820px) { .mm-grid2 { grid-template-columns: 1fr 1fr; } .mm-grid2:has(> [hidden]) { grid-template-columns: 1fr; } }
 
@@ -302,7 +304,7 @@ p.mm-risk { font: inherit; white-space: normal; padding: 0; border: 0; border-ra
 .mm-contact-who > *, .mm-contact-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mm-contact-num { white-space: nowrap; }
 .mm-contact-acts { display: flex; gap: 12px; white-space: nowrap; }
-@media (max-width: 480px) { .mm-contact { grid-template-columns: minmax(0, 1fr) auto; } .mm-contact-acts { grid-column: 1 / -1; } }
+@container (max-width: 480px) { .mm-contact { grid-template-columns: minmax(0, 1fr) auto; } .mm-contact-acts { grid-column: 1 / -1; } }
 .mm-cact { margin: 0; gap: 6px; flex-wrap: wrap; }
 .mm-cform { display: grid; gap: 8px; padding: 8px 0; }
 .mm-profs, .mm-thrs { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
@@ -671,7 +673,7 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-feed-list { display: grid; gap: 6px; max-height: 70vh; overflow-y: auto; }
 .mm-feed-msg { display: grid; gap: 2px; min-width: 0; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-color-low, #e6eaef);
 	background: var(--background-color-medium, #f6f8fa); }
-.mm-feed-msg.is-out { border-color: #0969da; }
+.mm-feed-msg.is-out { border-color: var(--primary-color-medium, #0969da); }
 .mm-feed-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; min-width: 0; }
 .mm-feed-open { margin-left: auto; }
 .mm-feed-op { font-size: 12px; padding: 0 6px; border-radius: 8px; color: var(--primary-color-medium, #0969da);
@@ -684,7 +686,7 @@ details:not([open]) > .mm-pop { display: none; }
 /* one column, told apart by colour only (the owner, 2026-10-16: «без выравнивания по сторонам»): received grey,
  * sent blue and signed with the SIM's name and number */
 .mm-sms-msg { justify-self: stretch; max-width: none; border-radius: 10px; }
-.mm-sms-msg.is-out { justify-self: stretch; border-radius: 10px; border-color: #0969da; background: color-mix(in srgb, #0969da 16%, var(--background-color-medium, #f6f8fa)); }
+.mm-sms-msg.is-out { justify-self: stretch; border-radius: 10px; border-color: var(--primary-color-medium, #0969da); background: color-mix(in srgb, var(--primary-color-medium, #0969da) 16%, var(--background-color-medium, #f6f8fa)); }
 .mm-sms-health { margin: 4px 0 10px; }
 .mm-sms-pickl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .mm-sms-pickl input { margin: 0; }
@@ -707,12 +709,12 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-ussd-codes { gap: 6px; }
 .mm-ussd-chip { display: inline-flex; align-items: center; gap: 2px; }
 /* USSD codes: dark text on a light button, readable in the light theme and while disabled (the owner, 2026-10-16) */
-.mm-root .mm-btn.mm-ussd-code { background: #ffffff; color: #1f2328; border-color: var(--mm-btn, #0969da); }
-.mm-root .mm-btn.mm-ussd-code:hover { background: #ddf4ff; color: #1f2328; border-color: var(--mm-btn-hover, #0550ae); }
-.mm-root .mm-btn.mm-ussd-code:disabled { background: #f6f8fa; color: #424a53; border-color: #d0d7de; }
+.mm-root .mm-btn.mm-ussd-code { background: var(--background-color-high, #ffffff); color: var(--text-color-highest, #1f2328); border-color: var(--mm-btn, #0969da); }
+.mm-root .mm-btn.mm-ussd-code:hover { background: color-mix(in srgb, var(--primary-color-medium, #0969da) 14%, var(--background-color-high, #ffffff)); color: var(--text-color-highest, #1f2328); border-color: var(--mm-btn-hover, #0550ae); }
+.mm-root .mm-btn.mm-ussd-code:disabled { background: var(--background-color-medium, #f6f8fa); color: var(--text-color-medium, #424a53); border-color: var(--border-color-high, #d0d7de); }
 .mm-root .mm-ussd-code .mm-faint { font-weight: 500; color: inherit; opacity: .8; }
-@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-root .mm-btn.mm-ussd-code { background: #161b22; color: #e6edf3; border-color: #388bfd; } }
-:root[data-darkmode="true"] .mm-root .mm-btn.mm-ussd-code { background: #161b22; color: #e6edf3; border-color: #388bfd; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-darkmode="false"])) .mm-root .mm-btn.mm-ussd-code { background: var(--background-color-high, #161b22); color: var(--text-color-highest, #e6edf3); border-color: var(--primary-color-medium, #388bfd); } }
+:root[data-darkmode="true"] .mm-root .mm-btn.mm-ussd-code { background: var(--background-color-high, #161b22); color: var(--text-color-highest, #e6edf3); border-color: var(--primary-color-medium, #388bfd); }
 .mm-ussd-more { max-width: 16em; }
 /* radio settings, stage 2: the editor and where a change stands */
 .mm-rs-edit { margin-top: 8px; }
@@ -870,10 +872,10 @@ details:not([open]) > .mm-pop { display: none; }
 
 /* the list as one numbered table (the owner, 2026-10-20) */
 .mm-view-row { justify-content: flex-end; }
-@media (pointer: fine) and (min-width: 721px) { .mm-view-switch button { min-height: 28px; padding: 3px 10px; } }
+@media (pointer: fine) { @container (min-width: 721px) { .mm-view-switch button { min-height: 28px; padding: 3px 10px; } } }
 @container (max-width: 560px) { .mm-fleet-table td.num { text-align: left; } }
 .mm-fleet-table { padding: 4px 8px; }
-.mm-fleet-table tr.is-carrying td:first-child { box-shadow: inset 3px 0 0 #4f9a2c; }
+.mm-fleet-table tr.is-carrying td:first-child { box-shadow: inset 3px 0 0 var(--success-color-medium, #4f9a2c); }
 .mm-fleet-table tr.is-stale td { opacity: .62; }
 .mm-fleet-table .mm-table-prob { color: var(--warn-color-medium, #946300); font-weight: 600; font-size: 13px; margin-top: 2px; max-width: 48ch; cursor: help; }
 /* the table fits its card (the owner, 2026-11-16: «таблица кривая»): the name and the state wrap, the numbers do not */
@@ -914,7 +916,7 @@ details:not([open]) > .mm-pop { display: none; }
 /* «Белые списки» (r185): the state words wrap on a phone; the service × channel table scrolls inside its card */
 .mm-wl-now { width: 100%; }
 .mm-wl-now .mm-light { white-space: normal; }
-.mm-wl-now tr.mm-wl-main > td { background: rgba(31, 136, 61, .14); }
+.mm-wl-now tr.mm-wl-main > td { background: color-mix(in srgb, var(--success-color-medium, #1f883d) 14%, transparent); }
 .mm-wl-now tr.mm-wl-main > td:first-child { font-weight: 700; box-shadow: inset 4px 0 0 var(--success-color-medium, #1a7f37); }
 .mm-table-scroll { max-width: 100%; overflow-x: auto; }
 .mm-wl-tips { margin: 0; padding-left: 1.2em; }
@@ -967,7 +969,7 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-usb-head h3, .mm-feed-top h3 { margin: 0; font: 700 16px var(--mm-font-sans); }
 .mm-usb-head .mm-grow, .mm-feed-top .mm-grow { flex: 1 1 auto; }
 .mm-usb-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-@media (max-width: 760px) { .mm-usb-grid { grid-template-columns: minmax(0, 1fr); } }
+@container (max-width: 760px) { .mm-usb-grid { grid-template-columns: minmax(0, 1fr); } }
 /* the tree as in the mock-up (the owner, 2026-10-25): branch lines, a controller as a band, a modem as a framed card with
  * chips, a free port and a device gone dashed, the selected one framed in the accent */
 .mm-usb-tree, .mm-usb-tree ul { list-style: none; margin: 0; padding: 0; }
@@ -983,7 +985,7 @@ details:not([open]) > .mm-pop { display: none; }
 .mm-usb-node:not(.is-modem):not(.is-gone):not(.is-free) > .mm-usb-pick { background: var(--background-color-medium, #f6f8fa); }
 .mm-usb-node.is-modem > .mm-usb-pick { border-color: var(--border-color-medium, #d8dee4); background: var(--background-color-high, #fff); box-shadow: 0 1px 2px rgba(31, 35, 40, .06); }
 .mm-usb-node.is-modem > .mm-usb-pick .mm-usb-glyph { background: #ddf4ff; border-color: #54aeff; }
-.mm-usb-node[aria-selected="true"] > .mm-usb-pick { border-color: var(--mm-btn, #0969da); background: #ddf4ff33; box-shadow: 0 0 0 2px #0969da22; }
+.mm-usb-node[aria-selected="true"] > .mm-usb-pick { border-color: var(--mm-btn, #0969da); background: color-mix(in srgb, var(--primary-color-medium, #0969da) 8%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color-medium, #0969da) 14%, transparent); }
 .mm-usb-node.is-grey > .mm-usb-pick { color: var(--text-color-medium, #59636e); }
 .mm-usb-node.is-gone > .mm-usb-pick { border: 1px dashed var(--border-color-high, #afb8c1); color: var(--text-color-medium, #59636e); }
 .mm-usb-node.is-free { padding: 0 2px; font-size: 13px; }
@@ -1131,11 +1133,14 @@ details:not([open]) > .mm-pop { display: none; }
 /* Optional manager-owner chips: informational only, never imply a conflict. */
 .mm-owner-tag { display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 4px; border: 1px solid var(--border-color-medium, #aab3be); border-radius: 999px; font-size: 10px; line-height: 1.7; font-weight: 700; white-space: nowrap; color: var(--text-color-medium, #59636e); background: var(--background-color-medium, #f4f5f6); }
 .mm-owner-tag[hidden] { display: none !important; }
-.mm-owner-tag.is-qm { border-color: #d4a72c; color: #825e00; }
-.mm-owner-tag.is-mm { border-color: #8a9db8; color: #365779; }
-.mm-owner-tag.is-native { border-color: #52a27b; color: #17683e; }
+.mm-owner-tag.is-qm { border-color: var(--warn-color-medium, #d4a72c); color: var(--warn-color-high, #825e00); }
+.mm-owner-tag.is-mm { border-color: var(--border-color-high, #8a9db8); color: var(--text-color-medium, #365779); }
+.mm-owner-tag.is-native { border-color: var(--success-color-medium, #52a27b); color: var(--success-color-high, #17683e); }
  .mm-mcard > .mm-owner-tag { align-self: flex-end; margin: -4px 0 0; }
 .mm-hero > .mm-owner-tag { justify-self: end; margin: -4px 0 0; }
 
 /* a reading the modem no longer gives (stale data, an old temperature): dimmed (the owner, 2026-11-19) */
 .mm-root .mm-is-old { opacity: .55; }
+
+/* «… on the Whitelists page. Open →»: a line between the cards, not a card (2026-11-20) */
+.mm-root .mm-wl-moved { margin: 4px 2px 12px; }

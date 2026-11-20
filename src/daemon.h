@@ -429,4 +429,21 @@ bool sim_label_key_of(const char *iccid, char out[MM_IMEI_KEY_SIZE]);
 /* the USB rescue job stopped with the service (mgr_usbrescue.c) */
 void usbrescue_stop(void);
 
+/* ---- mgr_orphans.c: interfaces whose modem is gone (the owner, 2026-11-20: «Список с кнопками сразу, автоматическая
+ * уборка через 10 дней») ----
+ * Owns: since when each one is without its modem, on flash (<state>/orphans.json: the registry is RAM, a reboot forgets
+ * an absent modem). An interface of a modem away ORPHAN_AUTO_DAYS, with no field of the user's but the metric, is
+ * removed by itself, said in the modem's history; the operator removes any one at once. */
+const char *failover_cause_of(const char *key);	/* medvemodemd.c: why failover moved this uplink away, or NULL */
+json_object *ledger_devices(void);	/* medvemodemd.c: {device_id: ledger} (borrowed) */
+json_object *iface_drop(const char *id, const char *iface, bool whole);	/* medvemodemd.c: the release (a new object) */
+void orphans_start(void);
+void orphans_stop(void);
+void orphans_sync(void);		/* after a discovery pass: the modem back is no orphan */
+int m_orphans(struct ubus_context *ctx, struct ubus_object *obj, struct ubus_request_data *req,
+	      const char *method, struct blob_attr *msg);
+extern const struct blobmsg_policy orphan_remove_policy[1];
+int m_orphan_remove(struct ubus_context *ctx, struct ubus_object *obj, struct ubus_request_data *req,
+		    const char *method, struct blob_attr *msg);
+
 #endif

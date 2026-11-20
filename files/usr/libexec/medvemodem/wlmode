@@ -82,10 +82,14 @@ proxies() {	# <mgr>: the controller's /proxies
 	esac
 }
 
-# the section's group tag: podkop-exp «<section>-out», forkop the section's label or name
+# the section's group tag. podkop-exp 0.8.11+ names its outbounds by the rule's label («Германия-out», a taken name
+# «Германия (main)-out»; «<section>-out» before) and tells the tags in get_proxies (podkop_tags.rules.<section>.selector,
+# 0.8.20 src/backend/plan/build.go): those first, then «<label or section>-out». forkop the section's label or name
 group_of() {	# <mgr> <section>
 	case "$1" in
-	podkop) echo "$2-out" ;;
+	podkop) _g=$(jf "$(podkop_run get_proxies)" "@.podkop_tags.rules[\"$(esc "$2")\"].selector")
+		[ -n "$_g" ] || { _l=$(uci -q get "podkop.$2.label" | head -n 1); _g="${_l:-$2}-out"; }
+		echo "$_g" ;;
 	forkop) l=$(uci -q get "forkop.$2.label"); echo "${l:-$2}" ;;
 	esac
 }
@@ -133,6 +137,17 @@ mixed_of() {	# <section>
 
 has() { uci -q get "$1.$2.fully_routed_ips" | tr ' ' '\n' | grep -qx "$3"; }
 
+# podkop-exp's rule with fallback rows (config member, option role 'fallback'): podkop moves to them by itself when its
+# servers stop answering (under an operator's whitelist they do), so with no server chosen for the mode it pins nothing
+# there and changes the routing only (the owner and podkop's author, 2026-11-20: «фоллбек из коробки не лучше?» - «да, это более нативно»)
+native() {	# <mgr> <section>
+	[ "$1" = podkop ] || return 1
+	for _r in $(uci -q show podkop 2>/dev/null | sed -n 's/^podkop\.\([^.=]*\)=member$/\1/p'); do
+		[ "$(uci -q get "podkop.$_r.section")" = "$2" ] && [ "$(uci -q get "podkop.$_r.role")" = fallback ] && return 0
+	done
+	return 1
+}
+
 # podkop-exp names a server «<source>: <name>» and its page shows the source's label in place of <source>
 pretty() {	# <mgr> <tag>
 	_t=$2
@@ -168,8 +183,8 @@ undo() {
 	case "$_m" in podkop|forkop) ;; *) rm -f "$LEDGER"; UNDO_ERR="a ledger of no known manager: dropped"; return 1 ;; esac
 	plain "$_s" || { rm -f "$LEDGER"; UNDO_ERR="a ledger of a bad section: dropped"; return 1; }
 	UNDO_ERR=''
-	# the automatic choice back: podkop-exp's URL test, forkop's unpin
-	case "$_m" in
+	# the automatic choice back: podkop-exp's URL test, forkop's unpin; nothing when we pinned nothing (fallback rows)
+	[ -z "$(lf '@.server')" ] || case "$_m" in
 	podkop) _p=$(proxies podkop); _u=$(urltest_of podkop "$_s" "$_p") || _u=$(jsonfilter -s "$_p" -e "@.proxies[\"$(esc "$_g")\"].all[0]" 2>/dev/null)
 		[ -n "$_u" ] && pin podkop "$_g" "$_u" || UNDO_ERR="the manager did not take its automatic choice back" ;;
 	forkop) pin forkop "$_g" '' || UNDO_ERR="the manager did not take its automatic choice back" ;;
@@ -199,9 +214,12 @@ undo() {
 	return 1
 }
 
-# the group's automatic choice: podkop-exp's URL test «<rule>-urltest-out» (0.8.9; «<rule>-urltest» before); forkop none
+# the group's automatic choice: podkop-exp's URL test as podkop_tags names it (0.8.11+, by the label), else
+# «<rule>-urltest-out» (0.8.9) or «<rule>-urltest» before; forkop none
 urltest_of() {	# <mgr> <section> <proxies>
 	[ "$1" = podkop ] || return 1
+	_u=$(jsonfilter -s "$3" -e "@.podkop_tags.rules[\"$(esc "$2")\"].test" 2>/dev/null)	# 0.8.11+: by the label
+	[ -n "$_u" ] && [ -n "$(jsonfilter -s "$3" -e "@.proxies[\"$(esc "$_u")\"].type" 2>/dev/null)" ] && { echo "$_u"; return 0; }
 	for _u in "$2-urltest-out" "$2-urltest"; do
 		[ -n "$(jsonfilter -s "$3" -e "@.proxies[\"$_u\"].type" 2>/dev/null)" ] && { echo "$_u"; return 0; }
 	done
@@ -248,8 +266,9 @@ EOF
 			srcs="$srcs${srcs:+,}{\"name\":\"$src\",\"label\":\"$(esc "$(uci -q get "podkop.$src.label")")\",\"used\":$used}"
 		done
 	fi
-	printf '{"ok":true,"group":"%s","now":"%s","now_name":"%s","auto":%s,"auto_now":"%s","auto_now_name":"%s","servers":[%s],"names":[%s],"sources":[%s]}\n' \
-		"$(esc "$g")" "$(esc "$now")" "$(esc "$(pretty "$m" "$now")")" "$auto" "$(esc "$auto_now")" "$(esc "$(pretty "$m" "$auto_now")")" "${all%,}" "${names%,}" "$srcs" ;;
+	nat=false; native "$m" "$s" && nat=true
+	printf '{"ok":true,"group":"%s","now":"%s","now_name":"%s","auto":%s,"auto_now":"%s","auto_now_name":"%s","servers":[%s],"names":[%s],"sources":[%s],"native":%s}\n' \
+		"$(esc "$g")" "$(esc "$now")" "$(esc "$(pretty "$m" "$now")")" "$auto" "$(esc "$auto_now")" "$(esc "$(pretty "$m" "$auto_now")")" "${all%,}" "${names%,}" "$srcs" "$nat" ;;
 delay)
 	case "$2" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
 	d=$(delay "$2" "$3") && echo "{\"delay_ms\":$d}" || echo '{"delay_ms":null}' ;;
@@ -258,7 +277,10 @@ on)
 	shift 5 2>/dev/null || fail "on <mgr> <section> <lan> <router> <server>..." 2
 	case "$m" in podkop|forkop) ;; *) fail "no such manager" 2 ;; esac
 	plain "$s" || fail "bad section" 2
-	[ $# -gt 0 ] || fail "no server given" 2
+	# the admin's servers for the mode override the fallback rows (the owner, 2026-11-20: «оверрайд надо оставить, есть
+	# какие-то сервера чётче»): podkop chooses only when none is given
+	nat=0; [ $# -eq 0 ] && native "$m" "$s" && nat=1
+	[ $# -gt 0 ] || [ "$nat" = 1 ] || fail "no server given" 2
 	case "$(kind_of "$m")" in podkop-exp|forkop2) ;; *) fail "this manager cannot switch servers while it runs" 2 ;; esac
 	# the mode on in another manager or section: given back there first, or nothing done (the audit of r162: the old
 	# manager's values stayed with no ledger left to take them out)
@@ -270,10 +292,10 @@ on)
 	for t in "$@"; do
 		list="$list$t
 "
-		[ -n "$pick" ] && continue
+		[ -n "$pick" ] || [ "$nat" = 1 ] && continue
 		d=$(delay "$m" "$t") && { pick=$t; ms=$d; }
 	done
-	[ -n "$pick" ] || pick=$1
+	[ -n "$pick" ] || [ "$nat" = 1 ] || pick=$1	# the fallback rows choose: no server of ours (an empty one in the ledger)
 	added='' oprof=0 since=$(date +%s)
 	if [ -f "$LEDGER" ]; then
 		added=$(lf '@.added[*]' | tr '\n' ' '); oprof=$(lf '@.profile'); since=$(lf '@.since')
@@ -292,7 +314,7 @@ on)
 	# the ledger first, with everything about to change: a crash or a failure below leaves what off needs
 	[ "$oprof" = 1 ] || [ "$wprof" = 1 ] && lp=1 || lp=0
 	ledger_write "$m" "$s" "$g" "$pick" "$list" "$added $new" "$lp" "$since" 0 || fail "the ledger could not be written: nothing changed"
-	pin "$m" "$g" "$pick" || fail "the manager did not take the server"
+	[ -z "$pick" ] || pin "$m" "$g" "$pick" || fail "the manager did not take the server"
 	changed=0 keep=''
 	# ours no longer wanted (the LAN or the router switched off since) out; the admin's own values are never ours
 	for v in $added; do
@@ -319,10 +341,13 @@ on)
 		ledger_write "$m" "$s" "$g" "$pick" "$list" "$keep" "$wprof" "$since" 0 || fail "the ledger could not be written"
 	fi
 	a=''; for v in $keep; do a="$a${a:+,}\"$(esc "$v")\""; done
-	printf '{"ok":true,"server":"%s","label":"%s","delay_ms":%s,"added":[%s],"profile":%s}\n' "$(esc "$pick")" "$(esc "$(pretty "$m" "$pick")")" "$ms" "$a" "$wprof" ;;
+	printf '{"ok":true,"server":"%s","label":"%s","delay_ms":%s,"added":[%s],"profile":%s,"native":%s}\n' "$(esc "$pick")" "$(esc "$(pretty "$m" "$pick")")" "$ms" "$a" "$wprof" \
+		"$([ "$nat" = 1 ] && echo true || echo false)" ;;
 check)
 	[ -f "$LEDGER" ] || { echo '{"ok":true,"on":false}'; exit 0; }
 	m=$(jsonfilter -i "$LEDGER" -e '@.manager'); g=$(jsonfilter -i "$LEDGER" -e '@.group'); cur=$(jsonfilter -i "$LEDGER" -e '@.server')
+	# no server of ours: the manager's fallback rows choose
+	[ -n "$cur" ] || { echo '{"ok":true,"native":true}'; exit 0; }
 	d=$(delay "$m" "$cur") && { echo "{\"ok\":true,\"server\":\"$(esc "$cur")\",\"label\":\"$(esc "$(pretty "$m" "$cur")")\",\"delay_ms\":$d}"; exit 0; }
 	pick='' ms=null
 	# names of a subscription carry spaces and flags: one a line

@@ -50,6 +50,7 @@ var connect = rpc.declare({ object: 'medvemodem', method: 'connect', params: ['i
 var bringup = rpc.declare({ object: 'medvemodem', method: 'bringup', params: ['id'], reject: true });
 var setPriority = rpc.declare({ object: 'medvemodem', method: 'priority', params: ['order', 'set'], reject: true });
 var freeze = rpc.declare({ object: 'medvemodem', method: 'freeze', params: ['id', 'on', 'who'], reject: true });
+var pinCall = rpc.declare({ object: 'medvemodem', method: 'pin', params: ['id', 'pin', 'who'], reject: true });
 var getMetrics = rpc.declare({ object: 'medvemodem', method: 'metrics', params: ['id', 'max_age_ms'], reject: true });
 var getPresets = rpc.declare({ object: 'medvemodem', method: 'presets', params: ['id'], reject: true });
 var atCommand = rpc.declare({ object: 'medvemodem', method: 'at_command', params: ['id', 'command'], reject: true });
@@ -554,7 +555,7 @@ function describe(device, status) {
  * common.js and showed dashes (the owner, 2026-10-20, fixed by a private window). This file knows its version; on a
  * mismatch both files are fetched past the cache and the page reloads once.
  */
-var VIEW_VERSION = '0.16.0-alpha1-r12';
+var VIEW_VERSION = '0.16.0-alpha1-r14';
 function staleFiles() {
 	if (mm.VERSION === VIEW_VERSION) return false;
 	try { if (sessionStorage.getItem('mm:refetched') === VIEW_VERSION + '/' + mm.VERSION) { mm.staleWarn(VIEW_VERSION); return false; }
@@ -863,7 +864,7 @@ return view.extend({
 			if (!card.fix.hidden) acts.push(E('a', { 'class': 'mm-btn is-primary mm-fix-btn', href: card.fix.getAttribute('href'),
 				click: function(ev) { if (card.qmodemDown) { ev.preventDefault(); card.fix.click(); } } }, _('Fix')));
 			if (!card.connect.hidden) acts.push(E('button', { type: 'button', 'class': 'mm-btn is-primary', click: function() { card.connect.click(); } }, card.connect.textContent));
-			var menuItems = [card.main, card.pause, card.freeze, card.speed].filter(function(b) { return !b.hidden; }).map(function(b) {
+			var menuItems = [card.main, card.pin, card.pause, card.freeze, card.speed].filter(function(b) { return !b.hidden; }).map(function(b) {
 				return E('button', { type: 'button', 'class': 'mm-btn is-quiet', click: function() { menu.open = false; b.click(); } }, b.textContent);
 			});
 			var menu = E('details', { 'class': 'mm-menu mm-more', toggle: function() { if (!menu.open && self.tableDirty) self.applyTable(); } }, [
@@ -1110,6 +1111,18 @@ return view.extend({
 			}, function() { window.alert(_('The MedveModem service does not answer.')); })
 				.finally(function() { refs.main.disabled = false; return self.update(); });
 		}) }, _('Set as primary modem'));
+		/* «Закрепить» (the owner, 2026-11-20: «принудительное приколачивание, чтобы не убегало даже если инет упал, даже если в
+		 * настройках стоит автоматика»): the traffic through this modem alone, its internet or not, failover on or off */
+		refs.pin = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-pin', hidden: true, click: mm.busy(function() {
+			var on = refs.pin.getAttribute('data-pinned') !== '1', name = refs.titleLink.textContent;
+			if (on && !window.confirm(_('Pin "%s"? All internet traffic will go through this modem only, even when it has no internet and automatic switching is on. Other channels wait until you unpin it.').format(name)))
+				return;
+			refs.pin.disabled = true;
+			return pinCall(id, on, 'LuCI').then(function(r) {
+				if (r && r.result !== 'done' && r.result !== 'unchanged') window.alert((on ? _('Not pinned: %s') : _('Not unpinned: %s')).format(r.reason || r.result));
+			}, function() { window.alert(_('The MedveModem service does not answer.')); })
+				.finally(function() { refs.pin.disabled = false; return self.update(); });
+		}) });
 		/* «Приостановить управление» (the owner, 2026-10-19): not only the interface down — no service touches the modem on USB:
 		 * MedveModem starts nothing on it, ModemManager is kept off it, QModem's dial of it stops */
 		refs.freeze = E('button', { type: 'button', 'class': 'mm-btn is-quiet mm-freeze', hidden: true, click: mm.busy(function() {
@@ -1149,7 +1162,7 @@ return view.extend({
 			}).finally(function() { refs.speed.disabled = false; return self.update(); });
 		}) }, _('Measure the speed'));
 		refs.speedSaid = E('span', { 'class': 'mm-mono mm-faint mm-speed-said', hidden: true });
-		refs.morePop.append(refs.main, refs.pause, refs.freeze, refs.speed);
+		refs.morePop.append(refs.main, refs.pin, refs.pause, refs.freeze, refs.speed);
 		/* a modem pulled out of USB: nothing to fix, it can only be taken off the list (the owner, 2026-10-31). The engine keeps
 		 * it until the router or the service restarts, so its name and settings come back with it; here it is hidden in this
 		 * browser until it is plugged in again */
@@ -1271,10 +1284,19 @@ return view.extend({
 			var rank = self.ranked.indexOf(id);
 			card.main.hidden = !data.present || rank <= 0 || data.paused;
 			var carrier = (uplink && uplink.carrier) || {}, carrierCard = carrier.device_id && self.cards.get(carrier.device_id);
-			var notFirst = rank === 0 && data.present && !data.carrying && !data.frozen && carrier.device_id && carrier.device_id !== id;
-			text(card.firstNote, notFirst ? _('Highest priority · traffic still on "%s"').format(carrierCard ? carrierCard.titleLink.textContent : words(carrier.name) || carrier.device) +
+			var pin = ((uplink && uplink.failover) || {}).pin, pinned = !!(pin && pin.device_id === id);
+			card.pin.hidden = !pinned && (!data.present || !iface || data.frozen);
+			card.pin.setAttribute('data-pinned', pinned ? '1' : '0');
+			text(card.pin, pinned ? _('Unpin') : _('Pin as the only channel'));
+			/* this modem's channel moved to the backup: when and why, on its own card */
+			var myDev = words((device.uplink || {}).device), fo2 = (uplink && uplink.failover) || {};
+			var gone = !pinned && myDev && fo2.active ? list(fo2.routes).filter(function(r) { return r && r.device === myDev && r.steered_away && r.reason; })[0] : null;
+			var notFirst = !pinned && !gone && rank === 0 && data.present && !data.carrying && !data.frozen && carrier.device_id && carrier.device_id !== id;
+			text(card.firstNote, pinned ? (pin.dev ? _('Pinned: the internet goes through this modem only') : pin.why ? _('Pinned, but not acting: %s').format(pin.why) :
+				_('Pinned: the internet goes through this modem only once it is connected')) :
+				gone ? _('Traffic moved to the backup at %s: %s').format(hhmm(gone.since), mm.causeWords(gone.reason)) : notFirst ? _('Highest priority · traffic still on "%s"').format(carrierCard ? carrierCard.titleLink.textContent : words(carrier.name) || carrier.device) +
 				((data.reach || {}).ok === false ? ': ' + _('this modem has no internet') : '') : '');
-			card.firstNote.hidden = !notFirst;
+			card.firstNote.hidden = !notFirst && !pinned && !gone;
 			var spDev = data.present && data.connected && !data.frozen ? words((device.uplink || {}).device) : '';
 			card.speed.hidden = !spDev; card.speed.setAttribute('data-dev', spDev);
 			var spr = self.speedRes[id];
@@ -1282,7 +1304,7 @@ return view.extend({
 				_('speed ↓ %s ↑ %s').format(spr.down === null ? '—' : speedWords(spr.down), spr.up === null ? '—' : speedWords(spr.up)));
 			card.speedSaid.title = spr && spr.note || '';
 			card.speedSaid.hidden = !spr || !data.present;
-			card.more.hidden = card.main.hidden && card.pause.hidden && card.freeze.hidden && card.speed.hidden;
+			card.more.hidden = card.main.hidden && card.pin.hidden && card.pause.hidden && card.freeze.hidden && card.speed.hidden;
 			/* the header: the hardware's name, its place in the priority or why it carries nothing */
 			parts.push([rank < 0 ? 1e9 : rank, data.hw + ' (' + (!data.present ? _('disconnected from USB') + (device.frozen ? ', ' + _('management paused') : '') : data.frozen ? _('management paused') : data.pausedAuto ? _('switched off, reconnecting') : data.paused ? _('deactivated') :
 				(rank === 0 ? (data.carrying ? _('primary') : _('first in the priority')) : rank > 0 ? (self.ranked.length > 2 ? _('backup %d').format(rank) : _('backup')) : _('no interface')) +
@@ -1617,7 +1639,12 @@ return view.extend({
 				wireName(q, dev);
 		};
 		var said = [];
-		if (away.length) said.push(_('no internet via %s; traffic routed via backup uplink.').format(away.map(name).join(', ')));
+		/* with why and since when (the engine's failover_reason, r14; the owner, 2026-11-20: «где писать причину ухода на резерв») */
+		var cause = function(dev) {
+			var r = routes.filter(function(x) { return x.device === dev && x.reason; })[0];
+			return r ? name(dev) + ' (' + _('since %s: %s').format(hhmm(r.since), mm.causeWords(r.reason)) + ')' : name(dev);
+		};
+		if (away.length) said.push(_('no internet via %s; traffic routed via backup uplink.').format(away.map(cause).join(', ')));
 		if (kept.length) said.push(_('%s is back online, kept as lowest priority per settings.').format(kept.map(name).join(', ')));
 		if (spent.length) said.push(_('%s reached its SIM data cap; kept as fallback.').format(spent.map(name).join(', ')));
 		this.failover.hidden = !(fo && fo.enabled && (said.length || !fo.active));
@@ -1678,9 +1705,11 @@ return view.extend({
 			var d = byId[p.device_id] || {}, r = all.filter(function(x) { return x && x.device === p.device; })[0] || {};
 			var why = d.frozen ? _('management paused') : (d.connection || {}).deactivated ? _('deactivated') :
 				!p.device ? (d.present === false ? _('disconnected from USB') : _('no session: no network device')) :
+				r.steered_away && fo && fo.pin && fo.pin.dev && fo.pin.dev !== p.device ? _('waits behind the pinned modem') :
 				r.steered_away && r.quota ? _('SIM data cap reached (deprioritized)') : r.steered_away && r.manual ? _('a manual channel waits') :
 				r.demoted ? _('answers again, kept last by the setting') :
 				r.steered_away && p.reach && p.reach.limited ? _('whitelist only (deprioritized)') :
+				r.steered_away && r.reason ? _('on backup since %s: %s').format(hhmm(r.since), mm.causeWords(r.reason)) :
 				r.steered_away ? _('no internet (deprioritized by failover)') :
 				typeof p.metric === 'number' && typeof p.kernel_metric === 'number' && p.metric !== p.kernel_metric ? _('the kernel has not moved the route yet') :
 				p.role !== 'carrying' && typeof p.kernel_metric !== 'number' ? _('no default route') : '';

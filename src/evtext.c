@@ -42,13 +42,14 @@ static const char *const titles[][2] = {
 	{ "backend-return", "Modem returned to ModemManager" },
 	{ "quota-warn", "SIM data cap nearly reached" }, { "quota-exceeded", "SIM data cap reached" },
 	{ "ifup", "Interface brought up again" }, { "iface-repair", "Interface settings repaired" },
+	{ "iface-rebuild", "Interface written again" }, { "iface-removed", "Interface of a gone modem removed" },
 	{ "interface-retry", "Interface brought up again after a failed connection" },
 	{ "registration-denied", "Network rejected registration" },
 	{ "interface-down", "Interface taken down" }, { "interface-up", "Interface brought up" },
 	{ "config", "Network settings changed" }, { "apn-auto", "APN chosen by the SIM" },
 	{ "auto-connect", "New modem connected automatically" },
 	{ "modeswitch-run", "Switching the modem out of storage mode" }, { "modeswitch-done", "Modem switched to modem mode" },
-	{ "modeswitch-fix", "usb-modeswitch rule disabled" }, { "priority", "Modem priority changed" },
+	{ "modeswitch-fix", "usb-modeswitch rule disabled" }, { "priority", "Modem priority changed" }, { "pinned", "Pinned as the only internet channel" }, { "unpinned", "Pin removed" },
 	{ "settings-follow", "Name and settings followed the modem" },
 	{ "usb-config", "USB configuration changed manually" },
 	{ "fcc-unlock-on", "FCC unlock enabled by user" },
@@ -57,6 +58,26 @@ static const char *const titles[][2] = {
 	{ "fcc-unlock-off", "FCC unlock disabled by user" },
 	{ "internet", "Internet through the modem" }, { "failover", "Traffic switching" },
 };
+
+/* the cause of a move away (medvemodemd.c failover_reason): the chain's codes and a few of failover's own */
+static const char *failover_cause(const char *c)
+{
+	static const char *const map[][2] = {
+		{ "absent", "the modem is not on USB" }, { "recovery", "the modem was being recovered" },
+		{ "paused", "switched off by the administrator" }, { "session-failed", "the connection dropped" },
+		{ "no-session", "no session with the operator" }, { "sim-missing", "no SIM card" }, { "sim-locked", "the SIM needs its PIN" },
+		{ "registration-denied", "the network refused the registration" }, { "searching", "searching for a network" },
+		{ "not-registered", "not registered in a network" }, { "composition", "the modem was not fully recognised" },
+		{ "service-mode", "the modem is in service mode" }, { "modeswitch-rule", "a usb-modeswitch rule resets the modem" },
+		{ "no-link", "no cable link" }, { "whitelist", "only the operator's whitelist works" },
+		{ "restricted", "the operator restricted access" }, { "no-answer", "the check addresses did not answer" },
+		{ "dns-failed", "DNS does not answer" },
+	};
+	for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++)
+		if (!strcmp(map[i][0], c))
+			return map[i][1];
+	return c;
+}
 
 static const char *const stages[][2] = {
 	{ "observe", "Refresh modem info" }, { "session", "Reconnect" },
@@ -158,11 +179,20 @@ void mm_event_words(const char *kind, const char *detail, char *out, size_t size
 		return;
 	}
 	if (d && !strcmp(kind, "failover") && sscanf(d, "%63s %63s", a, b) == 2) {
-		snprintf(out, size, "%s: %s %s", title, b, !strcmp(a, "down") ? "has no internet, the traffic moved to another link" :
+		/* «why dev [cause] [Ns]» (r14): the cause in words, how long the link was away */
+		char cause[64] = "", secs[32] = "", tail[160] = "";
+		long long n = 0;
+
+		if (sscanf(d, "%*63s %*63s %63s %31s", cause, secs) >= 1 && strcmp(cause, "-"))
+			snprintf(tail, sizeof(tail), " (%s)", failover_cause(cause));
+		if (*secs && sscanf(secs, "%llds", &n) == 1)
+			snprintf(tail + strlen(tail), sizeof(tail) - strlen(tail), ", away %lld min", (n + 59) / 60);
+		snprintf(out, size, "%s: %s %s%s", title, b, !strcmp(a, "down") ? "has no internet, the traffic moved to another link" :
 			 !strcmp(a, "limited") ? "has the whitelist only, another link carries the traffic" :
 			 !strcmp(a, "quota") ? "spent its quota, kept behind the others" : !strcmp(a, "manual") ? "is a manual link, kept behind" :
 			 !strcmp(a, "demoted") ? "answers again, kept last" : !strcmp(a, "back") ? "answers again, its priority restored" :
-			 "its priority restored");
+			 !strcmp(a, "pinned") ? "is pinned, it alone carries the traffic" : !strcmp(a, "pin") ? "waits behind the pinned modem" :
+			 "its priority restored", tail);
 		return;
 	}
 	/* the registry's and ModemManager's own words add nothing a person reads */
