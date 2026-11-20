@@ -14,8 +14,8 @@
 
 **[🇷🇺 Русский](#русское-описание) · [🇬🇧 English Quick Start](docs/USER-GUIDE.en.md) · [English overview](#english-overview)**
 
-**RU: [Установка](docs/INSTALL.md) · [Краткая инструкция](docs/USER-GUIDE.md) · [Руководство](docs/MANUAL.md) · [Белые списки оператора: настройка](docs/WHITELISTS-RU.md)**  
-**EN: [Installation](docs/INSTALL.en.md) · [Quick Start](docs/USER-GUIDE.en.md) · [Full Manual](docs/MANUAL.en.md)**
+**RU: [Установка](docs/INSTALL.md) · [Краткая инструкция](docs/USER-GUIDE.md) · [Руководство](docs/MANUAL.md) · [История изменений](docs/CHANGELOG.md) · [Белые списки оператора: настройка](docs/WHITELISTS-RU.md)**  
+**EN: [Installation](docs/INSTALL.en.md) · [Quick Start](docs/USER-GUIDE.en.md) · [Full Manual](docs/MANUAL.en.md) · [Changelog](docs/CHANGELOG.en.md)**  
 **[Documentation / Документация](docs/README.md) · [Telegram bot: architecture & screen layouts / Архитектура и макеты Telegram-бота](docs/BOT-ARCHITECTURE.md) · [Modem Zoo / Зоопарк модемов](docs/modem-zoo/README.md) · [ubus API](docs/UBUS-API.md) · [Releases](https://github.com/Medvedolog/medvemodem/releases)**
 
 [Отправить диагностику](#если-модем-неизвестен-или-не-работает--diagnostic-report)
