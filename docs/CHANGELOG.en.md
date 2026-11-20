@@ -1,4 +1,76 @@
-## Source-only r11 — QModem handover recovery (2026-11-19)
+# MedveModem — Release History (English)
+
+Newest changes first. For acceptance checks specific to a build, see its release description in [GitHub Releases](https://github.com/Medvedolog/medvemodem/releases). This English history follows the [Russian changelog](CHANGELOG.md); earlier pre-release and source-only notes below are retained as historical snapshots.
+
+## 0.16.0-alpha1-r14 — 2026-11-20
+Published release: `v0.16.0-alpha1-r14`.
+
+- **Unused modem interfaces can now be deleted.** Moving modems between USB ports had accumulated `mm0`…`mm10`: a modem rediscovered under a new interface name received another number while the previous interface remained reserved, sometimes containing nothing but a routing metric. Settings → Modems → Interfaces without a modem now lists those interfaces with a Delete button. After 10 days without the modem, an interface with no operator configuration other than its metric is deleted automatically (`core.orphan_days`; `0` disables automatic removal). Deleted interface names become available again.
+- **Pin as the only channel** is available from a modem card menu. All internet traffic stays on the selected modem even if that modem loses connectivity and automatic failover is enabled; all other channels wait until the pin is removed. The card explicitly shows the pinned state.
+- **A failover now explains why traffic moved to a backup.** The service records the cause at the time of the switch: modem missing from USB, modem recovery in progress, session failure (netifd code), missing SIM or PIN required, network registration rejected, wired carrier down, operator whitelist-only access, or probe destinations not answering. The cause and timestamp are shown in the dashboard summary, channel table, failed modem's card, modem journal (including outage duration on recovery), switch notification and Telegram bot.
+- **Personal scripts layout:** the backup channel and connectivity check each occupy their own card in a row; the Whitelists reference is a single line rather than an oversized block.
+- **Whitelist mode with podkop-exp 0.8.11 and later (verified with 0.8.20):** server switching locates a rule group by its display label. Newer podkop versions name groups from the rule caption (for example, “Germany-out”), not the old section-derived “main-out”; the earlier lookup failed to pin the intended server.
+- **Podkop fallback compatibility:** when a podkop rule defines fallback servers and no server is specifically selected for whitelist mode, that mode no longer pins a server. Podkop remains free to switch to backups when a primary server stops answering, while the whitelist mode routes LAN and router traffic through the rule. Explicitly selected servers remain pinned, including for rules with fallback.
+- **SMS Refresh no longer incorrectly says “no new messages.”** The page's background refresh could already display a newly arrived SMS before the Refresh button compared the counts.
+- **LuCI across themes:** borders, buttons, separators and tabs adopt Bootstrap theme colors; layout responds to the width of its containing column rather than the browser window, including on Overview.
+
+## 0.16.0-alpha1-r13 — 2026-11-20
+Bench build: `bench-v0.16.0_alpha1-r13-0fe0b52`.
+
+- **T99 recovers even when its network interface has been reduced to a metric.** With `network.mm0` missing both `proto` and `device`, the service could repeatedly attempt to bring up the unusable interface for hours while netifd returned `NO_DEVICE`. The r11 repair ran only during recovery, which this path never reached. During interface reconciliation, missing `proto`/`device` were also misread as an intentional owner edit. The service now reconstructs the interface during repeated bring-up, rate-limited to once per 10 minutes.
+- **QModem can again be installed from public releases.** The public r12 package set lacked the QModem package URL (“this build of MedveModem has no QModem package address”).
+- **Update checks target the correct repository:** the public repository for releases, the working repository for bench builds. GitHub failures (private-repository access, rate limits) are reported explicitly instead of being disguised as “no build for your architecture.”
+- The **Whitelist mode** reference in Settings is a normal single-line pointer to the Whitelists page rather than an empty card.
+- The **Whitelists page shows each modem's operator**, not only operators of ModemManager-controlled modems.
+
+## 0.16.0-alpha1-r12 — 2026-11-20
+Bench build: `bench-v0.16.0_alpha1-r12-05fb44d`.
+
+- **SIM labels no longer retain raw ICCIDs.** SIM number, label, SMS center and traffic limit were keyed by ICCID in UCI. They now use a salted ICCID hash, analogous to modem identity by IMEI. Existing SIM metadata is migrated on service startup and the ICCID removed from the configuration. Different readings of the same ICCID (a trailing `F` or missing check digit) resolve to the same key.
+- **Package upgrades preserve configuration.** The MedveModem config had not been declared as a conffile, allowing opkg/apk to replace `/etc/config/medvemodem` with defaults on upgrade. Sysupgrade now also preserves operator scripts in `/etc/hotplug.d/medvemodem/` and the SMS-forwarding secret; publicly built bot packages preserve their Telegram token and salt.
+- **Uninstalling QModem no longer leaves its former modem unmanaged.** Until QModem is installed again, the modem follows the Auto ownership policy.
+- **Stale readings are visually subdued** on modem cards. Temperature that is no longer available is explicitly labeled “(stale),” rather than making an unresponsive modem appear healthy.
+- **Service resilience audit:** background checks stop with the service and cannot interfere with the next startup; flapping USB devices no longer cause unbounded memory use; descriptors are not leaked into child processes; malformed SMS timestamps do not produce impossible dates such as “2065-166-165”; `qmicli` is launched without a shell.
+- **Public CI checks every PR and commit** with fast contract, installer, documentation-link and Chromium checks, without starting a two-hour SDK build. Release highlights are resolved by tag for future alpha and beta versions as well.
+- **Telegram bot reference:** add `docs/BOT-ARCHITECTURE.md` with the bot architecture and screen wireframes; align bot README setup and control descriptions with the current implementation.
+- **Documentation:** complete reference for service and bot UCI options in MANUAL, guarded by a test against undocumented options; validation of links and anchors in all Markdown files; consistent “service” terminology instead of “engine” in manuals; remove outdated package revision numbers from DEPENDENCIES.
+
+## 0.16.0-alpha1-r11 — 2026-11-19
+Bench build: `bench-v0.16.0_alpha1-r11-1fa0d25`.
+
+- **Development returned to the working repository.** Changes from the public r2–r10 line and the draft PR #15 r11 fixes were migrated there; only bench-validated builds are intended for public export, consolidated to one commit per release.
+- **Installing components through LuCI now completes.** In r10, Drivers and components could initiate installation of drivers, ModemManager, lpac or the bot but not finish: the service wrote a literal `$` instead of its process ID.
+- **FM350 no longer falls back to ModemManager during USB reset recovery.** During re-enumeration through its bootloader the profile was not yet known, so the modem was handed to ModemManager, which cannot dial this USB composition; its interface stayed down until manually brought up. Devices with an unresolved profile or unstable USB are now withheld from that handover. If reattachment occurs while waiting for ModemManager, the interface is brought up again.
+- **QModem → Auto or ModemManager handover (PR #15):** Auto releases QModem when the profile prefers ModemManager or native management. A real QModem `modem-device` section, not merely a saved backend setting, is needed to establish QModem ownership. Failed adoption can be unwound; the card shows pending handover rather than stale readings attributed to the wrong owner.
+- **Previously untranslated UI text** now includes Russian labels for Drivers and components explanations, QModem/modem telemetry state, bot components, and unclean restart counts.
+- **Self-repair of damaged modem network interfaces:** selecting “MedveModem directly” for T99W175 on r10 could leave `network.mm0` with only a metric, missing `proto` and `device`. The service then repeatedly tried recovery and USB resets without rebuilding the interface. The interface can now be reconstructed, limited to once per 10 minutes, and recovery no longer overwrites that work. The r13 change extends this to repeated bring-up that never entered recovery.
+- **“No device” no longer describes a physically present modem.** netifd `NO_DEVICE` also means the interface configuration does not bind it to a modem; the card now explains that distinction.
+- **lpac and bot component downloads work again:** since r9 the installer had parsed a check result with shifted arguments and selected the wrong archive.
+- **Mobile LuCI fixes:** the Settings page no longer overflows the viewport due to the long update button; the ownership-change notice no longer permanently covers action buttons.
+- **Language review:** American-English/OpenWrt wording across LuCI and bot; Russian follows the agreed glossary (“management service,” “directly,” “label,” “release,” “whitelist”). Bot Help text rewritten.
+- **Security and resilience fixes:** bound modem-web request headers; clear password/cookie buffers on success or failure; prevent queued SMS forwarding from dropping a batch when its worker has not started; reap child processes when a wait is interrupted by a signal; launch LuCI background checks with a clean environment; reject newlines in local proxy passwords; cap speed tests at 60 seconds per direction.
+- **FM350 RNDIS mode 40 (`AT+GTUSBMODE=40`, `0e8d:7126`) dials again.** The profile previously reused mode 41's AT interface 6 (silent NPT in mode 40). A field report for firmware 29.24.02 established interface 4 as the AT port in mode 40.
+- **Package profile validation passes again:** public-line EP06 and T99W640 profiles contained fields absent from the supported schema.
+- **Event log, SMS notifications, `medvemodem top` and installer wording** edited to read more naturally in English; “Freeze” in the console is now “Pause,” matching LuCI and the bot.
+- **Known limitation:** under native QMI, individual T99W175 antenna signal levels remain unreadable while `cdc-wdm` is occupied by `uqmi`.
+
+## 0.16.0-alpha1-r10 — 2026-11-19
+Published release: `v0.16.0-alpha1-r10`.
+
+- **Native QMI/MBIM selection** is available by actual control node and driver (`qmi_wwan` / `cdc_mbim`), even if an exact modem profile does not advertise it. This enables native QMI selection for T99W175 via `cdc-wdm`; Auto still selects ModemManager for that model.
+- **SSH installer skips unnecessary downloads** when all selected packages are already at the requested release. `--force` reinstalls them.
+- **MM / QM / MV owner badges** moved to the lower-right corners of modem cards. The WEB badge was removed because the modem's web interface is already identified by its own link.
+
+## 0.16.0-alpha1-r9 — 2026-11-19
+No separate public release was published.
+
+- **Updates check all four components independently:** service, LuCI, bot and bot LuCI. Only the outdated package pair is updated.
+- **Explicit update channel:** published releases by default, bench builds only when selected; each channel has its own cached check.
+- The Updates page displays versions of all four components, selected channel, available version and last check time.
+
+### Earlier source-only implementation notes (historical snapshots)
+
+### Earlier source-only r11 handover notes (2026-11-19; before the bench build)
 
 - Fix T99W175 hand-back from QModem to `auto` and ModemManager, including a failed adoption where QModem never created a `modem-device` section. The engine no longer waits to remove a nonexistent section: it clears its own QModem lease and proceeds to the selected owner.
 - QModem ownership now requires an actual `modem-device` section; a persisted `backend=qmodem` selection alone is not proof of adoption. Until QModem really accepts the modem, the card reports a pending/failed handover rather than false ownership and stale telemetry.
@@ -7,9 +79,7 @@
 - Synchronize package and LuCI module versions to `0.16.0-alpha1-r11`.
 - **Source only:** no SDK build, release publication or router acceptance has been performed. r10 and previously published artifacts remain unchanged.
 
-# MedveModem — Release History (English)
-
-## Source-only r10 — modem owner badge placement (2026-11-19)
+### Earlier source-only r10 UI notes (2026-11-19; before publication)
 
 - Move the optional MM/QM/MV badge to the lower-right corner of each dashboard modem card and the individual modem hero card. Remove it from the title row, toolbar and modem overview table.
 - Remove the HiLink/WEB owner badge: the existing modem web-interface link already identifies the web UI. Ownership badges now identify only ModemManager, QModem or MedveModem as the controlling service.
@@ -18,7 +88,7 @@
 - **Source only:** no SDK build, release publication or router acceptance has been performed. Published r8/r9 assets are unchanged.
 
 
-## Source-only r9 — updater and settings UX (2026-11-19)
+### r9 source-only updater and settings notes (2026-11-19)
 
 - The LuCI updater now reports the engine, its LuCI, Telegram bot and bot LuCI versions independently. Any installed component older than the selected release makes the update available; the updater refreshes only the outdated package family, keeping engine/LuCI and bot/bot-LuCI paired.
 - Published versioned releases (including tagged prereleases) are the default updater channel. LuCI now offers an explicit published-release/bench selector saved through the common Save/Revert form. Cached checks are tagged with their channel, so results from a previous channel cannot masquerade as current; stale and channel-mismatched results are checked again.
@@ -26,8 +96,6 @@
 - Move the MM/QM/MV badge preference to the bottom of Diagnostics and components. It now participates in the Save button's dirty state and is written to this browser's localStorage only after the common Save succeeds.
 - Bump the engine, LuCI and bot package release numbers and all browser module versions to r9. Add updater regression contracts to the manual build's frontend gate.
 - **Source only:** no SDK build, release publication or on-router test has been performed. The immutable r8 release is unchanged.
-
-
 
 ## Post-published r8 — modem controller switching regression fix (2026-11-19)
 
